@@ -6,3 +6,6 @@ __pycache__/
 raw/osm/*.log
 raw/osm/*_err.txt
 raw/osm/*_log.txt
+
+# Run logs
+logs/

@@ -1,3 +1,5 @@
+import os
+os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import geopandas as gpd
 import pandas as pd
 

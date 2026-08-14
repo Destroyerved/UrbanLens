@@ -1,3 +1,5 @@
+import os
+os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import json
 import time
 import random
@@ -10,17 +12,10 @@ ENDPOINTS = [
     "https://overpass.private.coffee/api/interpreter",
 ]
 
-CITIES = {
-    "ahmedabad": (22.90, 72.44, 23.15, 72.71),
-    "gandhinagar": (23.08, 72.53, 23.32, 72.71),
-}
+BBOX = (23.08, 72.53, 23.32, 72.71)
 
-QUERIES = {
-    "schools": 'nwr["amenity"~"^(school|college|university|kindergarten)$"]',
-    "health": 'nwr["amenity"~"^(hospital|clinic|doctors|pharmacy)$"]',
-    "greenspace": 'nwr["leisure"~"^(park|garden|nature_reserve)$"]',
+LAYERS = {
     "transport": 'nwr["highway"="bus_stop"];nwr["railway"="station"];nwr["amenity"="bus_station"]',
-    "worship": 'nwr["amenity"="place_of_worship"]',
     "landuse": 'nwr["landuse"~"^(residential|commercial|industrial|farmland|forest|retail|institutional|recreation_ground|cemetery)$"];nwr["natural"~"^(water|wood|scrub|grassland)$"]',
 }
 
@@ -72,42 +67,56 @@ def to_features(elements):
     return feats
 
 
-def save(path, feats):
-    with open(path, "w", encoding="utf-8") as fh:
-        json.dump({"type": "FeatureCollection", "features": feats}, fh, ensure_ascii=False)
-
-
 def main():
-    for city, bbox in CITIES.items():
-        print(f"== {city} ==", flush=True)
-        quads = split_bbox(*bbox, nx=2, ny=2)
-        for qname, qdata in QUERIES.items():
-            all_els = []
-            for qi, qb in enumerate(quads):
-                body = f"[out:json][timeout:120];{qdata}({qb[0]},{qb[1]},{qb[2]},{qb[3]});out geom;"
-                ok = False
-                for attempt in range(4):
-                    random.shuffle(ENDPOINTS)
-                    for ep in ENDPOINTS:
-                        try:
-                            els = fetch(ep, body)
-                            all_els.extend(els)
-                            print(f"  {qname} quad{qi} ok ({len(els)}) via {ep.split('/')[2]}", flush=True)
-                            ok = True
-                            break
-                        except Exception as exc:
-                            pass
-                    if ok:
+    log = open(f"{OUT}/gn_fix_log.txt", "a", encoding="utf-8")
+    quads = split_bbox(*BBOX, nx=2, ny=2)
+    for layer, sub in LAYERS.items():
+        all_els = []
+        msg = f"== gandhinagar/{layer} =="
+        print(msg, flush=True)
+        log.write(msg + "\n")
+        for qi, qb in enumerate(quads):
+            bb = f"{qb[0]},{qb[1]},{qb[2]},{qb[3]}"
+            parts = ";".join(f"{s}({bb})" for s in sub.split(";"))
+            body = f"[out:json][timeout:120];({parts};);out geom;"
+            ok = False
+            for attempt in range(5):
+                random.shuffle(ENDPOINTS)
+                for ep in ENDPOINTS:
+                    try:
+                        els = fetch(ep, body)
+                        all_els.extend(els)
+                        msg = f"  quad{qi} ok ({len(els)}) via {ep.split('/')[2]}"
+                        print(msg, flush=True)
+                        log.write(msg + "\n")
+                        log.flush()
+                        ok = True
                         break
-                    time.sleep(12 * (attempt + 1))
-                if not ok:
-                    print(f"  {qname} quad{qi} FAILED", flush=True)
-                time.sleep(6)
-            feats = to_features(all_els)
-            path = f"{OUT}/{city}_{qname}.geojson"
-            save(path, feats)
-            print(f"  -> saved {path} ({len(feats)} features)", flush=True)
+                    except Exception as e:
+                        msg = f"  quad{qi} err {ep}: {e}"
+                        print(msg, flush=True)
+                        log.write(msg + "\n")
+                        log.flush()
+                        continue
+                if ok:
+                    break
+                time.sleep(12 * (attempt + 1))
+            if not ok:
+                msg = f"  quad{qi} FAILED"
+                print(msg, flush=True)
+                log.write(msg + "\n")
+                log.flush()
             time.sleep(6)
+        feats = to_features(all_els)
+        path = f"{OUT}/gandhinagar_{layer}.geojson"
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump({"type": "FeatureCollection", "features": feats}, fh, ensure_ascii=False)
+        msg = f"  -> saved {path} ({len(feats)} features)"
+        print(msg, flush=True)
+        log.write(msg + "\n")
+        log.flush()
+        time.sleep(6)
+    log.close()
 
 
 main()

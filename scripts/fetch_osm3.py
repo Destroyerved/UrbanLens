@@ -1,3 +1,5 @@
+import os
+os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import json
 import time
 import random
@@ -15,8 +17,12 @@ CITIES = {
     "gandhinagar": (23.08, 72.53, 23.32, 72.71),
 }
 
-LAYERS = {
+QUERIES = {
+    "schools": 'nwr["amenity"~"^(school|college|university|kindergarten)$"]',
+    "health": 'nwr["amenity"~"^(hospital|clinic|doctors|pharmacy)$"]',
+    "greenspace": 'nwr["leisure"~"^(park|garden|nature_reserve)$"]',
     "transport": 'nwr["highway"="bus_stop"];nwr["railway"="station"];nwr["amenity"="bus_station"]',
+    "worship": 'nwr["amenity"="place_of_worship"]',
     "landuse": 'nwr["landuse"~"^(residential|commercial|industrial|farmland|forest|retail|institutional|recreation_ground|cemetery)$"];nwr["natural"~"^(water|wood|scrub|grassland)$"]',
 }
 
@@ -68,16 +74,19 @@ def to_features(elements):
     return feats
 
 
+def save(path, feats):
+    with open(path, "w", encoding="utf-8") as fh:
+        json.dump({"type": "FeatureCollection", "features": feats}, fh, ensure_ascii=False)
+
+
 def main():
     for city, bbox in CITIES.items():
+        print(f"== {city} ==", flush=True)
         quads = split_bbox(*bbox, nx=2, ny=2)
-        for layer, sub in LAYERS.items():
+        for qname, qdata in QUERIES.items():
             all_els = []
-            print(f"== {city}/{layer} ==", flush=True)
             for qi, qb in enumerate(quads):
-                bb = f"{qb[0]},{qb[1]},{qb[2]},{qb[3]}"
-                parts = ";".join(f"{s}({bb})" for s in sub.split(";"))
-                body = f"[out:json][timeout:120];({parts};);out geom;"
+                body = f"[out:json][timeout:120];{qdata}({qb[0]},{qb[1]},{qb[2]},{qb[3]});out geom;"
                 ok = False
                 for attempt in range(4):
                     random.shuffle(ENDPOINTS)
@@ -85,21 +94,20 @@ def main():
                         try:
                             els = fetch(ep, body)
                             all_els.extend(els)
-                            print(f"  quad{qi} ok ({len(els)}) via {ep.split('/')[2]}", flush=True)
+                            print(f"  {qname} quad{qi} ok ({len(els)}) via {ep.split('/')[2]}", flush=True)
                             ok = True
                             break
-                        except Exception:
-                            continue
+                        except Exception as exc:
+                            pass
                     if ok:
                         break
                     time.sleep(12 * (attempt + 1))
                 if not ok:
-                    print(f"  quad{qi} FAILED", flush=True)
+                    print(f"  {qname} quad{qi} FAILED", flush=True)
                 time.sleep(6)
             feats = to_features(all_els)
-            path = f"{OUT}/{city}_{layer}.geojson"
-            with open(path, "w", encoding="utf-8") as fh:
-                json.dump({"type": "FeatureCollection", "features": feats}, fh, ensure_ascii=False)
+            path = f"{OUT}/{city}_{qname}.geojson"
+            save(path, feats)
             print(f"  -> saved {path} ({len(feats)} features)", flush=True)
             time.sleep(6)
 
