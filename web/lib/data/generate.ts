@@ -1,7 +1,8 @@
 import * as turf from "@turf/turf";
 import type { FeatureCollection, LineString, Point, Polygon } from "geojson";
 import { CityConfig, DATA_SEED } from "@/lib/config";
-import { loadRealData } from "@/lib/data/real";
+import { loadRealData, loadRealWards } from "@/lib/data/real";
+import { makeWardLocator } from "@/lib/gis/population";
 import {
   mulberry32,
   Rng,
@@ -232,7 +233,7 @@ function generateRoads(
 }
 
 // ---------------------------------------------------------------------------
-// Wards (tiled grid clipped to the urban footprint)
+// Wards — real municipal boundaries when available, else a tiled grid
 // ---------------------------------------------------------------------------
 
 const WARD_NAMES = [
@@ -292,7 +293,7 @@ function generateWards(
           id: wardCode,
           name,
           ward_code: wardCode,
-          district: "Ahmedabad",
+          district: config.name,
           population,
           area_sqm: Math.round(areaSqm),
           population_density: Math.round(density),
@@ -370,12 +371,29 @@ function generateParcels(
       number, number, number, number,
     ];
     const wardIntensity = intensity(ward.properties.centroid[0], ward.properties.centroid[1]);
-    const count = Math.round(randRange(rng, 14, 26) * (0.6 + wardIntensity / 130));
+    // Real wards vary enormously in size (33 km² on the fringe vs ~2 km² in the
+    // core), so parcel counts scale with ward area to keep sampling density even.
+    const areaKm2 = ward.properties.area_sqm / 1e6;
+    const count = Math.max(
+      6,
+      Math.round(areaKm2 * randRange(rng, 3.2, 5.2) * (0.6 + wardIntensity / 130))
+    );
 
     for (let i = 0; i < count; i++) {
-      // Rejection-sample a point inside the ward rectangle (wards are rectangles).
-      const lng = randRange(rng, minLng + 0.001, maxLng - 0.001);
-      const lat = randRange(rng, minLat + 0.001, maxLat - 0.001);
+      // Rejection-sample a point that actually falls inside the ward polygon.
+      // Real boundaries are irregular, so a bbox sample is not enough; give up
+      // after a bounded number of tries and fall back to the centroid.
+      let lng = 0;
+      let lat = 0;
+      let inside = false;
+      for (let attempt = 0; attempt < 24 && !inside; attempt++) {
+        lng = randRange(rng, minLng, maxLng);
+        lat = randRange(rng, minLat, maxLat);
+        inside = turf.booleanPointInPolygon([lng, lat], ward);
+      }
+      if (!inside) {
+        [lng, lat] = ward.properties.centroid;
+      }
       const c: [number, number] = [lng, lat];
       const dKm = haversineKm(config.center, c);
 
@@ -432,7 +450,7 @@ function generateParcels(
       const bu2018 = Math.max(0, bu2026 - totalGrowth);
       const bu2022 = Math.max(bu2018, Math.round(bu2018 + (bu2026 - bu2018) * 0.62));
 
-      const parcelId = `GJ-AHD-${String(seq).padStart(5, "0")}`;
+      const parcelId = `GJ-${config.code}-${String(seq).padStart(5, "0")}`;
       features.push({
         type: "Feature",
         properties: {
@@ -445,7 +463,7 @@ function generateParcels(
           owner_category: ownership === "government" ? pick(rng, GOV_OWNERS) : pick(rng, PRIVATE_OWNERS),
           land_use: landUse,
           zoning,
-          district: "Ahmedabad",
+          district: config.name,
           ward: ward.properties.ward_code,
           built_up_percent: bu2026,
           vegetation_percent: veg,
@@ -570,9 +588,15 @@ function riskCategory(p: number): PredictionProps["risk_category"] {
 function generatePrediction(
   config: CityConfig,
   intensity: (lng: number, lat: number) => number,
-  roads: FeatureCollection<LineString, RoadProps>
+  roads: FeatureCollection<LineString, RoadProps>,
+  wards: FeatureCollection<Polygon, WardProps>
 ): FeatureCollection<Polygon, PredictionProps> {
-  const [minLng, minLat, maxLng, maxLat] = config.bbox;
+  // Cover the actual ward footprint, which with real boundaries is wider than
+  // the nominal city bbox.
+  const [minLng, minLat, maxLng, maxLat] = turf.bbox(wards) as [number, number, number, number];
+  // Cells are kept only where they fall inside a ward, so the prediction surface
+  // follows the true municipal outline instead of a circle around the centre.
+  const inCity = makeWardLocator(wards.features);
   const step = 0.008; // ~0.85km cells
   const arterialVerts: [number, number][] = [];
   for (const r of roads.features) {
@@ -594,7 +618,7 @@ function generatePrediction(
     for (let lng = minLng; lng < maxLng; lng += step) {
       const cx = lng + step / 2;
       const cy = lat + step / 2;
-      if (haversineKm(config.center, [cx, cy]) > config.radiusKm) continue;
+      if (inCity(cx, cy) < 0) continue;
 
       const it = intensity(cx, cy);
       const { strength } = corridorField(bearingDeg(config.center, [cx, cy]));
@@ -643,25 +667,75 @@ export function generateCity(config: CityConfig): CityDataset {
   const intensity = makeIntensityFn(config);
   const river = riverLine(config);
 
-  // Real OpenStreetMap facilities + roads override the synthetic ones when the
-  // cache exists (see scripts/fetch-osm.mjs). Parcels, wards and population stay
-  // synthetic demo data. Only Ahmedabad has a cached real footprint.
-  const real = config.id === "ahmedabad" ? loadRealData() : null;
+  // Real layers override the synthetic ones whenever their cache exists:
+  //   - wards      → scripts/build-wards.mjs (digitised municipal ward map)
+  //   - facilities → scripts/fetch-osm.mjs   (OpenStreetMap via Overpass)
+  //   - roads      → scripts/fetch-osm.mjs
+  // Parcels stay synthetic: GLIS cadastral records are not public, and the PRD
+  // explicitly permits realistic demo parcels provided they are labelled.
+  const real = loadRealData(config.id);
+  const realWards = loadRealWards(config.id);
 
   const { roads: synthRoads, metroLine } = generateRoads(config, river);
   const roads = real?.roads ?? synthRoads;
-  const wards = generateWards(config, rng, intensity);
+  const wards = realWards?.wards ?? generateWards(config, rng, intensity);
   const parcels = generateParcels(config, rng, wards, intensity, river);
   const facilities = real?.facilities ?? generateFacilities(config, rng, intensity, metroLine);
-  const prediction = generatePrediction(config, intensity, roads);
+  const prediction = generatePrediction(config, intensity, roads, wards);
+
   const sources: CityDataset["sources"] = {
-    facilities: real ? "osm" : "synthetic",
-    roads: real ? "osm" : "synthetic",
-    parcels: "synthetic",
-    wards: "synthetic",
+    wards: realWards
+      ? {
+          source: "official",
+          label: `${config.name} municipal ward map`,
+          detail: `${realWards.meta.wards} digitised ward boundaries (${realWards.meta.area_km2} km²) with measured area, perimeter, compactness and OSM road density.`,
+        }
+      : {
+          source: "synthetic",
+          label: "Synthetic ward grid",
+          detail: "Uniform tiles generated over the city bbox — structure only, not real boundaries.",
+        },
+    population: realWards
+      ? {
+          source: "derived",
+          label: "Modelled from census totals",
+          detail: `${realWards.meta.population_basis}; ${realWards.meta.population_method}. Estimates, not ward-level census counts.`,
+        }
+      : {
+          source: "synthetic",
+          label: "Synthetic population",
+          detail: "Density modelled from the generated urban-intensity field.",
+        },
+    parcels: {
+      source: "synthetic",
+      label: "Demo parcels (not GLIS)",
+      detail:
+        "Deterministically generated cadastral-style parcels standing in for GLIS records, which are not publicly available. Structure and spatial behaviour are realistic; the records are not official.",
+    },
+    facilities: real?.facilities
+      ? {
+          source: "osm",
+          label: "OpenStreetMap",
+          detail: `${real.facilities.features.length} facilities via the Overpass API, de-duplicated and re-classified (fetched ${real.meta.fetchedAt.slice(0, 10) || "n/a"}).`,
+        }
+      : { source: "synthetic", label: "Synthetic facilities", detail: "Generated and clustered toward built-up areas." },
+    roads: real?.roads
+      ? {
+          source: "osm",
+          label: "OpenStreetMap",
+          detail: `${real.roads.features.length} major road segments via the Overpass API, geometry decimated for spatial math.`,
+        }
+      : { source: "synthetic", label: "Synthetic road network", detail: "Generated radial + ring arterial network." },
+    prediction: {
+      source: "derived",
+      label: "Growth model output",
+      detail:
+        "Per-cell 2030 growth probability from a transparent weighted model over distance-to-road, distance-to-built-up, distance-to-centre and current land use.",
+    },
   };
 
-  // City boundary = union of ward tiles (real footprint; avoids rbush/convex).
+  // City boundary = union of the ward polygons (the true municipal footprint
+  // when the ward layer is official).
   let hull: CityDataset["boundary"];
   try {
     hull =
@@ -674,7 +748,6 @@ export function generateCity(config: CityConfig): CityDataset {
   return {
     cityId: config.id,
     generatedAt: new Date().toISOString(),
-    provenance: "demo",
     sources,
     boundary: hull as CityDataset["boundary"],
     wards,

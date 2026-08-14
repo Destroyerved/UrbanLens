@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { useCity } from "@/components/shell/CityProvider";
 import type { CityMapProps } from "./CityMap";
 
 const CityMap = dynamic(() => import("./CityMap").then((m) => m.CityMap), {
@@ -15,8 +16,14 @@ const CityMap = dynamic(() => import("./CityMap").then((m) => m.CityMap), {
   ),
 });
 
+/**
+ * Wraps the map with the active city's view, so pages never hard-code a centre.
+ * The whole page subtree is remounted on a city change (see the app layout), so
+ * the map re-initialises against the new city automatically.
+ */
 export function MapView(props: CityMapProps) {
-  return <CityMap {...props} />;
+  const { city } = useCity();
+  return <CityMap center={city.center} zoom={city.zoom} {...props} />;
 }
 
 export type { CityMapProps, LayerKey, ParcelColorMode, WardMetric, MapMarker } from "./CityMap";

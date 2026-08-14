@@ -87,6 +87,14 @@ export interface WardProps {
   area_sqm: number;
   population_density: number; // people / km²
   centroid: [number, number];
+  /**
+   * Real measured attributes, present only when the ward layer comes from the
+   * digitised municipal ward map (see scripts/build-wards.mjs).
+   */
+  road_length_km?: number;
+  road_density?: number; // km of road per km²
+  compactness?: number; // Polsby-Popper, 0..1
+  perimeter_km?: number;
 }
 
 export type Ward = Feature<Polygon, WardProps>;
@@ -119,17 +127,50 @@ export interface PredictionProps {
 
 export type PredictionCell = Feature<Polygon, PredictionProps>;
 
+/**
+ * Where a layer's data actually came from. The product makes planning claims, so
+ * every layer states its own provenance rather than the whole app carrying one
+ * blanket "demo" flag (PRD §30, §80.12 — real, public and synthetic data must be
+ * clearly separated and synthetic data must never be presented as official).
+ */
+export type LayerSource = "official" | "osm" | "derived" | "synthetic";
+
+export type DataLayerKey =
+  | "wards"
+  | "population"
+  | "parcels"
+  | "facilities"
+  | "roads"
+  | "prediction";
+
+export interface LayerProvenance {
+  source: LayerSource;
+  /** Short attribution shown in the UI. */
+  label: string;
+  /** How the layer was produced — shown on hover / in the data panel. */
+  detail: string;
+}
+
+export const SOURCE_LABELS: Record<LayerSource, string> = {
+  official: "Official",
+  osm: "OpenStreetMap",
+  derived: "Derived",
+  synthetic: "Synthetic",
+};
+
+/** Layers a planner must not mistake for authoritative records. */
+export const SOURCE_IS_REAL: Record<LayerSource, boolean> = {
+  official: true,
+  osm: true,
+  derived: false,
+  synthetic: false,
+};
+
 /** The full generated city, held in memory and served to the API layer. */
 export interface CityDataset {
   cityId: string;
   generatedAt: string;
-  provenance: "demo";
-  sources: {
-    facilities: "osm" | "synthetic";
-    roads: "osm" | "synthetic";
-    parcels: "synthetic";
-    wards: "synthetic";
-  };
+  sources: Record<DataLayerKey, LayerProvenance>;
   boundary: Feature<Polygon | MultiPolygon>;
   wards: FeatureCollection<Polygon, WardProps>;
   parcels: FeatureCollection<Polygon, ParcelProps>;

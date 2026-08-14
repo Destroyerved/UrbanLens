@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { getDataset } from "@/lib/data/store";
 import { cityIdFrom, json } from "@/lib/api";
+import { getPopulationGrid } from "@/lib/gis/population";
 
 export async function GET(req: NextRequest) {
   const t = Date.now();
@@ -10,10 +11,11 @@ export async function GET(req: NextRequest) {
     const k = f.properties.facility_type;
     byType[k] = (byType[k] ?? 0) + 1;
   }
+  const grid = getPopulationGrid(ds);
   return json({
     ok: true,
     city: ds.cityId,
-    provenance: ds.provenance,
+    sources: ds.sources,
     generatedAt: ds.generatedAt,
     counts: {
       wards: ds.wards.features.length,
@@ -21,7 +23,9 @@ export async function GET(req: NextRequest) {
       facilities: ds.facilities.features.length,
       roads: ds.roads.features.length,
       prediction_cells: ds.prediction.features.length,
+      population_cells: grid.cellCount,
     },
+    population_total: Math.round(grid.total),
     facilities_by_type: byType,
     took_ms: Date.now() - t,
   });

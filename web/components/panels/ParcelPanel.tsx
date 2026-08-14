@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { X, Building2, User, TreePine, Droplets, Ruler, MapPin, Navigation } from "lucide-react";
+import { X, Building2, User, TreePine, Droplets, Ruler, MapPin, Navigation, History, Leaf } from "lucide-react";
 import { api } from "@/lib/client";
 import { cn, fmtInt, LAND_USE_COLOR, titleCase } from "@/lib/ui";
 import { Badge, ScoreBar, ScoreDonut, Spinner } from "@/components/ui/kit";
@@ -17,10 +17,25 @@ interface Intelligence {
   ward: string;
   built_up_percent: number;
   vegetation_percent: number;
+  water_percent: number;
   flood_risk: "low" | "medium" | "high";
   elevation_m: number;
   distances: Record<string, number>;
   population_3km: number;
+  land_use_change: {
+    from_year: number;
+    to_year: number;
+    built_up_from: number;
+    built_up_to: number;
+    delta: number;
+    transition: string | null;
+    rapid: boolean;
+    series: { year: number; built_up_percent: number }[];
+  } | null;
+  environment: {
+    risk: "low" | "medium" | "high";
+    checks: { label: string; ok: boolean; detail: string }[];
+  };
   scores: {
     accessibility: number;
     infrastructure_readiness: number;
@@ -52,7 +67,11 @@ export function ParcelPanel({
     };
   }, [parcelId]);
 
-  const floodColor = { low: "var(--good)", medium: "var(--moderate)", high: "var(--critical)" };
+  const floodColor: Record<"low" | "medium" | "high", string> = {
+    low: "var(--good)",
+    medium: "var(--moderate)",
+    high: "var(--critical)",
+  };
 
   return (
     <div className="w-[360px] shrink-0 h-full panel rounded-none border-y-0 border-r-0 flex flex-col animate-in overflow-hidden">
@@ -121,6 +140,84 @@ export function ParcelPanel({
             </div>
           </div>
 
+          {/* land-use change (PRD §22) */}
+          {data.land_use_change && (
+            <div>
+              <div className="text-[11px] uppercase tracking-wide text-dim mb-2 flex items-center gap-1.5">
+                <History className="h-3 w-3" /> Land-Use Change
+              </div>
+              <div className="flex items-end gap-1.5 h-14 mb-2">
+                {data.land_use_change.series.map((s) => (
+                  <div key={s.year} className="flex-1 flex flex-col items-center gap-1">
+                    <div className="w-full flex-1 flex items-end">
+                      <div
+                        className="w-full rounded-t transition-all"
+                        style={{
+                          height: `${Math.max(3, s.built_up_percent)}%`,
+                          background:
+                            s.year === data.land_use_change!.to_year
+                              ? "var(--accent)"
+                              : "var(--line-strong)",
+                        }}
+                      />
+                    </div>
+                    <span className="text-[9px] text-dim tnum">{s.year}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="text-xs text-muted">
+                Built-up{" "}
+                <span className="text-ink tnum font-semibold">
+                  {data.land_use_change.built_up_from}%
+                </span>{" "}
+                →{" "}
+                <span className="text-ink tnum font-semibold">
+                  {data.land_use_change.built_up_to}%
+                </span>{" "}
+                <span
+                  className="tnum"
+                  style={{
+                    color:
+                      data.land_use_change.delta > 0 ? "var(--warning)" : "var(--text-dim)",
+                  }}
+                >
+                  ({data.land_use_change.delta > 0 ? "+" : ""}
+                  {data.land_use_change.delta} pts)
+                </span>
+              </div>
+              {data.land_use_change.transition && (
+                <div className="mt-1.5">
+                  <Badge color={data.land_use_change.rapid ? "#f97316" : "#64748b"}>
+                    {data.land_use_change.transition}
+                  </Badge>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* environmental constraints (PRD §25) */}
+          <div>
+            <div className="text-[11px] uppercase tracking-wide text-dim mb-2 flex items-center gap-1.5">
+              <Leaf className="h-3 w-3" /> Environmental Constraints
+              <Badge color={floodColor[data.environment.risk]}>
+                {titleCase(data.environment.risk)} risk
+              </Badge>
+            </div>
+            <div className="space-y-1">
+              {data.environment.checks.map((c) => (
+                <div key={c.label} className="flex items-start gap-2 text-[11px]">
+                  <span
+                    className="mt-[3px] shrink-0"
+                    style={{ color: c.ok ? "var(--good)" : "var(--warning)" }}
+                  >
+                    {c.ok ? "✓" : "⚠"}
+                  </span>
+                  <span className="text-muted leading-snug">{c.detail}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
           {/* scores */}
           <div className="flex items-center gap-4">
             <ScoreDonut value={data.scores.development_potential} label="Dev. Potential" />
@@ -151,8 +248,9 @@ export function ParcelPanel({
           </div>
 
           <p className="text-[10px] text-dim leading-relaxed border-t border-[var(--line)] pt-3">
-            Scores are computed server-side from deterministic spatial formulas over synthetic demo
-            data — not official GLIS records.
+            Scores are computed server-side by deterministic spatial formulas. Distances and
+            facility counts use real OpenStreetMap data against real ward boundaries; the parcel
+            record itself is demo data, not an official GLIS record.
           </p>
         </div>
       )}

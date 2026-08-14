@@ -1,10 +1,14 @@
 import type { CityDataset } from "@/lib/types";
+import { getCityConfig } from "@/lib/data/store";
 import { getEnriched, growthSummary, infrastructureGaps, zoningConflicts } from "@/lib/gis/engine";
 
 export interface CityOverview {
   city: string;
-  provenance: "demo";
+  city_name: string;
+  /** Per-layer provenance so the UI never presents synthetic data as official. */
   sources: CityDataset["sources"];
+  ward_count: number;
+  area_km2: number;
   total_parcels: number;
   government_parcels: number;
   private_parcels: number;
@@ -52,8 +56,12 @@ export function cityOverview(dataset: CityDataset): CityOverview {
 
   return {
     city: dataset.cityId,
-    provenance: "demo",
+    city_name: getCityConfig(dataset.cityId).name,
     sources: dataset.sources,
+    ward_count: dataset.wards.features.length,
+    area_km2: Math.round(
+      dataset.wards.features.reduce((s, w) => s + w.properties.area_sqm, 0) / 1e6
+    ),
     total_parcels: parcels.length,
     government_parcels: govt,
     private_parcels: parcels.length - govt,

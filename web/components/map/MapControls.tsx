@@ -9,8 +9,10 @@ import { Segmented } from "@/components/ui/kit";
 const LAYER_LABELS: Record<LayerKey, string> = {
   boundary: "City boundary",
   wards: "Ward boundaries",
+  population: "Population density",
   prediction: "2030 growth",
   parcels: "GLIS parcels",
+  conflicts: "Zoning conflicts",
   roads: "Roads & river",
   facilities: "Facilities",
 };
@@ -69,9 +71,18 @@ export function MapControls({
               { value: "flood", label: "Flood" },
             ]}
           />
-          <Legend mode={parcelColorMode} showFacilities={visible.has("facilities")} showPrediction={visible.has("prediction")} wardMetric={visible.has("wards") ? wardMetric : "none"} />
         </div>
       )}
+
+      {/* Legend sits outside the parcel block so density / conflict / growth
+          layers are still explained when parcels are switched off. */}
+      <Legend
+        mode={visible.has("parcels") ? parcelColorMode : undefined}
+        showPopulation={visible.has("population")}
+        showConflicts={visible.has("conflicts")}
+        showPrediction={visible.has("prediction")}
+        wardMetric={visible.has("wards") ? wardMetric : "none"}
+      />
     </div>
   );
 }
@@ -85,17 +96,39 @@ function Swatch({ c, label }: { c: string; label: string }) {
   );
 }
 
+function Ramp({ label, gradient, from, to }: { label: string; gradient: string; from?: string; to?: string }) {
+  return (
+    <div className="pt-1.5 mt-1.5 border-t border-[var(--line)]">
+      <div className="text-[10px] text-dim mb-1">{label}</div>
+      <div className="flex items-center gap-1.5">
+        <span className="h-2.5 flex-1 rounded" style={{ background: gradient }} />
+      </div>
+      {(from || to) && (
+        <div className="flex justify-between text-[9px] text-dim mt-0.5">
+          <span>{from}</span>
+          <span>{to}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Legend({
   mode,
-  showFacilities,
+  showPopulation,
+  showConflicts,
   showPrediction,
   wardMetric,
 }: {
-  mode: ParcelColorMode;
-  showFacilities: boolean;
+  mode?: ParcelColorMode;
+  showPopulation: boolean;
+  showConflicts: boolean;
   showPrediction: boolean;
   wardMetric?: WardMetric;
 }) {
+  const anything =
+    mode || showPopulation || showConflicts || showPrediction || (wardMetric && wardMetric !== "none");
+  if (!anything) return null;
   return (
     <div className="mt-2.5 space-y-1">
       {mode === "ownership" && (
@@ -124,13 +157,30 @@ function Legend({
           ))}
         </div>
       )}
-      {showPrediction && (
+      {showPopulation && (
+        <Ramp
+          label="Population density"
+          gradient="linear-gradient(to right,#0e4a6e,#0ea5e9,#eab308,#f97316,#ef4444)"
+          from="sparse"
+          to="dense"
+        />
+      )}
+      {showConflicts && (
         <div className="pt-1.5 mt-1.5 border-t border-[var(--line)]">
-          <div className="text-[10px] text-dim mb-1">2030 growth probability</div>
-          <div className="flex items-center gap-1.5">
-            <span className="h-2.5 flex-1 rounded" style={{ background: "linear-gradient(to right,#1d4ed8,#eab308,#ef4444)" }} />
+          <div className="text-[10px] text-dim mb-1">Zoning conflict</div>
+          <div className="grid grid-cols-2 gap-1">
+            <Swatch c="#ef4444" label="High" />
+            <Swatch c="#f97316" label="Medium" />
           </div>
         </div>
+      )}
+      {showPrediction && (
+        <Ramp
+          label="2030 growth probability"
+          gradient="linear-gradient(to right,#1d4ed8,#eab308,#ef4444)"
+          from="very low"
+          to="very high"
+        />
       )}
       {wardMetric && wardMetric !== "none" && (
         <div className="pt-1.5 mt-1.5 border-t border-[var(--line)]">

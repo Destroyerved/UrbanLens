@@ -3,12 +3,20 @@
 import * as React from "react";
 import * as maplibregl from "maplibre-gl";
 import type { StyleSpecification, ExpressionSpecification } from "maplibre-gl";
-import { loadGeo } from "@/lib/client";
+import { api, loadGeo } from "@/lib/client";
 import { LAND_USE_COLOR, OWNERSHIP_COLOR, FLOOD_COLOR } from "@/lib/ui";
 
-export type LayerKey = "boundary" | "wards" | "prediction" | "parcels" | "roads" | "facilities";
+export type LayerKey =
+  | "boundary"
+  | "wards"
+  | "population"
+  | "prediction"
+  | "parcels"
+  | "conflicts"
+  | "roads"
+  | "facilities";
 export type ParcelColorMode = "ownership" | "development" | "landuse" | "flood";
-export type WardMetric = "none" | "infrastructure" | "population";
+export type WardMetric = "none" | "infrastructure" | "livability" | "population";
 
 export interface MapMarker {
   id: string;
@@ -35,6 +43,9 @@ export interface CityMapProps {
   onSelectParcel?: (id: string | null) => void;
   onMapClick?: (lng: number, lat: number) => void;
   focus?: { lng: number; lat: number; zoom?: number } | null;
+  /** Initial view. MapView fills these from the active city. */
+  center?: [number, number];
+  zoom?: number;
   className?: string;
 }
 
@@ -53,7 +64,8 @@ function baseStyle(): StyleSpecification {
           "https://d.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
         ],
         tileSize: 256,
-        attribution: '© OpenStreetMap © CARTO · UrbanLens demo data',
+        attribution:
+          '© OpenStreetMap © CARTO · wards: municipal ward map · parcels: demo data',
       },
     },
     layers: [
@@ -123,8 +135,8 @@ export function CityMap(props: CityMapProps) {
     const map = new maplibregl.Map({
       container: containerRef.current,
       style: baseStyle(),
-      center: CENTER,
-      zoom: 10.8,
+      center: propsRef.current.center ?? CENTER,
+      zoom: propsRef.current.zoom ?? 10.8,
       attributionControl: { compact: true },
       maxZoom: 17,
       minZoom: 8,
@@ -144,8 +156,10 @@ export function CityMap(props: CityMapProps) {
     // sources
     map.addSource("boundary", { type: "geojson", data: emptyFC() });
     map.addSource("wards", { type: "geojson", data: emptyFC(), promoteId: "ward_code" });
+    map.addSource("population", { type: "geojson", data: emptyFC() });
     map.addSource("prediction", { type: "geojson", data: emptyFC() });
     map.addSource("parcels", { type: "geojson", data: emptyFC(), promoteId: "id" });
+    map.addSource("conflicts", { type: "geojson", data: emptyFC() });
     map.addSource("roads", { type: "geojson", data: emptyFC() });
     map.addSource("facilities", { type: "geojson", data: emptyFC() });
 
@@ -159,6 +173,29 @@ export function CityMap(props: CityMapProps) {
       paint: { "fill-color": wardColor(propsRef.current.wardMetric ?? "none"), "fill-opacity": propsRef.current.wardMetric && propsRef.current.wardMetric !== "none" ? 0.4 : 0 },
     });
     map.addLayer({ id: "ward-line", source: "wards", type: "line", paint: { "line-color": "#2a3a4f", "line-width": 0.8, "line-opacity": 0.8 } });
+
+    // population density heatmap (250 m raster cells → weighted heat).
+    // heatmap-weight is rescaled to the city's own max density on load.
+    map.addLayer({
+      id: "population-heat",
+      source: "population",
+      type: "heatmap",
+      paint: {
+        "heatmap-weight": ["interpolate", ["linear"], ["get", "density"], 0, 0, 40000, 1],
+        "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 9, 0.8, 14, 2.2],
+        "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 9, 12, 14, 34],
+        "heatmap-opacity": 0.65,
+        "heatmap-color": [
+          "interpolate", ["linear"], ["heatmap-density"],
+          0, "rgba(11,34,51,0)",
+          0.2, "#0e4a6e",
+          0.4, "#0ea5e9",
+          0.6, "#eab308",
+          0.8, "#f97316",
+          1, "#ef4444",
+        ],
+      },
+    });
 
     // prediction
     map.addLayer({
@@ -225,6 +262,40 @@ export function CityMap(props: CityMapProps) {
       },
     });
 
+    // zoning conflicts — official designation vs detected land use (PRD §21)
+    map.addLayer({
+      id: "conflict-halo",
+      source: "conflicts",
+      type: "circle",
+      paint: {
+        "circle-color": ["match", ["get", "severity"], "high", "#ef4444", "#f97316"],
+        "circle-radius": ["interpolate", ["linear"], ["zoom"], 9, 5, 14, 14],
+        "circle-opacity": 0.16,
+        "circle-stroke-color": ["match", ["get", "severity"], "high", "#ef4444", "#f97316"],
+        "circle-stroke-width": 1.4,
+        "circle-stroke-opacity": 0.9,
+      },
+    });
+
+    map.on("mouseenter", "conflict-halo", () => (map.getCanvas().style.cursor = "pointer"));
+    map.on("mouseleave", "conflict-halo", () => (map.getCanvas().style.cursor = ""));
+    map.on("click", "conflict-halo", (e) => {
+      const f = e.features?.[0];
+      if (!f) return;
+      const p = f.properties ?? {};
+      new maplibregl.Popup({ closeButton: false, offset: 12 })
+        .setLngLat((f.geometry as GeoJSON.Point).coordinates as [number, number])
+        .setHTML(
+          `<div style="font-size:12px;line-height:1.45">
+             <div style="font-weight:600">${p.type ?? "Zoning conflict"}</div>
+             <div style="color:#8ea1b8">Official: <b style="color:#cbd5e1">${String(p.official ?? "").replace(/_/g, " ")}</b></div>
+             <div style="color:#8ea1b8">Detected: <b style="color:#cbd5e1">${String(p.detected ?? "").replace(/_/g, " ")}</b></div>
+             <div style="color:#64748b;margin-top:2px">${p.parcel_id ?? ""}</div>
+           </div>`
+        )
+        .addTo(map);
+    });
+
     // interactions
     map.on("click", "parcel-fill", (e) => {
       const f = e.features?.[0];
@@ -264,15 +335,42 @@ export function CityMap(props: CityMapProps) {
         .addTo(map);
     });
 
-    // load data
+    await loadLayerData(map, want);
+  }
+
+  /** Fetches each requested layer for the active city and pushes it to its source. */
+  async function loadLayerData(map: maplibregl.Map, want: Set<LayerKey>) {
     await Promise.all(
       Array.from(want).map(async (key) => {
-        if (key === "boundary") {
-          const b = await fetch("/api/boundary").then((r) => r.json());
-          (map.getSource("boundary") as maplibregl.GeoJSONSource)?.setData(b.boundary);
-        } else {
-          const data = await loadGeo(key === "parcels" && propsRef.current.parcelFilter ? parcelUrl(propsRef.current.parcelFilter) : key);
-          (map.getSource(key) as maplibregl.GeoJSONSource)?.setData(data);
+        try {
+          if (key === "boundary") {
+            const b = await api<{ boundary: GeoJSON.Feature }>("/api/boundary");
+            (map.getSource("boundary") as maplibregl.GeoJSONSource)?.setData(
+              b.boundary as unknown as GeoJSON.GeoJSON
+            );
+          } else {
+            const data = await loadGeo(
+              key === "parcels" && propsRef.current.parcelFilter
+                ? parcelUrl(propsRef.current.parcelFilter)
+                : key
+            );
+            (map.getSource(key) as maplibregl.GeoJSONSource)?.setData(data);
+
+            // Rescale the heatmap ramp to this city's actual peak density, so
+            // Gandhinagar (~4k/km²) is not washed out by an Ahmedabad-sized
+            // (~42k/km²) reference.
+            if (key === "population" && map.getLayer("population-heat")) {
+              const max =
+                (data as { properties?: { max_density?: number } }).properties?.max_density ?? 0;
+              if (max > 0) {
+                map.setPaintProperty("population-heat", "heatmap-weight", [
+                  "interpolate", ["linear"], ["get", "density"], 0, 0, max, 1,
+                ]);
+              }
+            }
+          }
+        } catch {
+          // A failed layer must not take the whole map down.
         }
       })
     );
@@ -290,6 +388,8 @@ export function CityMap(props: CityMapProps) {
     vis("boundary-line", has("boundary"));
     vis("ward-fill", has("wards"));
     vis("ward-line", has("wards"));
+    vis("population-heat", has("population"));
+    vis("conflict-halo", has("conflicts"));
     vis("prediction-fill", has("prediction"));
     vis("parcel-fill", has("parcels"));
     vis("parcel-line", has("parcels"));
@@ -395,6 +495,8 @@ export function CityMap(props: CityMapProps) {
 function wardColor(metric: WardMetric): ExpressionSpecification | string {
   if (metric === "infrastructure")
     return ["interpolate", ["linear"], ["coalesce", ["get", "infrastructure_score"], 50], 20, "#ef4444", 45, "#f97316", 60, "#eab308", 80, "#22c55e"];
+  if (metric === "livability")
+    return ["interpolate", ["linear"], ["coalesce", ["get", "livability_score"], 50], 40, "#ef4444", 55, "#f97316", 68, "#eab308", 82, "#22c55e"];
   if (metric === "population")
     return ["interpolate", ["linear"], ["coalesce", ["get", "population_density"], 0], 2000, "#0b2233", 10000, "#0ea5e9", 20000, "#a855f7"];
   return "#000000";

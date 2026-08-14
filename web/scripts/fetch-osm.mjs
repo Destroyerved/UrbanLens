@@ -1,11 +1,20 @@
 /**
- * Fetch REAL Ahmedabad infrastructure from OpenStreetMap via the Overpass API
- * and cache it to web/data/real/. Run once: `node scripts/fetch-osm.mjs`.
+ * Fetch REAL city infrastructure from OpenStreetMap via the Overpass API and
+ * cache it to web/data/real/.
  *
- * Facilities + major roads + the Sabarmati river become authoritative "real"
- * layers; parcels, wards and population remain synthetic demo data.
+ *   node scripts/fetch-osm.mjs             # every configured city
+ *   node scripts/fetch-osm.mjs ahmedabad   # one city
+ *
+ * Facilities + major roads + rivers become authoritative "real" layers; parcels
+ * remain synthetic demo data.
+ *
+ * The query bbox is derived from the REAL ward extent (data/real/<city>_wards.json,
+ * produced by build-wards.mjs) and padded outward. This matters: a bbox tighter
+ * than the municipal boundary leaves edge wards with no facilities at all, which
+ * shows up as a fake "infrastructure desert" in the gap analysis. Run
+ * build-wards.mjs before this script.
  */
-import { writeFileSync, mkdirSync } from "node:fs";
+import { writeFileSync, mkdirSync, readFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
@@ -13,8 +22,39 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const OUT = join(__dirname, "..", "data", "real");
 mkdirSync(OUT, { recursive: true });
 
-// Overpass bbox: south,west,north,east  (matches lib/config.ts AHMEDABAD bbox)
-const BBOX = "22.94,72.46,23.13,72.69";
+/**
+ * Padding beyond the ward extent, in degrees (~3 km). Facilities just outside
+ * the boundary still serve residents inside it, so the catchment math needs them.
+ */
+const PAD = 0.03;
+
+/** Fallback extents used when a city has no built ward file yet. */
+const FALLBACK_BBOX = {
+  ahmedabad: [72.4493, 22.9139, 72.7015, 23.1405],
+  gandhinagar: [72.5408, 23.0883, 72.7008, 23.3113],
+};
+
+function bboxFor(cityId) {
+  const wardFile = join(OUT, `${cityId}_wards.json`);
+  let ext;
+  if (existsSync(wardFile)) {
+    ext = JSON.parse(readFileSync(wardFile, "utf8")).meta.bbox;
+  } else if (FALLBACK_BBOX[cityId]) {
+    ext = FALLBACK_BBOX[cityId];
+    console.warn(`! ${cityId}: no ward file, using fallback extent`);
+  } else {
+    throw new Error(`no ward file or fallback extent for "${cityId}"`);
+  }
+  const [minLng, minLat, maxLng, maxLat] = ext;
+  // Overpass wants south,west,north,east.
+  return [
+    (minLat - PAD).toFixed(4),
+    (minLng - PAD).toFixed(4),
+    (maxLat + PAD).toFixed(4),
+    (maxLng + PAD).toFixed(4),
+  ].join(",");
+}
+
 const ENDPOINTS = [
   "https://overpass-api.de/api/interpreter",
   "https://overpass.kumi.systems/api/interpreter",
@@ -80,7 +120,7 @@ const LABEL = {
   metro_station: "Metro Station", government_office: "Govt. Office",
 };
 
-async function fetchFacilities() {
+async function fetchFacilities(BBOX) {
   const q = `[out:json][timeout:120];
 (
   nwr["amenity"="hospital"](${BBOX});
@@ -139,7 +179,7 @@ function roadType(tags) {
   return null;
 }
 
-async function fetchRoads() {
+async function fetchRoads(BBOX) {
   const q = `[out:json][timeout:120];
 (
   way["highway"~"^(motorway|trunk|primary|secondary)$"](${BBOX});
@@ -176,18 +216,39 @@ out geom;`;
   return { type: "FeatureCollection", features };
 }
 
-const facilities = await fetchFacilities();
-const byType = {};
-for (const f of facilities.features) byType[f.properties.facility_type] = (byType[f.properties.facility_type] ?? 0) + 1;
-console.log("facilities:", facilities.features.length, byType);
-writeFileSync(join(OUT, "facilities.json"), JSON.stringify(facilities));
+const CITIES = ["ahmedabad", "gandhinagar"];
+const requested = process.argv.slice(2);
+const targets = requested.length ? requested : CITIES;
 
-const roads = await fetchRoads();
-console.log("roads:", roads.features.length);
-writeFileSync(join(OUT, "roads.json"), JSON.stringify(roads));
+for (const cityId of targets) {
+  const BBOX = bboxFor(cityId);
+  console.log(`\n=== ${cityId} — bbox ${BBOX} ===`);
 
-writeFileSync(
-  join(OUT, "meta.json"),
-  JSON.stringify({ fetchedAt: new Date().toISOString(), bbox: BBOX, source: "OpenStreetMap via Overpass API", facilities: facilities.features.length, roads: roads.features.length }, null, 2)
-);
-console.log("✓ wrote real data to", OUT);
+  const facilities = await fetchFacilities(BBOX);
+  const byType = {};
+  for (const f of facilities.features) {
+    byType[f.properties.facility_type] = (byType[f.properties.facility_type] ?? 0) + 1;
+  }
+  console.log("facilities:", facilities.features.length, byType);
+  writeFileSync(join(OUT, `${cityId}_facilities.json`), JSON.stringify(facilities));
+
+  const roads = await fetchRoads(BBOX);
+  console.log("roads:", roads.features.length);
+  writeFileSync(join(OUT, `${cityId}_roads.json`), JSON.stringify(roads));
+
+  writeFileSync(
+    join(OUT, `${cityId}_meta.json`),
+    JSON.stringify(
+      {
+        fetchedAt: new Date().toISOString(),
+        bbox: BBOX,
+        source: "OpenStreetMap via Overpass API",
+        facilities: facilities.features.length,
+        roads: roads.features.length,
+      },
+      null,
+      2
+    )
+  );
+  console.log(`✓ ${cityId} → ${OUT}`);
+}

@@ -1,5 +1,12 @@
 import * as turf from "@turf/turf";
 import { getCityConfig } from "@/lib/data/store";
+import { populationWithinKm, densityAt } from "@/lib/gis/population";
+import {
+  buildPointIndex,
+  nearestInIndex,
+  withinRadius,
+  type PointIndex,
+} from "@/lib/gis/spatial-index";
 import {
   clamp,
   decayScore,
@@ -10,6 +17,9 @@ import {
   PROJECTS,
   ProjectType,
   ProjectSpec,
+  EXPECTED_PER_100K,
+  confidenceOf,
+  type Confidence,
 } from "@/lib/scoring";
 import type {
   CityDataset,
@@ -17,7 +27,6 @@ import type {
   FacilityType,
   Parcel,
   ScoreBreakdown,
-  Ward,
 } from "@/lib/types";
 
 // ---------------------------------------------------------------------------
@@ -39,17 +48,46 @@ export function distanceKm(a: [number, number], b: [number, number]): number {
   return 2 * R_EARTH * Math.asin(Math.sqrt(s));
 }
 
-const facByTypeCache = new Map<string, Map<FacilityType, Facility[]>>();
-function facilitiesByType(dataset: CityDataset): Map<FacilityType, Facility[]> {
-  const hit = facByTypeCache.get(dataset.cityId);
+/**
+ * Per-city spatial indexes: one point index per facility type, plus one over all
+ * road vertices. Built lazily on first use and cached on globalThis so they
+ * survive dev HMR alongside the dataset itself.
+ */
+interface CityIndexes {
+  facilities: Map<FacilityType, PointIndex<Facility>>;
+  roads: PointIndex<[number, number]>;
+}
+
+const gi = globalThis as unknown as { __urbanlens_idx__?: Map<string, CityIndexes> };
+const idxCache: Map<string, CityIndexes> = gi.__urbanlens_idx__ ?? new Map();
+gi.__urbanlens_idx__ = idxCache;
+
+function indexes(dataset: CityDataset): CityIndexes {
+  const hit = idxCache.get(dataset.cityId);
   if (hit) return hit;
-  const m = new Map<FacilityType, Facility[]>();
+
+  const byType = new Map<FacilityType, Facility[]>();
   for (const f of dataset.facilities.features) {
     const t = f.properties.facility_type;
-    (m.get(t) ?? m.set(t, []).get(t)!).push(f);
+    (byType.get(t) ?? byType.set(t, []).get(t)!).push(f);
   }
-  facByTypeCache.set(dataset.cityId, m);
-  return m;
+  const facilities = new Map<FacilityType, PointIndex<Facility>>();
+  for (const [t, list] of byType) {
+    facilities.set(t, buildPointIndex(list, (f) => f.geometry.coordinates as [number, number], 1.5));
+  }
+
+  // Distance-to-road uses nearest-vertex haversine — a fast, city-scale-accurate
+  // approximation that avoids per-segment projection. Rivers are excluded.
+  const verts: [number, number][] = [];
+  for (const r of dataset.roads.features) {
+    if (r.properties.road_type === "river") continue;
+    for (const c of r.geometry.coordinates) verts.push(c as [number, number]);
+  }
+  const roads = buildPointIndex(verts, (v) => v, 0.75);
+
+  const built: CityIndexes = { facilities, roads };
+  idxCache.set(dataset.cityId, built);
+  return built;
 }
 
 export function nearestByType(
@@ -57,44 +95,14 @@ export function nearestByType(
   from: [number, number],
   type: FacilityType
 ): { facility: Facility | null; km: number } {
-  let best: Facility | null = null;
-  let bestKm = Infinity;
-  for (const f of facilitiesByType(dataset).get(type) ?? []) {
-    const d = distanceKm(from, f.geometry.coordinates as [number, number]);
-    if (d < bestKm) {
-      bestKm = d;
-      best = f;
-    }
-  }
-  return { facility: best, km: bestKm };
-}
-
-/**
- * Cached flat array of road vertices (rivers excluded). Distance-to-road uses
- * nearest-vertex haversine — a fast, city-scale-accurate approximation that
- * scales to thousands of OSM road segments without per-segment projection.
- */
-const roadVtxCache = new Map<string, [number, number][]>();
-function roadVertices(dataset: CityDataset): [number, number][] {
-  const hit = roadVtxCache.get(dataset.cityId);
-  if (hit) return hit;
-  const verts: [number, number][] = [];
-  for (const r of dataset.roads.features) {
-    if (r.properties.road_type === "river") continue;
-    for (const c of r.geometry.coordinates) verts.push(c as [number, number]);
-  }
-  roadVtxCache.set(dataset.cityId, verts);
-  return verts;
+  const idx = indexes(dataset).facilities.get(type);
+  if (!idx) return { facility: null, km: Infinity };
+  const { item, km } = nearestInIndex(idx, from);
+  return { facility: item, km };
 }
 
 export function roadDistanceKm(dataset: CityDataset, from: [number, number]): number {
-  const verts = roadVertices(dataset);
-  let m = Infinity;
-  for (const v of verts) {
-    const d = distanceKm(from, v);
-    if (d < m) m = d;
-  }
-  return m;
+  return nearestInIndex(indexes(dataset).roads, from).km;
 }
 
 export function facilityCountWithinKm(
@@ -103,53 +111,14 @@ export function facilityCountWithinKm(
   type: FacilityType,
   radiusKm: number
 ): number {
-  let n = 0;
-  for (const f of facilitiesByType(dataset).get(type) ?? []) {
-    if (distanceKm(center, f.geometry.coordinates as [number, number]) <= radiusKm) n++;
-  }
-  return n;
+  const idx = indexes(dataset).facilities.get(type);
+  if (!idx) return 0;
+  return withinRadius(idx, center, radiusKm).length;
 }
 
-/** Wards whose centroid is within `radiusKm + tile` of a point (cheap pre-filter). */
-function wardsNear(dataset: CityDataset, center: [number, number], radiusKm: number): Ward[] {
-  return dataset.wards.features.filter(
-    (w) => distanceKm(center, w.properties.centroid) <= radiusKm + 3
-  );
-}
-
-/**
- * Population within a radius via areal interpolation: intersect a buffer with
- * each nearby ward and allocate that ward's population by area fraction.
- */
-export function populationWithinKm(
-  dataset: CityDataset,
-  center: [number, number],
-  radiusKm: number
-): number {
-  const buffer = turf.buffer(turf.point(center), radiusKm, km);
-  if (!buffer) return 0;
-  let total = 0;
-  for (const w of wardsNear(dataset, center, radiusKm)) {
-    try {
-      const inter = turf.intersect(turf.featureCollection([buffer, w]));
-      if (!inter) continue;
-      const frac = turf.area(inter) / w.properties.area_sqm;
-      total += w.properties.population * clamp(frac, 0, 1);
-    } catch {
-      // Degenerate geometry — skip.
-    }
-  }
-  return Math.round(total);
-}
-
-/** Population density (people/km²) at a point = containing ward density. */
-export function densityAt(dataset: CityDataset, p: [number, number]): number {
-  const pt = turf.point(p);
-  for (const w of dataset.wards.features) {
-    if (turf.booleanPointInPolygon(pt, w)) return w.properties.population_density;
-  }
-  return 0;
-}
+// Population queries are served by the ~250 m population raster rather than by
+// buffer/ward intersection — see lib/gis/population.ts for why.
+export { populationWithinKm, densityAt };
 
 // ---------------------------------------------------------------------------
 // Per-parcel enrichment (computed once per dataset, cached on globalThis)
@@ -393,6 +362,95 @@ export function searchSites(dataset: CityDataset, req: SiteSearchRequest): {
 // Parcel intelligence profile
 // ---------------------------------------------------------------------------
 
+/**
+ * Land-use change between the earliest and latest built-up snapshots (PRD §22).
+ * Returns null when the shift is too small to call a transition.
+ */
+export function landUseChange(p: Parcel["properties"]) {
+  const years = Object.keys(p.history)
+    .map(Number)
+    .sort((a, b) => a - b);
+  if (years.length < 2) return null;
+  const first = years[0];
+  const last = years[years.length - 1];
+  const from = p.history[first] ?? 0;
+  const to = p.history[last] ?? 0;
+  const delta = to - from;
+
+  let transition: string | null = null;
+  if (delta >= 25) {
+    // A large built-up gain on land officially zoned agricultural is the
+    // headline conversion planners watch for.
+    transition =
+      p.zoning === "agricultural"
+        ? "Agricultural → Built-Up"
+        : p.land_use === "industrial"
+          ? "Open Land → Industrial"
+          : "Vacant → Built-Up";
+  } else if (delta >= 12) {
+    transition = "Gradual densification";
+  } else if (delta <= -8) {
+    transition = "Built-up decline";
+  }
+
+  return {
+    from_year: first,
+    to_year: last,
+    built_up_from: from,
+    built_up_to: to,
+    delta,
+    transition,
+    rapid: delta >= 25,
+    series: years.map((y) => ({ year: y, built_up_percent: p.history[y] ?? 0 })),
+  };
+}
+
+/**
+ * Environmental constraint checklist (PRD §25) — the checks that should clear
+ * before development is recommended, each stated as pass/warn with its reason.
+ */
+export function environmentalConstraints(p: Parcel["properties"]) {
+  const checks: { label: string; ok: boolean; detail: string }[] = [
+    {
+      label: "Flood zone",
+      ok: p.flood_risk === "low",
+      detail:
+        p.flood_risk === "low"
+          ? "Outside modelled flood-prone area"
+          : `${p.flood_risk === "high" ? "High" : "Moderate"} flood risk — near watercourse or low-lying`,
+    },
+    {
+      label: "Water-body overlap",
+      ok: p.water_percent <= 5,
+      detail:
+        p.water_percent <= 5
+          ? "No significant water-body overlap"
+          : `${p.water_percent}% of the parcel is water`,
+    },
+    {
+      label: "Ecological sensitivity",
+      ok: p.vegetation_percent <= 75,
+      detail:
+        p.vegetation_percent <= 75
+          ? `${p.vegetation_percent}% vegetation cover — low ecological sensitivity`
+          : `${p.vegetation_percent}% vegetation cover — clearing would remove significant green cover`,
+    },
+    {
+      label: "Terrain / drainage",
+      ok: p.elevation_m >= 44,
+      detail:
+        p.elevation_m >= 44
+          ? `${p.elevation_m} m elevation — adequate drainage`
+          : `${p.elevation_m} m elevation — low-lying, drainage needs review`,
+    },
+  ];
+  const failed = checks.filter((c) => !c.ok).length;
+  return {
+    risk: failed === 0 ? "low" : failed === 1 ? "medium" : "high",
+    checks,
+  };
+}
+
 export function parcelIntelligence(dataset: CityDataset, parcel: Parcel) {
   const e = getEnriched(dataset).byId.get(parcel.properties.id)!;
   const p = parcel.properties;
@@ -420,9 +478,12 @@ export function parcelIntelligence(dataset: CityDataset, parcel: Parcel) {
     ward: p.ward,
     built_up_percent: p.built_up_percent,
     vegetation_percent: p.vegetation_percent,
+    water_percent: p.water_percent,
     flood_risk: p.flood_risk,
     elevation_m: p.elevation_m,
     history: p.history,
+    land_use_change: landUseChange(p),
+    environment: environmentalConstraints(p),
     centroid: p.centroid,
     distances: {
       road_km: Number(e.roadKm.toFixed(2)),
@@ -464,6 +525,63 @@ export interface WardInfra {
   priority: number; // population × unmet need
 }
 
+export type ServiceKey = keyof WardInfra["scores"];
+
+/**
+ * How completely OSM has mapped the facilities behind each service score, city-
+ * wide. A "low" service is one where the map itself is sparse, so a poor score
+ * there is weak evidence of a real gap and must be presented as such.
+ */
+export interface CoverageReport {
+  service: ServiceKey;
+  confidence: Confidence;
+  mapped: number;
+  expected: number;
+  note: string;
+}
+
+const SERVICE_INPUTS: Record<ServiceKey, FacilityType[]> = {
+  healthcare: ["hospital", "clinic"],
+  education: ["school", "college"],
+  parks: ["park"],
+  transportation: ["bus_stop", "metro_station"],
+  road_connectivity: [],
+};
+
+export function coverageReport(dataset: CityDataset): CoverageReport[] {
+  const population = dataset.wards.features.reduce((s, w) => s + w.properties.population, 0);
+  const counts = new Map<FacilityType, number>();
+  for (const f of dataset.facilities.features) {
+    const t = f.properties.facility_type;
+    counts.set(t, (counts.get(t) ?? 0) + 1);
+  }
+
+  return (Object.keys(SERVICE_INPUTS) as ServiceKey[]).map((service) => {
+    const types = SERVICE_INPUTS[service];
+    if (!types.length) {
+      // Road connectivity comes from the road network, which OSM maps well.
+      return {
+        service,
+        confidence: "high" as Confidence,
+        mapped: dataset.roads.features.length,
+        expected: dataset.roads.features.length,
+        note: "Derived from the OSM road network, which is well mapped for major roads.",
+      };
+    }
+    const mapped = types.reduce((s, t) => s + (counts.get(t) ?? 0), 0);
+    const expected = Math.round(
+      types.reduce((s, t) => s + EXPECTED_PER_100K[t], 0) * (population / 100_000)
+    );
+    const ratio = expected > 0 ? mapped / expected : 0;
+    const confidence = confidenceOf(ratio);
+    const note =
+      confidence === "high"
+        ? `${mapped.toLocaleString()} mapped — coverage looks broadly complete.`
+        : `Only ${mapped.toLocaleString()} mapped against roughly ${expected.toLocaleString()} expected for this population. OpenStreetMap under-records this facility type here, so low scores may reflect missing map data rather than a real service gap.`;
+    return { service, confidence, mapped, expected, note };
+  });
+}
+
 export function infrastructureGaps(dataset: CityDataset): WardInfra[] {
   const out: WardInfra[] = [];
   for (const w of dataset.wards.features) {
@@ -499,6 +617,124 @@ export function infrastructureGaps(dataset: CityDataset): WardInfra[] {
     });
   }
   return out.sort((a, b) => b.priority - a.priority);
+}
+
+// ---------------------------------------------------------------------------
+// Urban Livability Score (PRD §15)
+// ---------------------------------------------------------------------------
+
+/**
+ * Weights for the livability blend. Kept explicit and summing to 1 so the score
+ * is auditable — a planner can see exactly what moved it.
+ */
+export const LIVABILITY_WEIGHTS = {
+  healthcare: 0.18,
+  education: 0.16,
+  green_space: 0.14,
+  transportation: 0.16,
+  public_services: 0.1,
+  road_connectivity: 0.1,
+  environmental_quality: 0.16,
+} as const;
+
+export type LivabilityComponent = keyof typeof LIVABILITY_WEIGHTS;
+
+export interface WardLivability {
+  ward_code: string;
+  name: string;
+  population: number;
+  population_density: number;
+  centroid: [number, number];
+  components: Record<LivabilityComponent, number>;
+  score: number;
+  band: "excellent" | "good" | "moderate" | "poor";
+}
+
+function band(score: number): WardLivability["band"] {
+  if (score >= 80) return "excellent";
+  if (score >= 65) return "good";
+  if (score >= 50) return "moderate";
+  return "poor";
+}
+
+/**
+ * Environmental quality per ward, derived from the parcels sampled inside it:
+ * vegetation cover raises it, flood exposure and heavy built-up coverage lower
+ * it. Falls back to the city median when a ward holds no sampled parcels.
+ */
+function environmentalQualityByWard(dataset: CityDataset): Map<string, number> {
+  const agg = new Map<string, { veg: number; built: number; flood: number; n: number }>();
+  for (const p of dataset.parcels.features) {
+    const pr = p.properties;
+    const a = agg.get(pr.ward) ?? { veg: 0, built: 0, flood: 0, n: 0 };
+    a.veg += pr.vegetation_percent;
+    a.built += pr.built_up_percent;
+    a.flood += pr.flood_risk === "high" ? 2 : pr.flood_risk === "medium" ? 1 : 0;
+    a.n++;
+    agg.set(pr.ward, a);
+  }
+  const out = new Map<string, number>();
+  for (const [ward, a] of agg) {
+    if (!a.n) continue;
+    const veg = a.veg / a.n;
+    const built = a.built / a.n;
+    const flood = a.flood / a.n; // 0..2
+    out.set(
+      ward,
+      clamp(0.45 * norm(veg, 5, 55) + 0.3 * norm(100 - built, 20, 90) + 0.25 * (100 - flood * 50))
+    );
+  }
+  return out;
+}
+
+export function livability(dataset: CityDataset): WardLivability[] {
+  const gaps = new Map(infrastructureGaps(dataset).map((g) => [g.ward_code, g]));
+  const env = environmentalQualityByWard(dataset);
+  const envValues = [...env.values()].sort((a, b) => a - b);
+  const envMedian = envValues.length ? envValues[Math.floor(envValues.length / 2)] : 60;
+
+  const out: WardLivability[] = [];
+  for (const w of dataset.wards.features) {
+    const p = w.properties;
+    const g = gaps.get(p.ward_code);
+    if (!g) continue;
+
+    // Public services = civic access (government offices, police, fire).
+    const c = p.centroid;
+    const publicServices = clamp(
+      0.4 * decayScore(nearestByType(dataset, c, "government_office").km, 1.5, 7) +
+        0.3 * decayScore(nearestByType(dataset, c, "police_station").km, 1.2, 5) +
+        0.3 * decayScore(nearestByType(dataset, c, "fire_station").km, 2.5, 9)
+    );
+
+    const components: Record<LivabilityComponent, number> = {
+      healthcare: g.scores.healthcare,
+      education: g.scores.education,
+      green_space: g.scores.parks,
+      transportation: g.scores.transportation,
+      public_services: Math.round(publicServices),
+      road_connectivity: g.scores.road_connectivity,
+      environmental_quality: Math.round(env.get(p.ward_code) ?? envMedian),
+    };
+
+    let score = 0;
+    for (const k of Object.keys(LIVABILITY_WEIGHTS) as LivabilityComponent[]) {
+      score += LIVABILITY_WEIGHTS[k] * components[k];
+    }
+    const rounded = Math.round(clamp(score));
+
+    out.push({
+      ward_code: p.ward_code,
+      name: p.name,
+      population: p.population,
+      population_density: p.population_density,
+      centroid: p.centroid,
+      components,
+      score: rounded,
+      band: band(rounded),
+    });
+  }
+  return out.sort((a, b) => b.score - a.score);
 }
 
 // ---------------------------------------------------------------------------

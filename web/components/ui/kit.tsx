@@ -79,7 +79,8 @@ export function ScoreBar({
   hint,
   color,
 }: {
-  label: string;
+  /** Node rather than string so callers can append badges (e.g. data-confidence). */
+  label: React.ReactNode;
   value: number;
   max?: number;
   hint?: string;

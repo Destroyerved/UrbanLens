@@ -74,7 +74,8 @@ export function Sidebar() {
           <span className="h-1.5 w-1.5 rounded-full bg-[var(--good)] pulse" />
           <span className="text-muted">Spatial engine online</span>
         </div>
-        Facilities & roads: OpenStreetMap · Parcels & wards: demo
+        Wards: municipal ward map · Facilities & roads: OpenStreetMap · Parcels: demo
+        <div className="mt-0.5">See “Data provenance” for the full breakdown.</div>
       </div>
     </aside>
   );

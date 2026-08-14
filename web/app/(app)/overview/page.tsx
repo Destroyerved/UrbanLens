@@ -14,7 +14,16 @@ import { api } from "@/lib/client";
 import { fmtCompact, fmtInt } from "@/lib/ui";
 import type { CityOverview } from "@/lib/gis/overview";
 
-const AVAILABLE: LayerKey[] = ["boundary", "wards", "prediction", "parcels", "roads", "facilities"];
+const AVAILABLE: LayerKey[] = [
+  "boundary",
+  "wards",
+  "population",
+  "prediction",
+  "parcels",
+  "conflicts",
+  "roads",
+  "facilities",
+];
 
 export default function OverviewPage() {
   const [overview, setOverview] = React.useState<CityOverview | null>(null);
@@ -41,7 +50,13 @@ export default function OverviewPage() {
       {/* KPI strip */}
       <div className="shrink-0 px-4 pt-3 pb-2 border-b border-[var(--line)] bg-[var(--bg)]">
         <div className="grid grid-cols-4 xl:grid-cols-8 gap-2.5">
-          <StatTile label="Population" tone="accent" icon={<Users className="h-4 w-4" />} value={overview ? fmtCompact(overview.population) : "—"} sub="modeled, wards" />
+          <StatTile
+            label="Population"
+            tone="accent"
+            icon={<Users className="h-4 w-4" />}
+            value={overview ? fmtCompact(overview.population) : "—"}
+            sub={overview ? `${overview.ward_count} wards · ${overview.area_km2} km²` : ""}
+          />
           <StatTile label="Govt Parcels" tone="gov" icon={<Building2 className="h-4 w-4" />} value={overview ? fmtInt(overview.government_parcels) : "—"} sub={overview ? `${fmtInt(overview.total_parcels)} total` : ""} />
           <StatTile label="Urban Growth" tone="warning" icon={<TrendingUp className="h-4 w-4" />} value={overview ? `+${overview.urban_growth_pct}%` : "—"} sub="2018 → 2026" />
           <StatTile label="Deficit Wards" tone="critical" icon={<HeartPulse className="h-4 w-4" />} value={overview ? overview.infrastructure_deficit_wards : "—"} sub="infra score < 50" />

@@ -27,6 +27,61 @@ export function norm(x: number, min: number, max: number): number {
 }
 
 // ---------------------------------------------------------------------------
+// Source-data completeness
+// ---------------------------------------------------------------------------
+
+/**
+ * Rough number of each facility type per 100,000 people in a reasonably served
+ * Indian city. These are NOT service standards to plan against — they exist only
+ * to judge how completely OpenStreetMap has mapped a facility type in the study
+ * area, so the UI can flag scores that rest on thin data.
+ *
+ * This matters: OSM maps ~135 bus stops and ~76 schools across Ahmedabad, a city
+ * of 7.2M. Distance-based access scores computed from that will read as zero for
+ * outer wards, which says more about the map than about the ward. Reporting such
+ * a score as a confident "Critical" finding would be exactly the fake analytics
+ * the brief rules out, so each score carries its confidence.
+ */
+export const EXPECTED_PER_100K: Record<FacilityType, number> = {
+  hospital: 2,
+  clinic: 15,
+  school: 25,
+  college: 2,
+  park: 8,
+  fire_station: 0.5,
+  police_station: 1.5,
+  bus_stop: 40,
+  metro_station: 0.5,
+  government_office: 3,
+};
+
+export type Confidence = "high" | "medium" | "low";
+
+/** How completely a facility type appears to be mapped, as a 0..1 ratio. */
+export function completeness(
+  mappedCount: number,
+  population: number,
+  type: FacilityType
+): number {
+  if (population <= 0) return 0;
+  const per100k = (mappedCount / population) * 100_000;
+  return per100k / EXPECTED_PER_100K[type];
+}
+
+export function confidenceOf(ratio: number): Confidence {
+  if (ratio >= 0.6) return "high";
+  if (ratio >= 0.25) return "medium";
+  return "low";
+}
+
+/** Weakest confidence across several inputs — a blend is only as good as its worst. */
+export function weakest(...cs: Confidence[]): Confidence {
+  if (cs.includes("low")) return "low";
+  if (cs.includes("medium")) return "medium";
+  return "high";
+}
+
+// ---------------------------------------------------------------------------
 // Urban Development Suitability weights (spec §18/§19 — user-customisable)
 // ---------------------------------------------------------------------------
 

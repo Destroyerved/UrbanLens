@@ -5,6 +5,7 @@ import { Sparkles, Send, Wrench, MapPin, ArrowRight } from "lucide-react";
 import { MapView } from "@/components/map/MapView";
 import type { LayerKey, MapMarker, WardMetric } from "@/components/map/CityMap";
 import { postJSON } from "@/lib/client";
+import { useCity } from "@/components/shell/CityProvider";
 import { cn, scoreColor } from "@/lib/ui";
 
 interface CopilotItem { id?: string; label: string; sub?: string; score?: number; centroid?: [number, number] }
@@ -18,8 +19,8 @@ interface CopilotMap {
 interface CopilotResponse { tool: string; answer: string; items?: CopilotItem[]; map?: CopilotMap }
 interface Msg { role: "user" | "assistant"; text: string; tool?: string; items?: CopilotItem[] }
 
-const SUGGESTIONS = [
-  "Where should Ahmedabad build a new hospital?",
+const suggestionsFor = (cityName: string) => [
+  `Where should ${cityName} build a new hospital?`,
   "Which wards have poor access to parks?",
   "Find government land larger than 5 hectares",
   "Show rapid agricultural-to-residential conversion",
@@ -28,6 +29,8 @@ const SUGGESTIONS = [
 ];
 
 export default function CopilotPage() {
+  const { city } = useCity();
+  const suggestions = React.useMemo(() => suggestionsFor(city.name), [city.name]);
   const [messages, setMessages] = React.useState<Msg[]>([]);
   const [input, setInput] = React.useState("");
   const [busy, setBusy] = React.useState(false);
@@ -100,7 +103,7 @@ export default function CopilotPage() {
               </div>
               <div className="text-[11px] uppercase tracking-wide text-dim">Try asking</div>
               <div className="space-y-1.5">
-                {SUGGESTIONS.map((s) => (
+                {suggestions.map((s) => (
                   <button
                     key={s}
                     onClick={() => ask(s)}

@@ -76,7 +76,9 @@ function firstNumber(q: string): number | null {
 
 export function runCopilot(ds: CityDataset, queryRaw: string): CopilotResponse {
   const q = queryRaw.toLowerCase().trim();
-  const parcelIdMatch = queryRaw.match(/GJ-AHD-\d+/i);
+  // Parcel ids are GJ-<CITY CODE>-NNNNN, so match any city's code rather than
+  // only Ahmedabad's.
+  const parcelIdMatch = queryRaw.match(/GJ-[A-Z]{2,4}-\d+/i);
 
   // --- 1. Explain a specific parcel / "why ranked" -------------------------
   if (parcelIdMatch || (/why/.test(q) && /(rank|best|site|parcel|location)/.test(q))) {
@@ -211,9 +213,12 @@ export function runCopilot(ds: CityDataset, queryRaw: string): CopilotResponse {
   }
 
   // --- fallback -------------------------------------------------------------
+  const examplePid = ds.parcels.features[0]?.properties.parcel_id ?? "GJ-AHD-00389";
   return {
     tool: "help",
     answer:
-      "I route your question to the spatial engine. Try: “Where should we build a new hospital?”, “Which wards have poor access to parks?”, “Find government land larger than 5 hectares”, “Show rapid agricultural-to-residential conversion”, or “Why is parcel GJ-AHD-00389 a good site?”.",
+      "I route your question to the spatial engine. Try: “Where should we build a new hospital?”, “Which wards have poor access to parks?”, “Find government land larger than 5 hectares”, “Show rapid agricultural-to-residential conversion”, or “Why is parcel " +
+      examplePid +
+      " a good site?”.",
   };
 }
