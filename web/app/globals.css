@@ -1,0 +1,168 @@
+@import "tailwindcss";
+@import "maplibre-gl/dist/maplibre-gl.css";
+
+/*
+ * UrbanLens — dark "urban command center" design system.
+ * The product is deliberately single-theme (dark, map-first) per spec §67.
+ */
+
+:root {
+  --bg: #070b12;
+  --bg-elev: #0d131d;
+  --panel: #0f1723;
+  --panel-2: #141d2b;
+  --panel-hover: #182334;
+  --line: #1e2a3a;
+  --line-strong: #2a3a4f;
+
+  --text: #e6edf6;
+  --text-muted: #8ea1b8;
+  --text-dim: #5f7189;
+
+  --accent: #38bdf8; /* cyan — government / infrastructure */
+  --accent-2: #22d3ee;
+  --accent-ink: #0b2233;
+
+  --good: #22c55e;
+  --moderate: #eab308;
+  --warning: #f97316;
+  --critical: #ef4444;
+  --gov: #3b82f6;
+
+  --shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-bg-elev: var(--bg-elev);
+  --color-panel: var(--panel);
+  --color-panel-2: var(--panel-2);
+  --color-panel-hover: var(--panel-hover);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--text);
+  --color-muted: var(--text-muted);
+  --color-dim: var(--text-dim);
+  --color-accent: var(--accent);
+  --color-accent-2: var(--accent-2);
+  --color-good: var(--good);
+  --color-moderate: var(--moderate);
+  --color-warning: var(--warning);
+  --color-critical: var(--critical);
+  --color-gov: var(--gov);
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+}
+
+* {
+  border-color: var(--line);
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden; /* app shell owns scrolling regions */
+}
+
+/* Scrollbars */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+  border-radius: 999px;
+  border: 2px solid var(--bg);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #35485f;
+}
+
+/* Utility helpers layered on Tailwind */
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.panel-2 {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.hairline {
+  border-color: var(--line);
+}
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+.glow-accent {
+  box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.25), 0 0 24px rgba(56, 189, 248, 0.12);
+}
+
+/* MapLibre dark tuning */
+.maplibregl-map {
+  font-family: var(--font-sans);
+}
+.maplibregl-ctrl-attrib {
+  background: rgba(7, 11, 18, 0.7) !important;
+  color: var(--text-dim) !important;
+  font-size: 10px;
+}
+.maplibregl-ctrl-attrib a {
+  color: var(--text-muted) !important;
+}
+.maplibregl-popup-content {
+  background: var(--panel-2) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px !important;
+  box-shadow: var(--shadow);
+  padding: 10px 12px !important;
+}
+.maplibregl-popup-tip {
+  border-top-color: var(--panel-2) !important;
+  border-bottom-color: var(--panel-2) !important;
+}
+.maplibregl-ctrl-group {
+  background: var(--panel-2) !important;
+  border: 1px solid var(--line-strong) !important;
+}
+.maplibregl-ctrl-group button + button {
+  border-top: 1px solid var(--line) !important;
+}
+.maplibregl-ctrl button .maplibregl-ctrl-icon {
+  filter: invert(0.9);
+}
+
+@keyframes fadein {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-in {
+  animation: fadein 0.25s ease both;
+}
+
+@keyframes pulsering {
+  0% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.5); }
+  70% { box-shadow: 0 0 0 10px rgba(56, 189, 248, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0); }
+}
+.pulse {
+  animation: pulsering 2s infinite;
+}
