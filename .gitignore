@@ -1,0 +1,8 @@
+# Python caches
+__pycache__/
+*.pyc
+
+# Fetch logs / error dumps
+raw/osm/*.log
+raw/osm/*_err.txt
+raw/osm/*_log.txt
