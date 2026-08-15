@@ -132,19 +132,19 @@ export default function MapCanvas() {
             type: "background",
             paint: { "background-color": "#0b0e14" },
           },
-          { id: "basemap-dark", type: "raster", source: "carto-dark" },
+          { id: "basemap-dark", type: "raster", source: "carto-dark", layout: { visibility: "none" } },
           { id: "basemap-light", type: "raster", source: "carto-light", layout: { visibility: "none" } },
-          { id: "basemap-satellite", type: "raster", source: "esri-satellite", layout: { visibility: "none" } },
+          { id: "basemap-satellite", type: "raster", source: "esri-satellite" },
           { id: "basemap-terrain", type: "raster", source: "esri-topo", layout: { visibility: "none" } },
           { id: "basemap-streets", type: "raster", source: "carto-voyager", layout: { visibility: "none" } },
-          { id: "basemap-hybrid-labels", type: "raster", source: "esri-labels", layout: { visibility: "none" } },
+          { id: "basemap-hybrid-labels", type: "raster", source: "esri-labels" },
         ],
       },
       center: ACTIVE_CITY.center,
       zoom: ACTIVE_CITY.zoom,
       minZoom: 9.5,
       maxZoom: 17,
-      attributionControl: { compact: true },
+      attributionControl: false,
     });
     mapRef.current = map;
     setMapInstance(map);

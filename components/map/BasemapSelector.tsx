@@ -56,9 +56,20 @@ export default function BasemapSelector() {
           borderRadius: isOpen ? 24 : 21,
         }}
         transition={{ type: "spring", damping: 28, stiffness: 420, mass: 0.6 }}
+        data-glow
+        style={{
+          "--base": 220,
+          "--spread": 200,
+          "--radius": isOpen ? 24 : 21,
+          "--border-size": "2px",
+          "--spotlight-size": "340px",
+          "--hue": "calc(var(--base) + (var(--xp, 0.5) * var(--spread, 0)))",
+        } as React.CSSProperties}
         className={cn(
-          "glass-strong transform-gpu will-change-transform relative overflow-hidden shadow-elev-3 origin-bottom-left",
-          !isOpen && "cursor-pointer hover:scale-[1.02] active:scale-95"
+          "glass-strong transform-gpu will-change-transform relative shadow-elev-3 origin-bottom-left transition-all duration-300",
+          isOpen
+            ? "bg-white/20 dark:bg-black/40 backdrop-blur-2xl"
+            : "cursor-pointer hover:scale-[1.02] active:scale-95"
         )}
         onClick={() => !isOpen && setIsOpen(true)}
       >
@@ -71,7 +82,7 @@ export default function BasemapSelector() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.1 }}
-              className="absolute inset-0 flex items-center gap-2.5 px-3.5"
+              className="absolute inset-0 flex items-center gap-2.5 px-3.5 overflow-hidden rounded-[inherit]"
             >
               <span className="text-base shrink-0 leading-none">{currentDef?.icon ?? "🛰️"}</span>
               <span className="text-[12px] font-bold text-foreground truncate leading-none flex-1">
@@ -87,7 +98,7 @@ export default function BasemapSelector() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.12 }}
-              className="flex h-full flex-col p-3.5"
+              className="flex h-full flex-col p-3.5 overflow-hidden rounded-[inherit]"
             >
               {/* Header */}
               <div className="mb-2.5 flex items-center justify-between">
@@ -112,6 +123,14 @@ export default function BasemapSelector() {
                     const active = basemap === bm.id;
                     const isHovered = hovered === i;
                     const Icon = ICONS[bm.id];
+                    const hues: Record<BasemapType, number> = {
+                      satellite: 145,
+                      hybrid: 195,
+                      streets: 40,
+                      terrain: 90,
+                      dark: 260,
+                      light: 25,
+                    };
 
                     return (
                       <motion.div
@@ -120,8 +139,8 @@ export default function BasemapSelector() {
                         animate={{
                           opacity: 1,
                           y: 0,
-                          scale: isHovered ? 1.06 : 1,
-                          rotate: isHovered && !active ? -1.5 : 0,
+                          scale: isHovered ? 1.05 : 1,
+                          rotate: isHovered && !active ? -1 : 0,
                         }}
                         transition={{
                           opacity: { delay: i * 0.015, duration: 0.12 },
@@ -133,38 +152,39 @@ export default function BasemapSelector() {
                         className="relative"
                       >
                         <button
+                          type="button"
+                          data-glow
+                          style={{ "--hue": hues[bm.id], "--radius": 16 } as React.CSSProperties}
                           onClick={(e) => {
                             e.stopPropagation();
                             setBasemap(bm.id);
                             setIsOpen(false);
                           }}
                           className={cn(
-                            "relative flex w-full flex-col items-start rounded-2xl p-2.5 text-left transition-colors active:scale-[0.97]",
+                            "glass-glow-card relative flex w-full flex-col items-start rounded-2xl p-2.5 text-left transition-all active:scale-[0.97] cursor-pointer",
                             active
                               ? "text-accent-foreground font-bold"
-                              : "text-foreground/80 hover:text-foreground",
-                            isHovered && "shadow-lg shadow-accent/20"
+                              : "text-foreground/80 hover:text-foreground bg-white/10 dark:bg-white/[0.04]"
                           )}
                         >
-                          {/* Active Pill Background */}
+                          {/* 1. Active Mode Pill Indicator */}
                           {active && (
                             <motion.span
-                              layoutId="bm-pill"
-                              className="absolute inset-0 rounded-2xl bg-accent/25 shadow-md shadow-accent/30 ring-1 ring-accent/60"
+                              layoutId="basemap-active-pill"
+                              className="pointer-events-none absolute inset-0 rounded-2xl bg-accent/25 border border-accent/80 shadow-[0_0_18px_rgba(56,189,248,0.4)] ring-1 ring-accent/60"
                               transition={{ type: "spring", stiffness: 450, damping: 32 }}
                             />
                           )}
 
-                          {/* Hover Glow Ring */}
+                          {/* 2. Hover Glowing Ring Effect (Exact ModeRail style) */}
                           <AnimatePresence>
                             {isHovered && !active && (
                               <motion.span
-                                layoutId="bm-hover-glow"
-                                className="absolute inset-0 rounded-2xl border border-accent/50 bg-accent/15 shadow-[0_0_14px_rgba(56,189,248,0.3)]"
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                transition={{ type: "spring", stiffness: 350, damping: 25 }}
+                                initial={{ opacity: 0, scale: 0.94 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.94 }}
+                                transition={{ duration: 0.15 }}
+                                className="pointer-events-none absolute inset-0 rounded-2xl border border-accent/50 bg-accent/15 shadow-[0_0_14px_rgba(56,189,248,0.3)]"
                               />
                             )}
                           </AnimatePresence>
@@ -185,11 +205,7 @@ export default function BasemapSelector() {
 
                           {/* Active Dot on right edge */}
                           {active && (
-                            <motion.div
-                              layoutId="bm-active-dot"
-                              className="absolute -right-1 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-accent ring-2 ring-white dark:ring-slate-900 shadow-[0_0_8px_rgba(56,189,248,0.9)] z-20"
-                              transition={{ type: "spring", stiffness: 450, damping: 30 }}
-                            />
+                            <span className="pointer-events-none absolute -right-1 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-accent ring-2 ring-white dark:ring-slate-900 shadow-[0_0_10px_rgba(56,189,248,1)] z-20" />
                           )}
                         </button>
                       </motion.div>

@@ -74,7 +74,7 @@ export default function ParcelDrawer() {
           animate={{ x: 0, opacity: 1 }}
           exit={{ x: 400, opacity: 0 }}
           transition={{ type: "spring", stiffness: 380, damping: 40 }}
-          className="glass-strong pointer-events-auto absolute bottom-3 right-3 top-[64px] z-[30] flex w-[356px] flex-col overflow-hidden rounded-2xl shadow-elev-3"
+          className="glass-strong pointer-events-auto absolute bottom-3 right-3 top-[64px] z-[40] flex w-[356px] flex-col overflow-hidden rounded-2xl shadow-elev-3 backdrop-blur-xl"
         >
           {/* Header */}
           <div className="border-b border-border/80 bg-surface-2/40 px-4 py-3 backdrop-blur-md">
@@ -87,8 +87,9 @@ export default function ParcelDrawer() {
                 </div>
               </div>
               <button
+                type="button"
                 onClick={() => selectParcel(null)}
-                className="grid h-7 w-7 place-items-center rounded-xl text-muted-foreground transition-all hover:bg-surface-3 hover:text-foreground active:scale-95"
+                className="grid h-7 w-7 place-items-center rounded-xl text-muted-foreground transition-all hover:bg-surface-3 hover:text-foreground active:scale-95 cursor-pointer"
                 aria-label="Close parcel drawer"
               >
                 <X size={15} />
@@ -214,6 +215,7 @@ export default function ParcelDrawer() {
           {/* Actions */}
           <div className="border-t border-border/80 bg-surface-2/40 p-3 backdrop-blur-md">
             <button
+              type="button"
               onClick={() => {
                 setSimTarget(parcel.id);
                 setMode("simulator");

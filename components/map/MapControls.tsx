@@ -63,6 +63,7 @@ export default function MapControls({
   return (
     <TooltipProvider delayDuration={120}>
       <motion.div
+        data-glow
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ type: "spring", damping: 24, stiffness: 300, delay: 0.2 }}
@@ -76,55 +77,66 @@ export default function MapControls({
           return (
             <Tooltip key={item.id}>
               <TooltipTrigger asChild>
-                <motion.button
-                  onMouseEnter={() => setHovered(i)}
+                <motion.div
                   animate={{
-                    scale: isHovered ? 1.12 : 1,
+                    scale: isHovered ? 1.08 : 1,
+                    rotate: isHovered && !isActive ? -1.5 : 0,
                   }}
-                  transition={{ type: "spring", stiffness: 400, damping: 22 }}
-                  onClick={item.onClick}
-                  className={cn(
-                    "relative grid h-10 w-10 place-items-center rounded-2xl active:scale-95",
-                    isActive
-                      ? "text-accent"
-                      : "text-foreground/75 hover:text-foreground"
-                  )}
-                  aria-label={item.label}
+                  transition={{
+                    scale: { type: "spring", stiffness: 350, damping: 20 },
+                    rotate: { type: "spring", stiffness: 350, damping: 20 },
+                  }}
+                  className="relative"
                 >
-                  {/* Active pill */}
-                  {isActive && (
-                    <motion.span
-                      layoutId="ctrl-pill"
-                      className="absolute inset-0 rounded-2xl bg-accent/20 ring-1 ring-accent/50 shadow-[0_0_10px_rgba(56,189,248,0.25)]"
-                      transition={{ type: "spring", stiffness: 450, damping: 30 }}
-                    />
-                  )}
-
-                  {/* Hover glow */}
-                  <AnimatePresence>
-                    {isHovered && !isActive && (
+                  <button
+                    type="button"
+                    onMouseEnter={() => setHovered(i)}
+                    onMouseLeave={() => setHovered(null)}
+                    onFocus={() => setHovered(i)}
+                    onBlur={() => setHovered(null)}
+                    onClick={item.onClick}
+                    className={cn(
+                      "relative grid h-10 w-10 place-items-center rounded-2xl cursor-pointer select-none outline-none active:scale-95",
+                      isActive
+                        ? "text-accent"
+                        : "text-foreground/75 hover:text-foreground"
+                    )}
+                    aria-label={item.label}
+                  >
+                    {/* Active pill */}
+                    {isActive && (
                       <motion.span
-                        layoutId="ctrl-hover"
-                        className="absolute inset-0 rounded-2xl border border-accent/40 bg-accent/10 shadow-[0_0_12px_rgba(56,189,248,0.2)]"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ type: "spring", stiffness: 350, damping: 25 }}
+                        layoutId="ctrl-pill"
+                        className="pointer-events-none absolute inset-0 rounded-2xl bg-accent/20 ring-1 ring-accent/50 shadow-[0_0_10px_rgba(56,189,248,0.25)]"
+                        transition={{ type: "spring", stiffness: 450, damping: 30 }}
                       />
                     )}
-                  </AnimatePresence>
 
-                  <span className="relative z-10">{item.icon}</span>
+                    {/* Hover glow (Exact Basemap style) */}
+                    <AnimatePresence>
+                      {isHovered && !isActive && (
+                        <motion.span
+                          initial={{ opacity: 0, scale: 0.94 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.94 }}
+                          transition={{ duration: 0.15 }}
+                          className="pointer-events-none absolute inset-0 rounded-2xl border border-accent/50 bg-accent/15 shadow-[0_0_14px_rgba(56,189,248,0.3)]"
+                        />
+                      )}
+                    </AnimatePresence>
 
-                  {/* Badge for layer count */}
-                  {"badge" in item && (item as any).badge > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 grid h-4 w-4 place-items-center rounded-full bg-accent text-[8px] font-bold text-accent-foreground shadow-sm ring-1 ring-white dark:ring-slate-900 z-20">
-                      {(item as any).badge}
-                    </span>
-                  )}
-                </motion.button>
+                    <span className="pointer-events-none relative z-10">{item.icon}</span>
+
+                    {/* Badge for layer count */}
+                    {"badge" in item && (item as any).badge > 0 && (
+                      <span className="pointer-events-none absolute -top-0.5 -right-0.5 grid h-4 w-4 place-items-center rounded-full bg-accent text-[8px] font-bold text-accent-foreground shadow-sm ring-1 ring-white dark:ring-slate-900 z-20">
+                        {(item as any).badge}
+                      </span>
+                    )}
+                  </button>
+                </motion.div>
               </TooltipTrigger>
-              <TooltipContent side="left" className="shadow-elev-2" sideOffset={8}>
+              <TooltipContent side="left" className="shadow-elev-2 pointer-events-none" sideOffset={8}>
                 {item.label}
               </TooltipContent>
             </Tooltip>

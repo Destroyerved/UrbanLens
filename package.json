@@ -11,6 +11,7 @@
     "sanity": "tsx scripts/sanity.ts"
   },
   "dependencies": {
+    "@paper-design/shaders": "^0.0.80",
     "@radix-ui/react-slider": "^1.2.0",
     "@radix-ui/react-switch": "^1.1.0",
     "@radix-ui/react-tooltip": "^1.1.2",
