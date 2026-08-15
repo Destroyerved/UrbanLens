@@ -20,7 +20,14 @@ import { MODE_PRESETS, type LayerId, type BasemapType } from "@/config/layers";
 import { runSiteSearch, reRankSites } from "@/services/suitability";
 import { runSimulation } from "@/services/simulation";
 import { copilotQuery } from "@/services/copilot";
-import { PARCEL_BY_ID } from "@/data/parcels";
+import { PARCEL_BY_ID, setParcels } from "@/data/parcels";
+import { setWards } from "@/data/wards";
+import { setRoads } from "@/data/roads";
+import { setFacilities } from "@/data/facilities";
+import { setGrid } from "@/data/grid";
+import { fetchCityDataset } from "@/lib/dataset";
+import { setApiCity } from "@/lib/api";
+import { cityById, DEFAULT_CITY, type CityConfig } from "@/config/city";
 
 /**
  * Global app state (zustand — chosen over Context to keep the always-mounted
@@ -41,6 +48,19 @@ const SIM_STEPS = [
 ];
 
 interface AppState {
+  /** Active study area. Every API call carries its id. */
+  city: CityConfig;
+  /**
+   * Bumped whenever the map layers are swapped. The layer modules are ES live
+   * bindings, so importers see new data immediately — but React has no way to
+   * know that, so components that read PARCELS/WARDS/... subscribe to this to
+   * know when to re-derive.
+   */
+  datasetVersion: number;
+  cityLoading: boolean;
+  cityError: string | null;
+  setCity: (id: string) => Promise<void>;
+
   mode: Mode;
   setMode: (m: Mode) => void;
 
@@ -181,6 +201,42 @@ export const useApp = create<AppState>((set, get) => ({
   setHovered: (id) => set({ hoveredParcelId: id }),
   highlightedWardIds: [],
   highlightWards: (ids) => set({ highlightedWardIds: ids }),
+
+  city: DEFAULT_CITY,
+  datasetVersion: 0,
+  cityLoading: false,
+  cityError: null,
+  setCity: async (id) => {
+    const city = cityById(id);
+    if (get().city.id === city.id && get().datasetVersion > 0) return;
+    setApiCity(city.id);
+    // Anything derived from the previous area is now about the wrong place.
+    set({
+      city,
+      cityLoading: true,
+      cityError: null,
+      candidates: null,
+      simResult: null,
+      selectedParcelId: null,
+      highlightedWardIds: [],
+    });
+    try {
+      const d = await fetchCityDataset(city.id);
+      // Wards first: facilities resolve their ward against them.
+      setWards(d.wards);
+      setParcels(d.parcels);
+      setRoads(d.roads);
+      setFacilities(d.facilities);
+      setGrid(d.grid);
+      set((st) => ({ datasetVersion: st.datasetVersion + 1, cityLoading: false }));
+    } catch (err) {
+      set({
+        cityLoading: false,
+        cityError:
+          err instanceof Error ? err.message : `Could not load ${city.name}.`,
+      });
+    }
+  },
 
   gapCategory: "healthcare",
   setGapCategory: (gapCategory) => set({ gapCategory }),

@@ -21,6 +21,7 @@ const CATEGORIES: { id: GapCategory; label: string }[] = [
 
 export default function InfrastructurePanel() {
   const gapCategory = useApp((s) => s.gapCategory);
+  const datasetVersion = useApp((s) => s.datasetVersion);
   const setGapCategory = useApp((s) => s.setGapCategory);
   const highlightWards = useApp((s) => s.highlightWards);
   const highlightedWardIds = useApp((s) => s.highlightedWardIds);
@@ -33,8 +34,13 @@ export default function InfrastructurePanel() {
   const [accessLoading, setAccessLoading] = useState(false);
 
   useEffect(() => {
+    // Wait for the study area to be loaded. React runs child effects before the
+    // parent's, so on first mount this would otherwise fire before AppShell has
+    // pointed the API at the requested area — showing one city's figures under
+    // another city's name until the real data arrived.
+    if (datasetVersion === 0) return;
     fetchWardGaps().then(setGaps);
-  }, []);
+  }, [datasetVersion]);
 
   useEffect(() => {
     if (!mapClick) return;

@@ -1,6 +1,6 @@
 import type { GridCell, LngLat, Year } from "@/types";
 import { YEARS } from "@/types";
-import { ACTIVE_CITY } from "@/config/city";
+import { DEFAULT_CITY } from "@/config/city";
 import {
   KM_PER_DEG_LAT,
   distKm,
@@ -14,7 +14,6 @@ import { mulberry32, clamp } from "@/lib/seeded";
 import { WARDS, wardForPoint } from "./wards";
 import { ROADS } from "./roads";
 import { FACILITY_COORDS } from "./facilities";
-import REAL_GRID from "./real/grid.json";
 
 /**
  * Analysis grid (~1.1 km cells) + historical built-up extents + 2030 growth
@@ -23,7 +22,7 @@ import REAL_GRID from "./real/grid.json";
  * NOT an official record.
  */
 
-const CENTER = ACTIVE_CITY.growthCenter;
+const CENTER = DEFAULT_CITY.growthCenter;
 
 /* ---------------------- Historical built-up extent ---------------------- */
 
@@ -185,12 +184,16 @@ function buildGrid(): GridCell[] {
  * silently zeroes population-need across every candidate and flattens the
  * simulator's before/after.
  */
-export const GRID: GridCell[] = REAL_GRID.length
-  ? (REAL_GRID as unknown as GridCell[])
-  : buildGrid();
-export const USING_REAL_GRID = REAL_GRID.length > 0;
+export let GRID: GridCell[] = buildGrid();
+export let USING_REAL_GRID = false;
+export let CITY_CELLS = GRID.filter((c) => c.inCity && c.population > 0);
 
-export const CITY_CELLS = GRID.filter((c) => c.inCity && c.population > 0);
+/** Swap in a study area's real population grid. See lib/dataset.ts. */
+export function setGrid(next: GridCell[]) {
+  GRID = next;
+  USING_REAL_GRID = next.length > 0;
+  CITY_CELLS = next.filter((c) => c.inCity && c.population > 0);
+}
 
 export function growthClass(p: number): "Very Low" | "Low" | "Medium" | "High" | "Very High" {
   if (p < 0.2) return "Very Low";

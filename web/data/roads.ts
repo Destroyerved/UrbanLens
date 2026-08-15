@@ -1,7 +1,6 @@
 import type { LngLat, Road } from "@/types";
 import { offsetKm } from "@/lib/geo";
-import { ACTIVE_CITY } from "@/config/city";
-import REAL_ROADS from "./real/roads.json";
+import { DEFAULT_CITY } from "@/config/city";
 
 /**
  * Illustrative/demo road network modelled on Ahmedabad's arterial structure.
@@ -61,7 +60,7 @@ const SEEDED_ROADS: Road[] = [
     id: "rd-spring",
     name: "S.P. Ring Road",
     importance: "highway",
-    path: ringPath(ACTIVE_CITY.growthCenter, 11.6),
+    path: ringPath(DEFAULT_CITY.growthCenter, 11.6),
   },
   {
     id: "rd-naroda",
@@ -102,11 +101,12 @@ const SEEDED_ROADS: Road[] = [
  * OSM motorway/trunk/primary/secondary, rivers excluded. Importance is not
  * carried across, so every synced way renders as an arterial.
  */
-export const ROADS: Road[] = REAL_ROADS.length
-  ? (REAL_ROADS as { id: string; name: string; path: LngLat[] }[]).map((r) => ({
-      ...r,
-      importance: "arterial" as const,
-    }))
-  : SEEDED_ROADS;
-export const USING_REAL_ROADS = REAL_ROADS.length > 0;
+export let ROADS: Road[] = SEEDED_ROADS;
+export let USING_REAL_ROADS = false;
+
+/** Swap in a study area's real road network. See lib/dataset.ts. */
+export function setRoads(next: { id: string; name: string; path: LngLat[] }[]) {
+  ROADS = next.map((r) => ({ ...r, importance: "arterial" as const }));
+  USING_REAL_ROADS = next.length > 0;
+}
 

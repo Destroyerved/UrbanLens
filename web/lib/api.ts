@@ -6,9 +6,10 @@
  * meant two implementations of every idea and two different answers for the
  * same city. These calls replace that.
  *
- * Static layers (parcels, wards, facilities, roads, grid) are still read from
- * data/, synced from this same backend at build time — they do not change at
- * runtime, and keeping them synchronous avoids making every component async.
+ * Map layers (parcels, wards, facilities, roads, grid) come from here too, via
+ * lib/dataset.ts, and are swapped when the study area changes. They used to be
+ * baked into the bundle; fetching them is what lets four study areas exist
+ * without shipping four cities' geometry to everyone who opens the page.
  */
 
 const BASE = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000").replace(/\/$/, "");

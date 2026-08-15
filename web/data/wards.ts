@@ -1,7 +1,6 @@
 import type { LngLat, Ward } from "@/types";
 import { mulberry32, rngRange } from "@/lib/seeded";
 import { ringAreaKm2, ringCentroid } from "@/lib/geo";
-import REAL_WARDS from "./real/wards.json";
 
 /**
  * Illustrative/demo data modelled on Ahmedabad ward geography and a
@@ -102,10 +101,16 @@ const SEEDED_WARDS: Ward[] = WARD_SEEDS.map((s) => {
   };
 });
 
-export const WARDS: Ward[] = REAL_WARDS.length ? (REAL_WARDS as Ward[]) : SEEDED_WARDS;
-export const USING_REAL_WARDS = REAL_WARDS.length > 0;
+export let WARDS: Ward[] = SEEDED_WARDS;
+export let USING_REAL_WARDS = false;
+export let WARD_BY_ID = new Map(WARDS.map((w) => [w.id, w]));
 
-export const WARD_BY_ID = new Map(WARDS.map((w) => [w.id, w]));
+/** Swap in a study area's real wards. See lib/dataset.ts. */
+export function setWards(next: Ward[]) {
+  WARDS = next;
+  USING_REAL_WARDS = next.length > 0;
+  WARD_BY_ID = new Map(next.map((w) => [w.id, w]));
+}
 
 export function wardForPoint(p: LngLat): Ward {
   // nearest-centroid assignment (fine for demo purposes)

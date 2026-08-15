@@ -17,6 +17,7 @@ import { cn, scoreTone, toneText } from "@/lib/utils";
  */
 export default function LandPanel() {
   const selectParcel = useApp((s) => s.selectParcel);
+  const datasetVersion = useApp((s) => s.datasetVersion);
   const [govtOnly, setGovtOnly] = useState(true);
   const [lowRisk, setLowRisk] = useState(true);
   const [developableOnly, setDevelopableOnly] = useState(true);
@@ -35,10 +36,15 @@ export default function LandPanel() {
       .map((p) => ({ parcel: p, score: p.developmentPotential ?? 0 }))
       .sort((a, b) => b.score - a.score)
       .slice(0, 8);
-  }, [govtOnly, lowRisk, developableOnly]);
+  }, [govtOnly, lowRisk, developableOnly, datasetVersion]);
 
   const [conflicts, setConflicts] = useState<ZoningConflictRow[]>([]);
   useEffect(() => {
+    // Wait for the study area to be loaded. React runs child effects before the
+    // parent's, so on first mount this would otherwise fire before AppShell has
+    // pointed the API at the requested area — showing one city's figures under
+    // another city's name until the real data arrived.
+    if (datasetVersion === 0) return;
     let alive = true;
     fetchZoningConflicts()
       .then((rows) => alive && setConflicts(rows.slice(0, 6)))
@@ -46,7 +52,7 @@ export default function LandPanel() {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [datasetVersion]);
 
   return (
     <PanelShell

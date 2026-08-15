@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils";
 
 export default function GrowthPanel() {
   const year = useApp((s) => s.year);
+  const datasetVersion = useApp((s) => s.datasetVersion);
   const setYear = useApp((s) => s.setYear);
   const predictionOn = useApp((s) => s.predictionOn);
   const setPrediction = useApp((s) => s.setPrediction);
@@ -35,18 +36,28 @@ export default function GrowthPanel() {
   const [why, setWhy] = useState<string[]>([]);
 
   useEffect(() => {
+    // Wait for the study area to be loaded. React runs child effects before the
+    // parent's, so on first mount this would otherwise fire before AppShell has
+    // pointed the API at the requested area — showing one city's figures under
+    // another city's name until the real data arrived.
+    if (datasetVersion === 0) return;
     fetchGrowthSummary().then(setSummary);
     fetchGrowthExplanation("w-gota").then(setWhy);
-  }, []);
+  }, [datasetVersion]);
 
   useEffect(() => {
+    // Wait for the study area to be loaded. React runs child effects before the
+    // parent's, so on first mount this would otherwise fire before AppShell has
+    // pointed the API at the requested area — showing one city's figures under
+    // another city's name until the real data arrived.
+    if (datasetVersion === 0) return;
     const from: Year = year === 2018 ? 2018 : year === 2022 ? 2018 : 2022;
     if (year === 2018) {
       setTransitions([]);
     } else {
       fetchTransitions(from, year).then((t) => setTransitions(t.slice(0, 5)));
     }
-  }, [year]);
+  }, [year, datasetVersion]);
 
   const chartData = useMemo(
     () =>

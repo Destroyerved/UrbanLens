@@ -8,7 +8,6 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "sync:data": "node scripts/sync-real-data.mjs",
     "data:wards": "node scripts/build-wards.mjs",
     "data:osm": "node scripts/fetch-osm.mjs",
     "data:region": "node scripts/build-region.mjs",

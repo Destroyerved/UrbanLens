@@ -4,7 +4,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Minus, Plus, Locate, Layers, Compass } from "lucide-react";
 import { getMapInstance } from "@/lib/mapref";
-import { ACTIVE_CITY } from "@/config/city";
+
 import { useApp } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -19,6 +19,7 @@ export default function MapControls({
   const [hovered, setHovered] = useState<number | null>(null);
 
   const activeLayers = useApp((s) => s.activeLayers);
+  const city = useApp((s) => s.city);
   const activeCount = Object.values(activeLayers).filter(Boolean).length;
 
   const items = [
@@ -42,8 +43,8 @@ export default function MapControls({
       icon: <Locate size={17} />,
       onClick: () =>
         getMapInstance()?.flyTo({
-          center: ACTIVE_CITY.center,
-          zoom: ACTIVE_CITY.zoom,
+          center: city.center,
+          zoom: city.zoom,
           bearing: 0,
           pitch: 0,
           duration: 900,

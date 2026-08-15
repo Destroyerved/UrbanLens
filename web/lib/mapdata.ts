@@ -6,11 +6,29 @@ import { ROADS } from "@/data/roads";
 import { FACILITIES } from "@/data/facilities";
 import { GRID, BUILTUP_RINGS, urbanPosition } from "@/data/grid";
 
-/** GeoJSON adapters for the MapLibre layer stack (built once, module-level). */
+/**
+ * GeoJSON adapters for the MapLibre layer stack.
+ *
+ * Each is a function rather than a constant because the layer modules swap
+ * their contents when the study area changes. The cache keys on the source
+ * array's identity — `setParcels()` and friends replace the array, so a stale
+ * collection invalidates itself without any version number to keep in sync.
+ */
+function memo<S, T>(build: (src: S) => T) {
+  let lastSrc: S | undefined;
+  let lastOut: T;
+  return (src: S): T => {
+    if (src !== lastSrc) {
+      lastSrc = src;
+      lastOut = build(src);
+    }
+    return lastOut;
+  };
+}
 
-export const parcelsFC: FeatureCollection = {
+const build_parcelsFC = memo((src: typeof PARCELS): FeatureCollection => ({
   type: "FeatureCollection",
-  features: PARCELS.map((p) => ({
+  features: src.map((p) => ({
     type: "Feature",
     id: p.id,
     properties: {
@@ -28,35 +46,39 @@ export const parcelsFC: FeatureCollection = {
     },
     geometry: { type: "Polygon", coordinates: [p.ring] },
   })),
-};
+}));
+export const parcelsFC = (): FeatureCollection => build_parcelsFC(PARCELS);
 
-export const wardsFC: FeatureCollection = {
+const build_wardsFC = memo((src: typeof WARDS): FeatureCollection => ({
   type: "FeatureCollection",
-  features: WARDS.map((w) => ({
+  features: src.map((w) => ({
     type: "Feature",
     id: w.id,
     properties: { id: w.id, name: w.name, population: w.population[2026] },
     geometry: { type: "Polygon", coordinates: [w.ring] },
   })),
-};
+}));
+export const wardsFC = (): FeatureCollection => build_wardsFC(WARDS);
 
-export const roadsFC: FeatureCollection = {
+const build_roadsFC = memo((src: typeof ROADS): FeatureCollection => ({
   type: "FeatureCollection",
-  features: ROADS.map((r) => ({
+  features: src.map((r) => ({
     type: "Feature",
     properties: { id: r.id, name: r.name, importance: r.importance },
     geometry: { type: "LineString", coordinates: r.path },
   })),
-};
+}));
+export const roadsFC = (): FeatureCollection => build_roadsFC(ROADS);
 
-export const facilitiesFC: FeatureCollection = {
+const build_facilitiesFC = memo((src: typeof FACILITIES): FeatureCollection => ({
   type: "FeatureCollection",
-  features: FACILITIES.map((f) => ({
+  features: src.map((f) => ({
     type: "Feature",
     properties: { id: f.id, name: f.name, ftype: f.type },
     geometry: { type: "Point", coordinates: f.coord },
   })),
-};
+}));
+export const facilitiesFC = (): FeatureCollection => build_facilitiesFC(FACILITIES);
 
 export function builtupFC(year: Year): FeatureCollection {
   return {
@@ -71,50 +93,54 @@ export function builtupFC(year: Year): FeatureCollection {
   };
 }
 
-export const predictionFC: FeatureCollection = {
+const build_predictionFC = memo((src: typeof GRID): FeatureCollection => ({
   type: "FeatureCollection",
-  features: GRID.filter((c) => c.inCity && c.growthProb > 0.16).map((c) => ({
+  features: src.filter((c) => c.inCity && c.growthProb > 0.16).map((c) => ({
     type: "Feature",
     properties: { p: Math.round(c.growthProb * 100) / 100 },
     geometry: { type: "Polygon", coordinates: [c.ring] },
   })),
-};
+}));
+export const predictionFC = (): FeatureCollection => build_predictionFC(GRID);
 
-export const populationFC: FeatureCollection = {
+const build_populationFC = memo((src: typeof GRID): FeatureCollection => ({
   type: "FeatureCollection",
-  features: GRID.filter((c) => c.population > 500).map((c) => ({
+  features: src.filter((c) => c.population > 500).map((c) => ({
     type: "Feature",
     properties: { pop: c.population },
     geometry: { type: "Point", coordinates: c.center },
   })),
-};
+}));
+export const populationFC = (): FeatureCollection => build_populationFC(GRID);
 
 /** Cells with meaningful population that sit beyond hospital service reach. */
-export const gapFC: FeatureCollection = {
+const build_gapFC = memo((src: typeof GRID): FeatureCollection => ({
   type: "FeatureCollection",
-  features: GRID.filter((c) => c.inCity && c.population > 1500 && c.hospitalDistKm > 3.5).map(
+  features: src.filter((c) => c.inCity && c.population > 1500 && c.hospitalDistKm > 3.5).map(
     (c) => ({
       type: "Feature",
       properties: { pop: c.population, dist: Math.round(c.hospitalDistKm * 10) / 10 },
       geometry: { type: "Polygon", coordinates: [c.ring] },
     })
   ),
-};
+}));
+export const gapFC = (): FeatureCollection => build_gapFC(GRID);
 
 /** Continuous 2030 Growth Pressure Heatmap source */
-export const growthHeatFC: FeatureCollection = {
+const build_growthHeatFC = memo((src: typeof GRID): FeatureCollection => ({
   type: "FeatureCollection",
-  features: GRID.filter((c) => c.inCity && c.growthProb > 0.05).map((c) => ({
+  features: src.filter((c) => c.inCity && c.growthProb > 0.05).map((c) => ({
     type: "Feature",
     properties: { weight: c.growthProb },
     geometry: { type: "Point", coordinates: c.center },
   })),
-};
+}));
+export const growthHeatFC = (): FeatureCollection => build_growthHeatFC(GRID);
 
 /** Healthcare / Infrastructure Deficit Heatmap source */
-export const gapHeatFC: FeatureCollection = {
+const build_gapHeatFC = memo((src: typeof GRID): FeatureCollection => ({
   type: "FeatureCollection",
-  features: GRID.filter((c) => c.inCity && c.population > 800).map((c) => {
+  features: src.filter((c) => c.inCity && c.population > 800).map((c) => {
     const gapScore = (c.population / 1000) * Math.max(0, c.hospitalDistKm - 2.0);
     return {
       type: "Feature",
@@ -122,12 +148,13 @@ export const gapHeatFC: FeatureCollection = {
       geometry: { type: "Point", coordinates: c.center },
     };
   }),
-};
+}));
+export const gapHeatFC = (): FeatureCollection => build_gapHeatFC(GRID);
 
 /** Vegetation & Ecological NDVI Canopy Heatmap source */
-export const ndviHeatFC: FeatureCollection = {
+const build_ndviHeatFC = memo((src: typeof GRID): FeatureCollection => ({
   type: "FeatureCollection",
-  features: GRID.filter((c) => c.inCity).map((c) => {
+  features: src.filter((c) => c.inCity).map((c) => {
     const { rKm } = urbanPosition(c.center);
     const ndvi = Math.max(0.1, Math.min(0.95, 0.2 + (rKm / 14) * 0.6 + (c.id.charCodeAt(5) % 10) * 0.02));
     return {
@@ -136,12 +163,13 @@ export const ndviHeatFC: FeatureCollection = {
       geometry: { type: "Point", coordinates: c.center },
     };
   }),
-};
+}));
+export const ndviHeatFC = (): FeatureCollection => build_ndviHeatFC(GRID);
 
 /** Urban Heat Island (UHI) Thermal Stress Heatmap source */
-export const thermalHeatFC: FeatureCollection = {
+const build_thermalHeatFC = memo((src: typeof GRID): FeatureCollection => ({
   type: "FeatureCollection",
-  features: GRID.filter((c) => c.inCity).map((c) => {
+  features: src.filter((c) => c.inCity).map((c) => {
     const { rKm } = urbanPosition(c.center);
     const thermal = Math.max(0.08, 1.0 - (rKm / 12) * 0.72);
     return {
@@ -150,7 +178,8 @@ export const thermalHeatFC: FeatureCollection = {
       geometry: { type: "Point", coordinates: c.center },
     };
   }),
-};
+}));
+export const thermalHeatFC = (): FeatureCollection => build_thermalHeatFC(GRID);
 
 export const LANDUSE_COLORS: Record<LandUse, string> = {
   agriculture: "#84cc16",

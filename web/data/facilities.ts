@@ -1,6 +1,5 @@
 import type { Facility, FacilityType, LngLat } from "@/types";
 import { wardForPoint } from "./wards";
-import REAL_FACILITIES from "./real/facilities.json";
 
 /**
  * Illustrative/demo facility dataset modelled on Ahmedabad's public
@@ -91,12 +90,18 @@ const SEEDED_FACILITIES: Facility[] = [
  * here with the same point-in-ward helper the seeded set uses, so both paths
  * produce identical shapes.
  */
-export const FACILITIES: Facility[] = REAL_FACILITIES.length
-  ? (REAL_FACILITIES as { id: string; name: string; type: FacilityType; coord: LngLat }[]).map(
-      (r) => ({ ...r, wardId: wardForPoint(r.coord).id })
-    )
-  : SEEDED_FACILITIES;
-export const USING_REAL_FACILITIES = REAL_FACILITIES.length > 0;
+export let FACILITIES: Facility[] = SEEDED_FACILITIES;
+export let USING_REAL_FACILITIES = false;
+
+/** Swap in a study area's real facilities. See lib/dataset.ts. */
+export function setFacilities(
+  next: { id: string; name: string; type: FacilityType; coord: LngLat }[],
+) {
+  // wardId is resolved with the same point-in-ward helper the seeded set uses,
+  // so both paths produce identical shapes. Call this after setWards().
+  FACILITIES = next.map((r) => ({ ...r, wardId: wardForPoint(r.coord).id }));
+  USING_REAL_FACILITIES = next.length > 0;
+}
 
 
 export const FACILITIES_BY_TYPE = (type: FacilityType): Facility[] =>

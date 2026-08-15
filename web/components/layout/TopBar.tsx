@@ -3,13 +3,17 @@
 import { useState } from "react";
 import { ChevronDown, Search, Sparkles, ScanEye, Check } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
-import { CITIES, ACTIVE_CITY } from "@/config/city";
+import { CITIES } from "@/config/city";
 import { useApp } from "@/lib/store";
 import ThemeToggle from "./ThemeToggle";
 import { cn } from "@/lib/utils";
 
 export default function TopBar() {
   const setPaletteOpen = useApp((s) => s.setPaletteOpen);
+  const city = useApp((s) => s.city);
+  const setCity = useApp((s) => s.setCity);
+  const cityLoading = useApp((s) => s.cityLoading);
+  const cityError = useApp((s) => s.cityError);
   const copilotOpen = useApp((s) => s.copilotOpen);
   const setCopilotOpen = useApp((s) => s.setCopilotOpen);
   const [cityOpen, setCityOpen] = useState(false);
@@ -53,9 +57,16 @@ export default function TopBar() {
           onClick={() => setCityOpen((v) => !v)}
           className="glass-card flex h-8 items-center gap-1.5 rounded-full px-3 text-[12px] font-semibold text-foreground transition-all hover:scale-[1.02]"
         >
-          <span className="h-2 w-2 rounded-full bg-good shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
-          <span>{ACTIVE_CITY.name}</span>
-          <span className="text-muted-foreground font-normal">· {ACTIVE_CITY.state}</span>
+          <span
+            className={cn(
+              "h-2 w-2 rounded-full",
+              cityLoading
+                ? "animate-pulse bg-warning"
+                : "bg-good shadow-[0_0_8px_rgba(34,197,94,0.6)]",
+            )}
+          />
+          <span>{city.name}</span>
+          <span className="text-muted-foreground font-normal">· {city.state}</span>
           <ChevronDown
             size={12}
             className={cn("text-muted-foreground transition-transform", cityOpen && "rotate-180")}
@@ -74,19 +85,27 @@ export default function TopBar() {
               {CITIES.map((c) => (
                 <button
                   key={c.id}
-                  onClick={() => setCityOpen(false)}
-                  className="flex w-full items-center justify-between rounded-xl px-2.5 py-2 text-left text-[12px] font-semibold hover:bg-white/20 dark:hover:bg-white/10 transition-colors"
+                  onClick={() => {
+                    setCityOpen(false);
+                    void setCity(c.id);
+                  }}
+                  disabled={cityLoading}
+                  className="flex w-full items-start justify-between gap-2 rounded-xl px-2.5 py-2 text-left text-[12px] font-semibold transition-colors hover:bg-white/20 disabled:opacity-50 dark:hover:bg-white/10"
                 >
-                  <span>
-                    {c.name}
-                    <span className="ml-1.5 text-muted-foreground font-normal">{c.state}</span>
+                  <span className="min-w-0">
+                    <span className="block truncate">{c.name}</span>
+                    <span className="block text-[10px] font-normal text-muted-foreground">
+                      {c.blurb}
+                    </span>
                   </span>
-                  <Check size={13} className="text-accent" />
+                  {c.id === city.id && (
+                    <Check size={13} className="mt-0.5 shrink-0 text-accent" />
+                  )}
                 </button>
               ))}
-              <div className="px-2.5 py-1.5 text-[10px] text-muted-foreground">
-                More cities onboardable via config.
-              </div>
+              {cityError && (
+                <div className="px-2.5 py-1.5 text-[10px] text-critical">{cityError}</div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>

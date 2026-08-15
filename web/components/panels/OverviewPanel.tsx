@@ -7,7 +7,7 @@ import { AnimatedNumber } from "@/components/shared/AnimatedNumber";
 import { fetchCityKpis } from "@/services/infrastructure";
 import { useApp } from "@/lib/store";
 import { formatCompact } from "@/lib/utils";
-import { ACTIVE_CITY } from "@/config/city";
+
 
 type Kpis = Awaited<ReturnType<typeof fetchCityKpis>>;
 
@@ -48,17 +48,24 @@ export default function OverviewPanel() {
   const [kpis, setKpis] = useState<Kpis | null>(null);
   const [error, setError] = useState(false);
   const setMode = useApp((s) => s.setMode);
+  const datasetVersion = useApp((s) => s.datasetVersion);
+  const city = useApp((s) => s.city);
   const setCopilotOpen = useApp((s) => s.setCopilotOpen);
 
   useEffect(() => {
+    // Wait for the study area to be loaded. React runs child effects before the
+    // parent's, so on first mount this would otherwise fire before AppShell has
+    // pointed the API at the requested area — showing one city's figures under
+    // another city's name until the real data arrived.
+    if (datasetVersion === 0) return;
     fetchCityKpis()
       .then(setKpis)
       .catch(() => setError(true));
-  }, []);
+  }, [datasetVersion]);
 
   return (
     <PanelShell
-      title={`${ACTIVE_CITY.name} Command Center`}
+      title={`${city.name} Command Center`}
       caption="City-wide planning intelligence at a glance"
     >
       {error ? (
@@ -106,9 +113,17 @@ export default function OverviewPanel() {
               >
                 <TrendingUp size={16} className="shrink-0 text-accent" />
                 <div className="flex-1">
-                  <div className="text-[12px] font-semibold text-foreground">NW corridor expanding rapidly</div>
+                  <div className="text-[12px] font-semibold text-foreground">
+                    {kpis.topCorridor
+                      ? `${kpis.topCorridor.name} under the strongest growth pressure`
+                      : "Urban growth trajectory"}
+                  </div>
                   <div className="text-[10.5px] text-muted-foreground">
-                    Gota &amp; Chandkheda population up ~2.5× since 2018
+                    {kpis.topCorridor
+                      ? `${kpis.topCorridor.growthPct}% modelled development pressure · ${formatCompact(
+                          kpis.topCorridor.population,
+                        )} residents`
+                      : `Built-up area up ${Math.round(kpis.growthPct)}% since 2018`}
                   </div>
                 </div>
                 <ArrowRight size={13} className="text-muted-foreground transition-transform group-hover:translate-x-0.5" />

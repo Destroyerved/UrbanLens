@@ -88,7 +88,7 @@ export async function fetchLivability(wardId: string) {
 }
 
 export async function fetchCityKpis() {
-  const [overview, gaps] = await Promise.all([
+  const [overview, gaps, growth] = await Promise.all([
     apiGet<{
       population: number;
       urban_growth_pct: number;
@@ -99,7 +99,22 @@ export async function fetchCityKpis() {
       zoning_conflicts: number;
     }>("/api/overview"),
     fetchGapsWithCoverage(),
+    apiGet<{
+      corridors: {
+        name: string;
+        risk: string;
+        predicted_growth_pct: number;
+        population: number;
+      }[];
+    }>("/api/growth"),
   ]);
+
+  // The strongest growth corridor, named by the engine for this study area —
+  // the headline signal must not keep naming Ahmedabad localities when the
+  // planner is looking at Gandhinagar.
+  const topCorridor = [...(growth.corridors ?? [])].sort(
+    (a, b) => b.predicted_growth_pct - a.predicted_growth_pct,
+  )[0];
 
   // Healthcare coverage is population-weighted across wards — a city figure,
   // not an average of ward scores, which would let a tiny ward swing it.
@@ -116,5 +131,13 @@ export async function fetchCityKpis() {
     zoningConflicts: overview.zoning_conflicts,
     healthcareCoveragePct: Math.round((covered / totalPop) * 100),
     underservedPop: Math.round(totalPop - covered),
+    topCorridor: topCorridor
+      ? {
+          name: topCorridor.name,
+          growthPct: topCorridor.predicted_growth_pct,
+          risk: topCorridor.risk,
+          population: topCorridor.population,
+        }
+      : null,
   };
 }

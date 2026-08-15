@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import maplibregl, { Map as MLMap, Marker } from "maplibre-gl";
 import { useTheme } from "next-themes";
-import { ACTIVE_CITY } from "@/config/city";
+
 import { useApp } from "@/lib/store";
 import { PARCEL_BY_ID } from "@/data/parcels";
 import {
@@ -26,6 +26,7 @@ import {
 import { circleRing } from "@/lib/geo";
 import { setMapInstance } from "@/lib/mapref";
 import type { Year } from "@/types";
+import type { FeatureCollection } from "geojson";
 
 const YEARS: Year[] = [2018, 2022, 2026];
 
@@ -70,6 +71,8 @@ export default function MapCanvas() {
   const selectParcel = useApp((s) => s.selectParcel);
   const setHovered = useApp((s) => s.setHovered);
   const setMapClick = useApp((s) => s.setMapClick);
+  const city = useApp((s) => s.city);
+  const datasetVersion = useApp((s) => s.datasetVersion);
 
   /* ------------------------------ init ------------------------------ */
   useEffect(() => {
@@ -140,8 +143,8 @@ export default function MapCanvas() {
           { id: "basemap-hybrid-labels", type: "raster", source: "esri-labels", layout: { visibility: "none" } },
         ],
       },
-      center: ACTIVE_CITY.center,
-      zoom: ACTIVE_CITY.zoom,
+      center: city.center,
+      zoom: city.zoom,
       minZoom: 9.5,
       maxZoom: 17,
       attributionControl: { compact: true },
@@ -153,21 +156,21 @@ export default function MapCanvas() {
       /* ---- sources ---- */
       map.addSource("parcels", {
         type: "geojson",
-        data: parcelsFC,
+        data: parcelsFC(),
         promoteId: "id",
       });
-      map.addSource("wards", { type: "geojson", data: wardsFC, promoteId: "id" });
-      map.addSource("roads", { type: "geojson", data: roadsFC });
-      map.addSource("facilities", { type: "geojson", data: facilitiesFC });
+      map.addSource("wards", { type: "geojson", data: wardsFC(), promoteId: "id" });
+      map.addSource("roads", { type: "geojson", data: roadsFC() });
+      map.addSource("facilities", { type: "geojson", data: facilitiesFC() });
       for (const y of YEARS)
         map.addSource(`builtup-${y}`, { type: "geojson", data: builtupFC(y) });
-      map.addSource("prediction", { type: "geojson", data: predictionFC });
-      map.addSource("population", { type: "geojson", data: populationFC });
-      map.addSource("growth-heat", { type: "geojson", data: growthHeatFC });
-      map.addSource("gap-heat", { type: "geojson", data: gapHeatFC });
-      map.addSource("ndvi-heat", { type: "geojson", data: ndviHeatFC });
-      map.addSource("thermal-heat", { type: "geojson", data: thermalHeatFC });
-      map.addSource("gap", { type: "geojson", data: gapFC });
+      map.addSource("prediction", { type: "geojson", data: predictionFC() });
+      map.addSource("population", { type: "geojson", data: populationFC() });
+      map.addSource("growth-heat", { type: "geojson", data: growthHeatFC() });
+      map.addSource("gap-heat", { type: "geojson", data: gapHeatFC() });
+      map.addSource("ndvi-heat", { type: "geojson", data: ndviHeatFC() });
+      map.addSource("thermal-heat", { type: "geojson", data: thermalHeatFC() });
+      map.addSource("gap", { type: "geojson", data: gapFC() });
       map.addSource("sim-coverage", {
         type: "geojson",
         data: { type: "FeatureCollection", features: [] },
@@ -691,6 +694,36 @@ export default function MapCanvas() {
       mapRef.current = null;
     };
   }, []);
+
+  /* --------------------- study-area dataset swapping -------------------- */
+  // The layer modules are swapped wholesale when the study area changes, but a
+  // MapLibre source keeps whatever GeoJSON it was handed at load. Push the new
+  // collections in and move the camera, or the map keeps showing the old city
+  // under the new city's numbers.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready || datasetVersion === 0) return;
+
+    const push = (id: string, data: FeatureCollection) => {
+      const src = map.getSource(id) as maplibregl.GeoJSONSource | undefined;
+      src?.setData(data);
+    };
+    push("parcels", parcelsFC());
+    push("wards", wardsFC());
+    push("roads", roadsFC());
+    push("facilities", facilitiesFC());
+    push("prediction", predictionFC());
+    push("population", populationFC());
+    push("growth-heat", growthHeatFC());
+    push("gap-heat", gapHeatFC());
+    push("ndvi-heat", ndviHeatFC());
+    push("thermal-heat", thermalHeatFC());
+    push("gap", gapFC());
+    for (const y of YEARS) push(`builtup-${y}`, builtupFC(y));
+    push("sim-coverage", { type: "FeatureCollection", features: [] });
+
+    map.easeTo({ center: city.center, zoom: city.zoom, duration: 900 });
+  }, [datasetVersion, ready, city]);
 
   /* ------------------------- basemap switching -------------------------- */
   useEffect(() => {

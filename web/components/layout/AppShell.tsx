@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AnimatePresence } from "framer-motion";
 import { useApp } from "@/lib/store";
 import MapCanvas from "@/components/map/MapCanvas";
@@ -23,7 +23,24 @@ import { GlassFilter } from "@/components/ui/GlassFilter";
 
 export default function AppShell() {
   const mode = useApp((s) => s.mode);
+  const setCity = useApp((s) => s.setCity);
+  const city = useApp((s) => s.city);
+  const cityLoading = useApp((s) => s.cityLoading);
+  const datasetVersion = useApp((s) => s.datasetVersion);
   const [layersOpen, setLayersOpen] = useState(false);
+
+  // The map layers ship empty and are fetched from the engine, so the study
+  // area has to be loaded before anything renders real geography. `?city=`
+  // makes an area linkable the same way `?mode=` makes a panel linkable.
+  useEffect(() => {
+    const requested =
+      typeof window !== "undefined"
+        ? new URLSearchParams(window.location.search).get("city")
+        : null;
+    void setCity(requested ?? city.id);
+    // Runs once on mount; later changes come from the switcher.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-background">
@@ -32,6 +49,17 @@ export default function AppShell() {
 
       {/* Base: the map never unmounts */}
       <MapCanvas />
+
+      {/* Switching study area reloads every layer; say so rather than showing
+          the previous city's geography under the new city's name. */}
+      {(cityLoading || datasetVersion === 0) && (
+        <div className="pointer-events-none absolute inset-x-0 top-[72px] z-[60] flex justify-center">
+          <div className="glass-strong flex items-center gap-2 rounded-full px-3.5 py-1.5 text-[11px] font-semibold shadow-elev-3">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-warning" />
+            Loading {city.name}…
+          </div>
+        </div>
+      )}
 
       {/* Chrome TopBar */}
       <div className="pointer-events-none absolute inset-x-4 top-4 z-[10]">
