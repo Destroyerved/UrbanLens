@@ -45,7 +45,7 @@ infrastructure desert.
 
 | # | Feature | Page | What it actually does |
 |---|---------|------|-----------------------|
-| 1 | **Interactive GLIS map** | `/overview` | ~1,800 parcels, real wards, roads, facilities, boundary, a **250 m population-density heatmap** and **zoning-conflict** markers on a dark MapLibre map. Click any parcel → full intelligence profile. Colour by ownership / potential / land-use / flood; shade wards by infrastructure, livability or density. |
+| 1 | **Interactive GLIS map** | `/overview` | ~2,600 **real** land parcels, real wards, roads, facilities, boundary, a **250 m population-density heatmap** and **zoning-conflict** markers on a dark MapLibre map. Click any parcel → full intelligence profile. Colour by ownership / potential / land-use / flood; shade wards by infrastructure, livability or density. |
 | 2 | **Urban growth + prediction** | `/growth` | "Urban Time Machine" (2018→2026 built-up intensity) + a 2030 growth-probability grid from an explainable logistic model. Built-up-area chart and growth-corridor cards. |
 | 3 | **Infrastructure gap analysis** | `/infrastructure` | Per-ward healthcare/education/parks/transport/road scores, choropleth, ranked underserved wards, a click-anywhere **15-minute-city** analyzer, and an **Urban Livability Score** view (7 weighted components, population-weighted city score). |
 | 4 | **Smart site selection** | `/site-selection` | Multi-criteria suitability engine with constraints + **live customizable planning weights** → ranked parcels with self-explaining pros/cons. |
@@ -137,11 +137,14 @@ hidden behind an "official" headline.
 | Layer | Source | Notes |
 |---|---|---|
 | Ward boundaries | **Official** | Digitised municipal ward map (48 AMC / 11 GMC) with measured area, perimeter, compactness and OSM road density. |
+| Land parcels | **OpenStreetMap** | Real mapped land boundaries — closed `landuse` / `natural` / `leisure` ways with their real land-use tag, carrying their real names ("AUDA garden, Gota", "Orchid Whitefield"). 2,566 inside AMC, 732 inside GMC. These are surveyed **blocks and estates, not cadastral title plots** — GLIS records are not public. |
 | Facilities | **OpenStreetMap** | Overpass API, de-duplicated on a ~150 m grid; `amenity=hospital` is re-classified to `clinic` unless mapped as a building or clearly named as a major hospital, since Indian OSM conflates the two. |
 | Roads | **OpenStreetMap** | Motorway/trunk/primary/secondary + rivers, geometry decimated for spatial math. |
 | Population | **Derived** | Census municipal totals distributed across wards by `area_km² × road_density^1.35`. Road density is real and measured; the split is a model. **Estimates, not ward-level census counts.** |
+| Ownership | **Derived** | No public dataset records land tenure. OSM confirms public ownership for only 10 of 2,566 Ahmedabad parcels; the rest is modelled from land use and distance to centre. **Indicative, not a title record.** |
+| Official zoning | **Synthetic** | Development-plan zoning sheets are not published machine-readably, so the official designation is modelled. Zoning conflicts therefore demonstrate the detection method against real land use — they are **not confirmed violations.** |
+| Built-up / vegetation cover | **Derived** | Modelled from the real land-use tag and local urban intensity. OSM records what land is *for*, not how densely it is built. |
 | Growth prediction | **Derived** | Transparent weighted model over distance-to-road, distance-to-built-up, distance-to-centre and land use. |
-| Land parcels | **Synthetic** | GLIS cadastral records are not public. Realistic in structure and spatial behaviour; **not official records.** |
 
 ### Honest scoring under incomplete source data
 

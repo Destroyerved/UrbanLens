@@ -1,7 +1,8 @@
 {
-  "fetchedAt": "2026-08-14T22:32:54.932Z",
+  "fetchedAt": "2026-08-15T09:35:00.034Z",
   "bbox": "22.8839,72.4193,23.1705,72.7315",
   "source": "OpenStreetMap via Overpass API",
   "facilities": 1463,
-  "roads": 2480
+  "roads": 2480,
+  "land": 3224
 }

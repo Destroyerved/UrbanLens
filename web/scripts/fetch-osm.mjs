@@ -216,6 +216,158 @@ out geom;`;
   return { type: "FeatureCollection", features };
 }
 
+/**
+ * Real land polygons.
+ *
+ * Cadastral GLIS records are not public, so the closest real substitute is
+ * OpenStreetMap's mapped land use: closed ways tagged landuse / natural /
+ * leisure. These are genuine surveyed boundaries with a genuine land-use tag —
+ * blocks and estates rather than individual title plots, which is stated
+ * plainly in the UI rather than dressed up as cadastral data.
+ */
+const LAND_USE_MAP = {
+  // landuse=*
+  residential: "residential",
+  commercial: "commercial",
+  retail: "commercial",
+  industrial: "industrial",
+  farmland: "agriculture",
+  farmyard: "agriculture",
+  orchard: "agriculture",
+  meadow: "agriculture",
+  allotments: "agriculture",
+  forest: "green",
+  grass: "green",
+  village_green: "green",
+  recreation_ground: "green",
+  cemetery: "green",
+  greenfield: "vacant",
+  brownfield: "vacant",
+  construction: "vacant",
+  quarry: "industrial",
+  landfill: "industrial",
+  religious: "institutional",
+  education: "institutional",
+  institutional: "institutional",
+  military: "institutional",
+  government: "institutional",
+  railway: "industrial",
+  reservoir: "water",
+  basin: "water",
+};
+const NATURAL_MAP = {
+  water: "water",
+  wetland: "water",
+  wood: "green",
+  scrub: "green",
+  grassland: "green",
+  heath: "green",
+  sand: "vacant",
+  bare_rock: "vacant",
+};
+const LEISURE_MAP = {
+  park: "green",
+  garden: "green",
+  golf_course: "green",
+  pitch: "green",
+  sports_centre: "institutional",
+  stadium: "institutional",
+};
+
+function landUseOf(tags) {
+  if (tags.landuse && LAND_USE_MAP[tags.landuse]) return LAND_USE_MAP[tags.landuse];
+  if (tags.natural && NATURAL_MAP[tags.natural]) return NATURAL_MAP[tags.natural];
+  if (tags.leisure && LEISURE_MAP[tags.leisure]) return LEISURE_MAP[tags.leisure];
+  if (tags.amenity === "school" || tags.amenity === "college" || tags.amenity === "university")
+    return "institutional";
+  if (tags.amenity === "hospital") return "institutional";
+  return null;
+}
+
+/**
+ * OSM tags that indicate public ownership. Rare but real — where present it
+ * beats modelling tenure, so it is carried through as a confirmed signal.
+ */
+function governmentHint(tags) {
+  if (tags.landuse === "military" || tags.landuse === "government") return true;
+  if (tags.operator_type === "government" || tags.operator_type === "public") return true;
+  if (tags.ownership === "public" || tags.ownership === "government") return true;
+  const op = (tags.operator || "").toLowerCase();
+  if (/municipal|corporation|government|govt|state of|railway|nagar palika|amc\b|auda/.test(op)) return true;
+  if (tags.amenity === "townhall") return true;
+  return false;
+}
+
+/** Shoelace area in m², good enough for filtering tiny slivers. */
+function approxAreaSqm(ring) {
+  const R = 6378137;
+  let s = 0;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [x1, y1] = ring[j];
+    const [x2, y2] = ring[i];
+    s += ((x2 - x1) * Math.PI) / 180 * (2 + Math.sin((y1 * Math.PI) / 180) + Math.sin((y2 * Math.PI) / 180));
+  }
+  return Math.abs((s * R * R) / 2);
+}
+
+async function fetchLand(BBOX) {
+  const q = `[out:json][timeout:180];
+(
+  way["landuse"](${BBOX});
+  way["natural"~"^(water|wetland|wood|scrub|grassland|heath|sand|bare_rock)$"](${BBOX});
+  way["leisure"~"^(park|garden|golf_course|pitch|sports_centre|stadium)$"](${BBOX});
+);
+out geom tags;`;
+  const els = await overpass(q);
+  const features = [];
+  let skippedOpen = 0;
+  let skippedTiny = 0;
+
+  for (const el of els) {
+    const g = el.geometry;
+    if (!g || g.length < 4) continue;
+    const tags = el.tags ?? {};
+    const use = landUseOf(tags);
+    if (!use) continue;
+
+    // Only closed ways describe an area. Multipolygon relations are skipped —
+    // they are a small share here and need member assembly to be correct.
+    const first = g[0];
+    const last = g[g.length - 1];
+    if (first.lat !== last.lat || first.lon !== last.lon) {
+      skippedOpen++;
+      continue;
+    }
+
+    const ring = g.map((p) => [Number(p.lon.toFixed(6)), Number(p.lat.toFixed(6))]);
+    const area = approxAreaSqm(ring);
+    // Below ~500 m² these are mapping artefacts, not usable land units.
+    if (area < 500) {
+      skippedTiny++;
+      continue;
+    }
+
+    features.push({
+      type: "Feature",
+      properties: {
+        id: `OSM-W${el.id}`,
+        name: tags.name || null,
+        land_use: use,
+        osm_tag: tags.landuse ? `landuse=${tags.landuse}`
+          : tags.natural ? `natural=${tags.natural}`
+          : tags.leisure ? `leisure=${tags.leisure}`
+          : `amenity=${tags.amenity}`,
+        government: governmentHint(tags),
+        area_sqm: Math.round(area),
+      },
+      geometry: { type: "Polygon", coordinates: [ring] },
+    });
+  }
+
+  console.log(`  (skipped ${skippedOpen} open ways, ${skippedTiny} slivers <500m²)`);
+  return { type: "FeatureCollection", features };
+}
+
 const CITIES = ["ahmedabad", "gandhinagar"];
 const requested = process.argv.slice(2);
 const targets = requested.length ? requested : CITIES;
@@ -236,6 +388,16 @@ for (const cityId of targets) {
   console.log("roads:", roads.features.length);
   writeFileSync(join(OUT, `${cityId}_roads.json`), JSON.stringify(roads));
 
+  const land = await fetchLand(BBOX);
+  const byUse = {};
+  let govt = 0;
+  for (const f of land.features) {
+    byUse[f.properties.land_use] = (byUse[f.properties.land_use] ?? 0) + 1;
+    if (f.properties.government) govt++;
+  }
+  console.log("land polygons:", land.features.length, byUse, `| ${govt} tagged public`);
+  writeFileSync(join(OUT, `${cityId}_land.json`), JSON.stringify(land));
+
   writeFileSync(
     join(OUT, `${cityId}_meta.json`),
     JSON.stringify(
@@ -245,6 +407,7 @@ for (const cityId of targets) {
         source: "OpenStreetMap via Overpass API",
         facilities: facilities.features.length,
         roads: roads.features.length,
+        land: land.features.length,
       },
       null,
       2

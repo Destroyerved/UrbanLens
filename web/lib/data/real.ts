@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { FeatureCollection, LineString, Point, Polygon } from "geojson";
-import type { FacilityProps, RoadProps, WardProps } from "@/lib/types";
+import type { FacilityProps, LandUse, RoadProps, WardProps } from "@/lib/types";
 
 /**
  * Loads the REAL OpenStreetMap layers cached by scripts/fetch-osm.mjs and
@@ -31,7 +31,24 @@ const MAJOR_HOSPITAL = /medical college|civil hospital|general hospital|multi.?s
 export interface RealData {
   facilities?: FeatureCollection<Point, FacilityProps>;
   roads?: FeatureCollection<LineString, RoadProps>;
+  land?: FeatureCollection<Polygon, RealLandProps>;
   meta: { fetchedAt: string; source: string };
+}
+
+/**
+ * A real mapped land polygon: a closed OSM way carrying a land-use tag. These
+ * are surveyed boundaries of blocks and estates, NOT cadastral title plots —
+ * GLIS records are not public.
+ */
+export interface RealLandProps {
+  id: string;
+  name: string | null;
+  land_use: LandUse;
+  /** The originating OSM tag, e.g. "landuse=residential". */
+  osm_tag: string;
+  /** True only where OSM explicitly indicates public ownership. */
+  government: boolean;
+  area_sqm: number;
 }
 
 function decimate(coords: number[][], max = 14): number[][] {
@@ -147,13 +164,19 @@ export function loadRealData(cityId: string): RealData | null {
       };
     }
 
+    let land: FeatureCollection<Polygon, RealLandProps> | undefined;
+    const lPath = resolve(cityId, "land");
+    if (lPath) {
+      land = JSON.parse(readFileSync(lPath, "utf8")) as FeatureCollection<Polygon, RealLandProps>;
+    }
+
     let meta = { fetchedAt: "", source: "OpenStreetMap via Overpass API" };
     try {
       const mPath = resolve(cityId, "meta");
       if (mPath) meta = { ...meta, ...JSON.parse(readFileSync(mPath, "utf8")) };
     } catch {}
 
-    cached = { facilities, roads, meta };
+    cached = { facilities, roads, land, meta };
     dataCache.set(cityId, cached);
     return cached;
   } catch {

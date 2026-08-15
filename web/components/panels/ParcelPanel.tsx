@@ -15,6 +15,10 @@ interface Intelligence {
   zoning: string;
   land_use: string;
   ward: string;
+  source: "osm" | "synthetic";
+  osm_tag: string | null;
+  name: string | null;
+  tenure_known: boolean;
   built_up_percent: number;
   vegetation_percent: number;
   water_percent: number;
@@ -96,20 +100,33 @@ export function ParcelPanel({
         </div>
       ) : (
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-5">
-          {/* ownership + zoning */}
+          {/* what this parcel actually is */}
+          {data.name && (
+            <div className="text-[13px] text-ink font-medium -mb-2 truncate">{data.name}</div>
+          )}
           <div className="flex items-center gap-2 flex-wrap">
             <Badge color={data.ownership === "government" ? "#3b82f6" : "#64748b"}>
               {data.ownership === "government" ? <Building2 className="h-3 w-3" /> : <User className="h-3 w-3" />}
               {titleCase(data.ownership)}
+              {!data.tenure_known && <span className="opacity-60">· modelled</span>}
             </Badge>
             <Badge color={LAND_USE_COLOR[data.land_use] ?? "#64748b"}>{titleCase(data.land_use)}</Badge>
-            <Badge>{data.owner_category}</Badge>
+            {data.source === "osm" && (
+              <Badge color="var(--good)" className="mono">
+                {data.osm_tag ?? "OSM"}
+              </Badge>
+            )}
           </div>
+          <p className="text-[10px] text-dim leading-snug -mt-3">
+            {data.source === "osm"
+              ? "Real mapped land boundary and land use from OpenStreetMap. Ownership, official zoning and built-up cover are modelled."
+              : "Generated demo parcel — boundary and attributes are modelled."}
+          </p>
 
           {/* facts grid */}
           <div className="grid grid-cols-2 gap-2">
             <Fact icon={<Ruler className="h-3.5 w-3.5" />} label="Area" value={`${data.area_acres} ac`} />
-            <Fact label="Zoning (official)" value={titleCase(data.zoning)} />
+            <Fact label="Zoning (modelled)" value={titleCase(data.zoning)} />
             <Fact icon={<Building2 className="h-3.5 w-3.5" />} label="Built-up" value={`${data.built_up_percent}%`} />
             <Fact icon={<TreePine className="h-3.5 w-3.5" />} label="Vegetation" value={`${data.vegetation_percent}%`} />
             <Fact

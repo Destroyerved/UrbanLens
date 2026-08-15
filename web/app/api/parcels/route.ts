@@ -34,6 +34,8 @@ export async function GET(req: NextRequest) {
         built_up_percent: p.properties.built_up_percent,
         flood_risk: p.properties.flood_risk,
         ward: p.properties.ward,
+        source: p.properties.source ?? "synthetic",
+        name: p.properties.name ?? null,
         development_potential: Math.round(enriched.byId.get(p.properties.id)?.scores.development_potential ?? 0),
         h2018: p.properties.history[2018] ?? 0,
         h2022: p.properties.history[2022] ?? 0,

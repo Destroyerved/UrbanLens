@@ -74,6 +74,18 @@ export interface ParcelProps {
   centroid: [number, number];
   /** Built-up % snapshots by year — drives growth + change detection. */
   history: Record<number, number>;
+  /**
+   * Where the parcel's boundary and land use came from. "osm" means a real
+   * mapped land polygon; "synthetic" means a generated stand-in. Tenure, official
+   * zoning and the built-up attributes are modelled in both cases.
+   */
+  source?: "osm" | "synthetic";
+  /** Originating OSM tag, e.g. "landuse=residential" (real parcels only). */
+  osm_tag?: string;
+  /** Mapped name of the estate/block, where OSM records one. */
+  name?: string | null;
+  /** True when OSM explicitly confirms public ownership rather than it being modelled. */
+  tenure_known?: boolean;
 }
 
 export type Parcel = Feature<Polygon, ParcelProps>;
@@ -139,6 +151,8 @@ export type DataLayerKey =
   | "wards"
   | "population"
   | "parcels"
+  | "tenure"
+  | "zoning"
   | "facilities"
   | "roads"
   | "prediction";

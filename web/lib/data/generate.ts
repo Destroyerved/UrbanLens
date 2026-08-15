@@ -1,7 +1,7 @@
 import * as turf from "@turf/turf";
 import type { FeatureCollection, LineString, Point, Polygon } from "geojson";
 import { CityConfig, DATA_SEED } from "@/lib/config";
-import { loadRealData, loadRealWards } from "@/lib/data/real";
+import { loadRealData, loadRealWards, type RealLandProps } from "@/lib/data/real";
 import { makeWardLocator } from "@/lib/gis/population";
 import {
   mulberry32,
@@ -356,6 +356,155 @@ function actualLandUse(intensity: number, rng: Rng): LandUse {
   ]);
 }
 
+/**
+ * Built-up cover implied by a real land-use tag, as a [min, max] band. The
+ * tag is real; the cover within the band is modelled from local urban intensity,
+ * because OSM records what land is *for*, not how densely it is built.
+ */
+const BUILT_UP_BAND: Record<LandUse, [number, number]> = {
+  residential: [35, 92],
+  commercial: [45, 95],
+  industrial: [30, 85],
+  institutional: [20, 70],
+  mixed: [35, 88],
+  agriculture: [0, 10],
+  vacant: [0, 12],
+  green: [0, 8],
+  water: [0, 2],
+};
+
+const VEGETATION_BAND: Record<LandUse, [number, number]> = {
+  residential: [4, 25],
+  commercial: [2, 15],
+  industrial: [2, 15],
+  institutional: [8, 35],
+  mixed: [3, 20],
+  agriculture: [55, 88],
+  vacant: [10, 45],
+  green: [45, 90],
+  water: [5, 30],
+};
+
+/**
+ * Parcels built from REAL mapped land polygons.
+ *
+ * What is real here: the boundary, its area, the land-use classification and —
+ * for the handful of polygons OSM tags as public — the ownership. What stays
+ * modelled: tenure for everything else, the official planning designation, and
+ * the built-up/vegetation/history attributes. GLIS cadastral records and DP
+ * zoning sheets are not public, so those cannot be sourced honestly and are
+ * labelled as modelled wherever they surface.
+ *
+ * Attribute noise is seeded per polygon from its OSM id, so a parcel's modelled
+ * values are stable no matter what order the file arrives in or what else is in
+ * the dataset.
+ */
+function parcelsFromRealLand(
+  config: CityConfig,
+  land: FeatureCollection<Polygon, RealLandProps>,
+  wards: FeatureCollection<Polygon, WardProps>,
+  intensity: (lng: number, lat: number) => number,
+  river: [number, number][]
+): FeatureCollection<Polygon, ParcelProps> {
+  const locate = makeWardLocator(wards.features);
+  const features: FeatureCollection<Polygon, ParcelProps>["features"] = [];
+
+  // Stable order → stable sequential ids across runs.
+  const sorted = [...land.features].sort((a, b) =>
+    a.properties.id < b.properties.id ? -1 : a.properties.id > b.properties.id ? 1 : 0
+  );
+
+  let seq = 1;
+  for (const poly of sorted) {
+    const lp = poly.properties;
+    const centroid = turf.centroid(poly).geometry.coordinates as [number, number];
+
+    // The OSM fetch bbox is padded beyond the municipal boundary; keep only
+    // land that actually falls inside a ward.
+    const wardIdx = locate(centroid[0], centroid[1]);
+    if (wardIdx < 0) continue;
+    const ward = wards.features[wardIdx];
+
+    const rng = mulberry32(hashString(lp.id) ^ DATA_SEED);
+    const areaSqm = Math.round(turf.area(poly));
+    if (areaSqm < 500) continue;
+
+    // Guard against a tag the fetch script does not know about: an unmapped
+    // land_use would index the bands as undefined and quietly turn every derived
+    // score into NaN.
+    const landUse: LandUse = BUILT_UP_BAND[lp.land_use] ? lp.land_use : "vacant";
+    const dKm = haversineKm(config.center, centroid);
+    const localIt = Math.max(0, Math.min(100, intensity(centroid[0], centroid[1]) + randRange(rng, -10, 10)));
+
+    // Built-up sits inside the band implied by the real tag, positioned by local
+    // urban intensity.
+    const [bMin, bMax] = BUILT_UP_BAND[landUse];
+    const builtUp = Math.round(
+      Math.max(bMin, Math.min(bMax, bMin + ((bMax - bMin) * localIt) / 100 + randRange(rng, -6, 6)))
+    );
+    const [vMin, vMax] = VEGETATION_BAND[landUse];
+    const veg = Math.round(
+      Math.max(vMin, Math.min(vMax, vMax - ((vMax - vMin) * localIt) / 100 + randRange(rng, -5, 5)))
+    );
+    const water = landUse === "water" ? Math.round(randRange(rng, 70, 96)) : Math.round(randRange(rng, 0, 4));
+
+    const riverKm = distToRiverKm(centroid, river);
+    const elevation = Math.round(48 + (centroid[0] - config.center[0]) * 60 + randRange(rng, -4, 6));
+    let flood: RiskLevel = "low";
+    if (riverKm < 0.9 || landUse === "water") flood = "high";
+    else if (riverKm < 2.0 || elevation < 44) flood = "medium";
+
+    // Ownership: real where OSM says so, modelled otherwise.
+    const govProb = (landUse === "institutional" ? 0.5 : 0.13) + (dKm < 5 ? 0.05 : 0);
+    const ownership: Ownership = lp.government || rng() < govProb ? "government" : "private";
+
+    const zoning = officialZoning(dKm, config.radiusKm, rng);
+
+    // Built-up history: fringe and corridor land urbanised fastest.
+    const { strength } = corridorField(bearingDeg(config.center, centroid));
+    const fringe = Math.exp(-(((localIt - 45) / 26) ** 2));
+    const totalGrowth = Math.round((fringe * 22 + strength * 11) * randRange(rng, 0.5, 1.15));
+    const bu2026 = builtUp;
+    const bu2018 = Math.max(0, bu2026 - totalGrowth);
+    const bu2022 = Math.max(bu2018, Math.round(bu2018 + (bu2026 - bu2018) * 0.62));
+
+    const parcelId = `GJ-${config.code}-${String(seq).padStart(5, "0")}`;
+    features.push({
+      type: "Feature",
+      properties: {
+        id: parcelId,
+        parcel_id: parcelId,
+        survey_number: `${randInt(rng, 1, 999)}/${randInt(rng, 1, 40)}`,
+        area_sqm: areaSqm,
+        area_acres: Number((areaSqm / 4046.86).toFixed(2)),
+        ownership,
+        owner_category: ownership === "government" ? pick(rng, GOV_OWNERS) : pick(rng, PRIVATE_OWNERS),
+        land_use: landUse,
+        zoning,
+        district: config.name,
+        ward: ward.properties.ward_code,
+        built_up_percent: bu2026,
+        vegetation_percent: veg,
+        water_percent: water,
+        flood_risk: flood,
+        elevation_m: elevation,
+        centroid: [Number(centroid[0].toFixed(6)), Number(centroid[1].toFixed(6))],
+        history: { 2018: bu2018, 2022: bu2022, 2026: bu2026 },
+        // Provenance carried per feature so the UI can be specific about which
+        // of a parcel's attributes are real.
+        source: "osm",
+        osm_tag: lp.osm_tag,
+        name: lp.name,
+        tenure_known: lp.government,
+      },
+      geometry: poly.geometry,
+    });
+    seq++;
+  }
+
+  return { type: "FeatureCollection", features };
+}
+
 function generateParcels(
   config: CityConfig,
   rng: Rng,
@@ -679,7 +828,11 @@ export function generateCity(config: CityConfig): CityDataset {
   const { roads: synthRoads, metroLine } = generateRoads(config, river);
   const roads = real?.roads ?? synthRoads;
   const wards = realWards?.wards ?? generateWards(config, rng, intensity);
-  const parcels = generateParcels(config, rng, wards, intensity, river);
+  const parcels = real?.land
+    ? parcelsFromRealLand(config, real.land, wards, intensity, river)
+    : generateParcels(config, rng, wards, intensity, river);
+  const realParcels = Boolean(real?.land);
+  const confirmedTenure = parcels.features.filter((p) => p.properties.tenure_known).length;
   const facilities = real?.facilities ?? generateFacilities(config, rng, intensity, metroLine);
   const prediction = generatePrediction(config, intensity, roads, wards);
 
@@ -706,11 +859,30 @@ export function generateCity(config: CityConfig): CityDataset {
           label: "Synthetic population",
           detail: "Density modelled from the generated urban-intensity field.",
         },
-    parcels: {
+    parcels: realParcels
+      ? {
+          source: "osm",
+          label: "OpenStreetMap land polygons",
+          detail: `${parcels.features.length.toLocaleString()} real mapped land boundaries with their real land-use tag (landuse / natural / leisure). These are surveyed blocks and estates, not cadastral title plots — GLIS records are not public. Built-up and vegetation cover are modelled from the tag and local urban intensity.`,
+        }
+      : {
+          source: "synthetic",
+          label: "Demo parcels (not GLIS)",
+          detail:
+            "Deterministically generated cadastral-style parcels standing in for GLIS records, which are not publicly available. Structure and spatial behaviour are realistic; the records are not official.",
+        },
+    tenure: {
+      source: confirmedTenure > 0 ? "derived" : "synthetic",
+      label: "Ownership — mostly modelled",
+      detail: realParcels
+        ? `Land ownership is not in any public dataset. OpenStreetMap confirms public ownership for only ${confirmedTenure} of ${parcels.features.length.toLocaleString()} parcels; the rest is modelled from land use and distance to centre. Treat government/private status as indicative, not as a title record.`
+        : "Ownership is modelled from land use and distance to centre. Not a title record.",
+    },
+    zoning: {
       source: "synthetic",
-      label: "Demo parcels (not GLIS)",
+      label: "Official zoning — modelled",
       detail:
-        "Deterministically generated cadastral-style parcels standing in for GLIS records, which are not publicly available. Structure and spatial behaviour are realistic; the records are not official.",
+        "Development-plan zoning sheets are not published in machine-readable form, so the official designation is modelled. Zoning conflicts therefore demonstrate the detection method against real land use; they are not confirmed violations.",
     },
     facilities: real?.facilities
       ? {

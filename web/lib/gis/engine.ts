@@ -473,6 +473,12 @@ export function parcelIntelligence(dataset: CityDataset, parcel: Parcel) {
     area_sqm: p.area_sqm,
     ownership: p.ownership,
     owner_category: p.owner_category,
+    // Provenance for this specific parcel, so the panel can distinguish a real
+    // mapped boundary from a generated one and confirmed tenure from modelled.
+    source: p.source ?? "synthetic",
+    osm_tag: p.osm_tag ?? null,
+    name: p.name ?? null,
+    tenure_known: p.tenure_known ?? false,
     zoning: p.zoning,
     land_use: p.land_use,
     ward: p.ward,

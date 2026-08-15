@@ -19,12 +19,23 @@ const LAYER_LABELS: Record<DataLayerKey, string> = {
   wards: "Ward boundaries",
   population: "Population",
   parcels: "Land parcels",
+  tenure: "Ownership",
+  zoning: "Official zoning",
   facilities: "Facilities",
   roads: "Road network",
   prediction: "Growth prediction",
 };
 
-const ORDER: DataLayerKey[] = ["wards", "parcels", "facilities", "roads", "population", "prediction"];
+const ORDER: DataLayerKey[] = [
+  "wards",
+  "parcels",
+  "facilities",
+  "roads",
+  "population",
+  "tenure",
+  "zoning",
+  "prediction",
+];
 
 const SOURCE_STYLE: Record<LayerSource, { color: string; label: string }> = {
   official: { color: "var(--good)", label: "Official" },
