@@ -12,7 +12,6 @@ from pydantic import BaseModel, Field
 from app.core.config import CITIES, get_city
 from app.data.loader import FACILITY_TYPES, get_dataset
 from app.gis import analysis
-from app.gis import copilot as copilot_mod
 from app.gis.parcels import get_parcels
 from app.gis.raster import population_within_km
 from app.gis.scoring import DEFAULT_WEIGHTS, LIVABILITY_WEIGHTS, PROJECTS
@@ -311,7 +310,12 @@ def parcels(
     city: str | None = Query(default=None),
     ownership: str | None = Query(default=None),
     vacant: bool = Query(default=False),
+    detail: str | None = Query(default=None),
 ) -> dict:
+    """Parcels as GeoJSON. `?detail=full` adds the enriched per-parcel
+    measurements — proximities, catchment population, factor scores. They are
+    already computed and cached, so the only cost is payload; the map omits them
+    to stay light."""
     ds = _dataset(city)
     items = get_parcels(ds.city.id)
     if ownership:
@@ -332,6 +336,27 @@ def parcels(
                     "development_potential": round(p.scores["development_potential"]),
                     "h2018": p.history.get(2018, 0), "h2022": p.history.get(2022, 0),
                     "h2026": p.history.get(2026, 0),
+                    **(
+                        {
+                            "survey_number": p.survey_number,
+                            "area_sqm": p.area_sqm,
+                            "vegetation_percent": p.vegetation_percent,
+                            "water_percent": p.water_percent,
+                            "elevation_m": p.elevation_m,
+                            "centroid": list(p.centroid),
+                            "road_km": round(p.road_km, 2),
+                            "hospital_km": round(p.nearest["hospital"], 2),
+                            "school_km": round(p.nearest["school"], 2),
+                            "park_km": round(p.nearest["park"], 2),
+                            "transit_km": round(min(p.nearest["bus_stop"], p.nearest["metro_station"]), 2),
+                            "population_3km": p.pop_3km,
+                            "accessibility": round(p.scores["accessibility"]),
+                            "infrastructure_readiness": round(p.scores["infrastructure"]),
+                            # Consumers express this as sensitivity, the engine as suitability.
+                            "environmental_sensitivity": round(100 - p.scores["environment"]),
+                        }
+                        if detail == "full" else {}
+                    ),
                 },
             }
             for p in items
@@ -513,10 +538,28 @@ def simulate(body: SimulateBody, city: str | None = Query(default=None)) -> dict
 
 @router.post("/copilot/query")
 def copilot_query(body: CopilotBody, city: str | None = Query(default=None)) -> dict:
+    """Answer a planning question.
+
+    An LLM picks the tool and phrases the answer; the GIS engine produces every
+    figure (PRD §29). Falls back to deterministic routing when Ollama is not
+    running, which answers the same questions in fixed wording.
+    """
+    from app.llm.copilot import ask
+
     ds = _dataset(city)
     if not body.query.strip():
         raise HTTPException(status_code=400, detail="query is required")
-    return copilot_mod.route(ds.city.id, body.query)
+    return ask(ds.city.id, body.query)
+
+
+@router.get("/copilot/status")
+def copilot_status() -> dict:
+    """Whether the LLM is usable, and what to run if not."""
+    from dataclasses import asdict
+
+    from app.llm.ollama import status
+
+    return asdict(status())
 
 
 # --------------------------------------------------------------------------
