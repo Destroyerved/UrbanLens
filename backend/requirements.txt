@@ -1,0 +1,16 @@
+# UrbanLens spatial backend — PRD §41–44
+fastapi>=0.115
+uvicorn[standard]>=0.27
+pydantic>=2.7
+
+# Spatial. GeoPandas is deliberately not required: layers arrive as GeoJSON and
+# shapely + pyproj cover every operation used here, which keeps the install
+# working on machines without GDAL.
+shapely>=2.0
+pyproj>=3.6
+
+# Analysis + ML
+numpy>=1.26
+pandas>=2.2
+scikit-learn>=1.4
+xgboost>=2.0

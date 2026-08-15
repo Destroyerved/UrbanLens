@@ -9,3 +9,8 @@ raw/osm/*_log.txt
 
 # Run logs
 logs/
+# Python
+__pycache__/
+*.pyc
+.venv/
+backend/models/
