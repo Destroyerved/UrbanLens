@@ -4,14 +4,32 @@ import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { OrbitalHeroSection } from "@/components/ui/orbital-hero-section";
 import { MorphingText } from "@/components/ui/morphing-text";
-import { PARCELS } from "@/data/parcels";
+import { apiGet } from "@/lib/api";
 
 /**
- * Headline parcel count, derived rather than written down — it was hard-coded at
- * "135+" while the dataset held far more, and a stat on the landing page should
- * never be able to drift from the data behind it.
+ * Headline parcel count, asked of the engine rather than written down.
+ *
+ * It was hard-coded at "135+", then derived from `PARCELS.length` to stop it
+ * drifting — but the landing page renders before any study area has loaded, so
+ * that read the seeded fallback generator and the number drifted straight back
+ * to 135 while the real areas hold 2,567–4,274. A public stat has to come from
+ * the same place the app's figures do.
  */
-const PARCEL_COUNT_LABEL = `${PARCELS.length.toLocaleString("en-IN")}`;
+function useParcelCount(): string | null {
+  const [label, setLabel] = useState<string | null>(null);
+  useEffect(() => {
+    let alive = true;
+    apiGet<{ total_parcels: number }>("/api/overview")
+      .then((o) => alive && setLabel(o.total_parcels.toLocaleString("en-IN")))
+      .catch(() => {
+        /* Engine down: show the surrounding copy without inventing a figure. */
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+  return label;
+}
 
 // GlobeScene uses WebGL — must be client-only and no SSR
 const GlobeScene = dynamic(() => import("@/components/globe/GlobeScene"), {
@@ -320,7 +338,7 @@ const FEATURES = [
       </svg>
     ),
     title: "GLIS Parcel Intelligence",
-    desc: `Analyse ${PARCEL_COUNT_LABEL} mapped land parcels across Ahmedabad with land-use history, zoning conflicts, and factor scores — all visualised in real-time.`,
+    desc: "Analyse mapped land parcels across Ahmedabad, Gandhinagar and the surrounding metro region — land-use history, zoning conflicts and factor scores, visualised in real-time.",
     color: "from-blue-500/20 to-cyan-500/5",
     border: "border-blue-500/20",
     glow: "shadow-blue-500/10",
@@ -689,6 +707,7 @@ interface LandingPageProps {
 
 export default function LandingPage({ onEnterApp }: LandingPageProps) {
   const narrow = useNarrow();
+  const parcelCount = useParcelCount();
   const [isZoomed, setIsZoomed] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const scroll2Ref = useRef<HTMLDivElement>(null);
@@ -816,14 +835,23 @@ export default function LandingPage({ onEnterApp }: LandingPageProps) {
 
   // Globe click → camera zoom + trigger parent's fullscreen overlay
   const handleGlobeClick = () => {
-    console.log("[LandingPage] Globe clicked");
     setIsZoomed(true);
-    // Small RAF delay lets React paint the zoom state before handing off
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        onEnterApp(); // page.tsx owns the overlay; this just fires the signal
-      });
-    });
+
+    // Hand off to page.tsx, which owns the overlay. The two nested frames let
+    // React paint the zoom state first so the dive starts from the zoomed globe
+    // — but the handoff must not *depend* on a frame arriving. Browsers suspend
+    // requestAnimationFrame in a backgrounded or non-compositing tab, and this
+    // is the only way into the product, so a frame that never comes would
+    // strand the visitor on the landing page with a button that does nothing.
+    // The timer is the guarantee; the frames are only there to make it pretty.
+    let handedOff = false;
+    const handOff = () => {
+      if (handedOff) return;
+      handedOff = true;
+      onEnterApp();
+    };
+    requestAnimationFrame(() => requestAnimationFrame(handOff));
+    setTimeout(handOff, 120);
   };
 
   return (
@@ -916,7 +944,7 @@ export default function LandingPage({ onEnterApp }: LandingPageProps) {
 
               <div className="mt-8 flex gap-6">
                 {[
-                  { val: PARCEL_COUNT_LABEL, label: "Land Parcels" },
+                  { val: parcelCount ?? "—", label: "Land Parcels" },
                   { val: "2030", label: "Growth Forecast" },
                   { val: "15min", label: "City Analyser" },
                 ].map((s) => (

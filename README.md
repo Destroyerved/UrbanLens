@@ -38,17 +38,36 @@ prd.md                The brief everything is measured against
 ## Running it
 
 ```bash
-cd web
-npm install
+npm run setup        # once — installs web deps + Python requirements
 npm run dev          # → http://localhost:3000
 ```
 
-That serves the landing page, the full product UI **and** the API. There is no second process.
+`npm run dev` starts both processes: the Python spatial engine on `:8000` and the Next app on
+`:3000`, with their output interleaved and prefixed. Open <http://localhost:3000>, click the globe
+(or **Get Started**), and you are in the product. No query strings, no second terminal.
+
+The app is useless without the engine — every figure it shows is computed there — which is why one
+command starts both. To run them separately:
 
 ```bash
-curl localhost:3000/api/health?city=ahmedabad
-curl localhost:3000/api/livability?city=ahmedabad-metro
+npm run engine       # python -m uvicorn app.main:app --port 8000
+npm run web          # next dev
 ```
+
+```bash
+curl localhost:8000/api/health?city=ahmedabad
+curl localhost:8000/api/livability?city=ahmedabad-metro
+```
+
+### Optional deep links
+
+Not needed for normal use — they exist so a view can be shared or scripted.
+
+| Link | Opens |
+|---|---|
+| `/?app=1` | Straight into the product, skipping the landing sequence |
+| `/?city=gandhinagar` | A specific study area |
+| `/?mode=infrastructure` | A specific panel |
 
 ---
 
@@ -58,31 +77,32 @@ Four, all on real boundaries. The API takes `?city=` on every route.
 
 | id | Units | Extent | Parcels | Population |
 |---|---|---|---|---|
-| `ahmedabad` | 48 AMC wards | 441 km² | 2,566 | 7.20 M |
-| `gandhinagar` | 11 GMC wards | 196 km² | 732 | 0.35 M |
-| `ahmedabad-gandhinagar` | 59 wards | 637 km² | 3,297 | 7.55 M |
-| `ahmedabad-metro` | 59 wards + 5 talukas | 2,915 km² | 4,273 | 8.65 M |
+| `ahmedabad` | 48 AMC wards | 441 km² | 2,567 | 7.20 M |
+| `gandhinagar` | 11 GMC wards | 196 km² | 734 | 0.35 M |
+| `ahmedabad-gandhinagar` | 59 wards | 637 km² | 3,299 | 7.55 M |
+| `ahmedabad-metro` | 59 wards + 5 talukas | 2,915 km² | 4,274 | 8.65 M |
+
+All four are reachable from the switcher in the top bar.
 
 ---
 
 ## How the UI gets its data
 
-The UI's analysis functions are synchronous and read module-level arrays, so real data is pulled
-in at build time rather than fetched per render. That keeps the map, gap analysis, site search,
-simulator and copilot all running on real boundaries with no async plumbing.
+Every number comes from the Python engine. The UI holds no analysis of its own — the TypeScript
+engine that used to duplicate it was deleted, along with the build-time sync that fed it.
 
-```bash
-cd web
-npm run dev                          # in one terminal
-npm run sync:data                    # in another — writes data/real/*.json
-URBANLENS_CITY=ahmedabad-metro npm run sync:data
-```
+Map layers (parcels, wards, roads, facilities, population grid) are fetched per study area at
+runtime by `web/lib/dataset.ts` and swapped into the layer modules in `web/data/`. That is what
+makes the study-area switcher possible: four areas baked into the bundle would be ~14 MB of
+JavaScript. Switching area re-fetches the layers and re-runs every panel's queries.
 
-`data/*.ts` prefer those files when present and fall back to the seeded generators otherwise, so
-the demo still runs if they are deleted. They are committed, so a fresh clone already has real data.
+The seeded generators in `web/data/*.ts` remain as the offline fallback, so the shell still renders
+with no engine running — but the panels will say the engine is unreachable rather than invent
+figures.
 
-Moving a service from the local analysis engine to the API is a per-service change — the routes are
-already live at the same origin. See the task list in `docs/`.
+Two things are still computed client-side, and neither re-derives any analysis: suitability weight
+sliders re-blend factor scores the engine already returned (only the user's own weighting is
+applied), and land-use transitions pivot the parcel layer already in memory.
 
 ---
 
@@ -139,4 +159,4 @@ pipeline), `frontend-main` and `frontend-landing-globe` (UI, developed as an unr
 - No Python/FastAPI/PostGIS backend (PRD §41–43). Turf.js runs server-side in route handlers.
 - No trained growth model (PRD §44). The 2030 layer is a transparent weighted model.
 - Elevation is modelled, not sampled from a DEM — it feeds flood risk.
-- No automated tests beyond `npm run sanity`.
+- No automated tests beyond `npm run demo`, which walks the PRD §74 story end to end.
