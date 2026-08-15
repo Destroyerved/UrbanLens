@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { OrbitalHeroSection } from "@/components/ui/orbital-hero-section";
-import CopilotChatCard from "@/components/layout/CopilotChatCard";
+import { MorphingText } from "@/components/ui/morphing-text";
 
 // GlobeScene uses WebGL — must be client-only and no SSR
 const GlobeScene = dynamic(() => import("@/components/globe/GlobeScene"), {
@@ -892,22 +892,18 @@ export default function LandingPage({ onEnterApp }: LandingPageProps) {
 
             {/* Left copy */}
             <div className={`${narrow ? "text-center max-w-sm" : "max-w-lg flex-shrink-0"}`}>
-              <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-500/10 px-3.5 py-1.5 text-xs font-medium text-blue-300 backdrop-blur-sm">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-blue-400" />
-                SIH 2026 · PS-SW-001 · Urban Intelligence
-              </div>
-
               <h1 className="text-4xl font-light leading-[1.08] tracking-[-0.03em] text-white md:text-5xl lg:text-[3.5rem]">
                 See Your City
                 <br />
-                <span className="bg-gradient-to-r from-blue-300 via-cyan-300 to-emerald-300 bg-clip-text text-transparent">
-                  Like Never Before
-                </span>
+                <MorphingText
+                  texts={["Mapped.", "Forecasted.", "Simulated.", "Decided."]}
+                  className="text-cyan-400 font-light"
+                />
               </h1>
 
               <p className="mt-5 max-w-sm text-[0.92rem] leading-relaxed text-white/55">
                 UrbanLens is an AI-powered urban planning platform — mapping parcels, forecasting growth,
-                selecting optimal sites and simulating interventions across Ahmedabad in real-time.
+                and simulating interventions for cities across India in real-time.
               </p>
 
               <div className="mt-8 flex gap-6">
@@ -1795,7 +1791,32 @@ export default function LandingPage({ onEnterApp }: LandingPageProps) {
               </button>
             </div>
 
-            <CopilotChatCard />
+            <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-6 backdrop-blur-sm">
+              <div className="mb-4 flex items-center gap-2.5 border-b border-white/8 pb-4">
+                <div className="h-2.5 w-2.5 rounded-full bg-violet-400" />
+                <span className="text-xs font-medium text-white/60">UrbanLens AI Copilot</span>
+              </div>
+              <div className="space-y-4">
+                {[
+                  { role: "user", msg: "Which ward has the worst healthcare gap?" },
+                  { role: "ai", msg: "Ward 7 (Vatwa) has the lowest healthcare score — 1 clinic serving ~18,400 residents. Highlighting it on the map and switching to Infrastructure Gap mode." },
+                  { role: "user", msg: "What's the best site for a new primary health centre?" },
+                  { role: "ai", msg: "Top candidate: Parcel GJ-AHD-0847 in Vatwa. Score 87/100 — high accessibility, vacant land, within 500m of the underserved population centroid." },
+                ].map((item, i) => (
+                  <div key={i} className={`flex ${item.role === "user" ? "justify-end" : "justify-start"}`}>
+                    <div className={`max-w-[85%] rounded-xl px-4 py-2.5 text-xs leading-relaxed ${item.role === "user" ? "bg-violet-600/20 text-violet-100" : "border border-white/8 bg-white/5 text-white/60"}`}>
+                      {item.msg}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-4 flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2">
+                <span className="flex-1 text-xs text-white/25">Ask about your city…</span>
+                <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 text-violet-400">
+                  <path d="M3.105 2.289a.75.75 0 0 0-.826.95l1.414 4.925A1.5 1.5 0 0 0 5.135 9.25h6.115a.75.75 0 0 1 0 1.5H5.135a1.5 1.5 0 0 0-1.442 1.086l-1.414 4.926a.75.75 0 0 0 .826.95 28.896 28.896 0 0 0 15.293-7.154.75.75 0 0 0 0-1.115A28.897 28.897 0 0 0 3.105 2.289Z"/>
+                </svg>
+              </div>
+            </div>
           </div>
         </div>
 
