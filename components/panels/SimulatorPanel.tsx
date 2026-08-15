@@ -16,7 +16,6 @@ import {
 } from "lucide-react";
 import { PanelShell, Section, EmptyBlock } from "./PanelShell";
 import { AnimatedNumber } from "@/components/shared/AnimatedNumber";
-import { GlowCard } from "@/components/ui/spotlight-card";
 import { useApp } from "@/lib/store";
 import { PARCEL_BY_ID } from "@/data/parcels";
 import { WARD_BY_ID } from "@/data/wards";
@@ -55,12 +54,7 @@ function BeforeAfter({
 }) {
   const improved = invert ? after < before : after > before;
   return (
-    <GlowCard
-      glowColor={improved ? "rgba(34, 197, 94, 0.05)" : "rgba(245, 158, 11, 0.05)"}
-      borderGlowColor={improved ? "rgba(34, 197, 94, 0.45)" : "rgba(245, 158, 11, 0.45)"}
-      className="p-3.5 shadow-sm"
-      interactive={false}
-    >
+    <div className="glass-card rounded-2xl p-3.5 shadow-sm">
       <div className="label-caps mb-2 font-bold">{label}</div>
       <div className="flex items-center justify-between">
         <div className="text-center">
@@ -79,7 +73,7 @@ function BeforeAfter({
           <div className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground/80">After</div>
         </div>
       </div>
-    </GlowCard>
+    </div>
   );
 }
 
@@ -112,11 +106,9 @@ export default function SimulatorPanel() {
           {SIM_TYPES.map((t) => (
             <button
               key={t.id}
-              type="button"
-              data-glow
               onClick={() => setSimProject(t.id)}
               className={cn(
-                "glass-glow-card flex flex-col items-center gap-1 rounded-2xl px-1 py-2.5 transition-all hover:scale-[1.02] active:scale-95 cursor-pointer",
+                "glass-card flex flex-col items-center gap-1 rounded-2xl px-1 py-2.5 transition-all hover:scale-[1.02] active:scale-95",
                 simProject === t.id
                   ? "border-gov/80 bg-gov/20 text-gov ring-1 ring-gov/50 font-semibold"
                   : "text-muted-foreground hover:border-gov/40 hover:text-foreground"
@@ -131,7 +123,7 @@ export default function SimulatorPanel() {
 
       <Section label="2 · Target Parcel">
         {target ? (
-          <div data-glow className="glass-glow-card flex items-center justify-between rounded-2xl border-gov/50 bg-gov/15 px-3.5 py-3 shadow-sm">
+          <div className="glass-card flex items-center justify-between rounded-2xl border-gov/50 bg-gov/15 px-3.5 py-3 shadow-sm">
             <div>
               <div className="num text-[13px] font-bold text-foreground">{target.id}</div>
               <div className="text-[10.5px] text-muted-foreground">
@@ -140,10 +132,8 @@ export default function SimulatorPanel() {
               </div>
             </div>
             <button
-              type="button"
-              data-glow
               onClick={() => flyTo(target.centroid, 13.5)}
-              className="glass-glow-card rounded-xl px-2.5 py-1 text-[10.5px] font-semibold transition-transform hover:scale-105 active:scale-95 cursor-pointer"
+              className="glass rounded-xl px-2.5 py-1 text-[10.5px] font-semibold transition-transform hover:scale-105 active:scale-95"
             >
               View
             </button>
@@ -157,29 +147,23 @@ export default function SimulatorPanel() {
             <div className="flex gap-1.5">
               {selectedParcelId && (
                 <button
-                  type="button"
-                  data-glow
                   onClick={() => setSimTarget(selectedParcelId)}
-                  className="glass-glow-card h-8 flex-1 rounded-xl text-[11.5px] font-semibold transition-transform hover:scale-[1.02] active:scale-95 cursor-pointer"
+                  className="glass h-8 flex-1 rounded-xl text-[11.5px] font-semibold transition-transform hover:scale-[1.02] active:scale-95"
                 >
                   Use selected parcel
                 </button>
               )}
               {topCandidate ? (
                 <button
-                  type="button"
-                  data-glow
                   onClick={() => setSimTarget(topCandidate.parcelId)}
-                  className="glass-glow-card h-8 flex-1 rounded-xl bg-accent/20 text-[11.5px] font-bold text-accent ring-1 ring-accent/40 transition-transform hover:scale-[1.02] active:scale-95 cursor-pointer"
+                  className="glass h-8 flex-1 rounded-xl bg-accent/20 text-[11.5px] font-bold text-accent ring-1 ring-accent/40 transition-transform hover:scale-[1.02] active:scale-95"
                 >
                   Use #1 site · {topCandidate.parcelId}
                 </button>
               ) : (
                 <button
-                  type="button"
-                  data-glow
                   onClick={() => setMode("sites")}
-                  className="glass-glow-card h-8 flex-1 rounded-xl text-[11.5px] font-semibold transition-transform hover:scale-[1.02] active:scale-95 cursor-pointer"
+                  className="glass h-8 flex-1 rounded-xl text-[11.5px] font-semibold transition-transform hover:scale-[1.02] active:scale-95"
                 >
                   Run Site Selection first
                 </button>
@@ -191,10 +175,9 @@ export default function SimulatorPanel() {
 
       <Section label="3 · Simulate">
         <button
-          data-glow
           onClick={() => void runSim()}
           disabled={!target || simPhase === "running"}
-          className="glass-glow-card flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-gov text-[13px] font-bold text-white shadow-md shadow-gov/25 ring-1 ring-gov/60 transition-all hover:scale-[1.01] hover:brightness-110 active:scale-[0.98] disabled:opacity-50 cursor-pointer"
+          className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-gov text-[13px] font-bold text-white shadow-md shadow-gov/25 ring-1 ring-gov/60 transition-all hover:scale-[1.01] hover:brightness-110 active:scale-[0.98] disabled:opacity-50 cursor-pointer"
         >
           {simPhase === "running" ? (
             <>
@@ -217,7 +200,7 @@ export default function SimulatorPanel() {
               exit={{ opacity: 0, height: 0 }}
               className="overflow-hidden"
             >
-              <div data-glow className="glass-glow-card mt-2.5 space-y-1.5 rounded-2xl p-3.5 shadow-sm">
+              <div className="glass-card mt-2.5 space-y-1.5 rounded-2xl p-3.5 shadow-sm">
                 {STEPS.map((s, i) => (
                   <div
                     key={s}
@@ -257,19 +240,14 @@ export default function SimulatorPanel() {
                   after={simResult.corridorAfter.coveragePct}
                   unit="%"
                 />
-                <GlowCard
-                  glowColor="rgba(34, 197, 94, 0.06)"
-                  borderGlowColor="rgba(34, 197, 94, 0.5)"
-                  className="border-good/50 bg-good/15 p-3.5 text-center shadow-sm"
-                  interactive={false}
-                >
+                <div className="glass-card rounded-2xl border-good/50 bg-good/15 p-3.5 text-center shadow-sm">
                   <div className="num text-[25px] font-bold text-good">
                     +<AnimatedNumber value={simResult.newlyCovered} format={formatCompact} duration={1400} />
                   </div>
                   <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                     Residents newly within service reach
                   </div>
-                </GlowCard>
+                </div>
                 <BeforeAfter
                   label="Avg distance to service · corridor"
                   before={simResult.corridorBefore.avgDistKm}
@@ -290,29 +268,22 @@ export default function SimulatorPanel() {
                     after={simResult.livabilityAfter}
                   />
                 </div>
-                <GlowCard
-                  glowColor="rgba(56, 189, 248, 0.03)"
-                  borderGlowColor="rgba(56, 189, 248, 0.35)"
-                  className="p-3.5 text-[11px] leading-relaxed text-muted-foreground shadow-sm"
-                  interactive={false}
-                >
+                <div className="glass-card rounded-2xl p-3.5 text-[11px] leading-relaxed text-muted-foreground shadow-sm">
                   Citywide {simResult.projectType} coverage moves{" "}
                   <span className="num font-bold text-foreground">{simResult.before.coveragePct}% → {simResult.after.coveragePct}%</span>{" "}
                   with a {simResult.serviceRadiusKm} km service radius. All figures are recomputed
                   from the population grid — not preset numbers.
-                </GlowCard>
+                </div>
                 <div className="flex gap-2">
                   <button
-                    type="button"
                     onClick={resetSim}
-                    className="glass flex h-8 flex-1 items-center justify-center gap-1.5 rounded-xl text-[11.5px] font-semibold transition-transform hover:scale-[1.02] active:scale-95 cursor-pointer"
+                    className="glass flex h-8 flex-1 items-center justify-center gap-1.5 rounded-xl text-[11.5px] font-semibold transition-transform hover:scale-[1.02] active:scale-95"
                   >
                     <RotateCcw size={12} /> Reset
                   </button>
                   <button
-                    type="button"
                     onClick={() => setCopilotOpen(true)}
-                    className="glass flex h-8 flex-1 items-center justify-center gap-1.5 rounded-xl bg-accent/20 text-[11.5px] font-bold text-accent ring-1 ring-accent/40 transition-transform hover:scale-[1.02] active:scale-95 cursor-pointer"
+                    className="glass flex h-8 flex-1 items-center justify-center gap-1.5 rounded-xl bg-accent/20 text-[11.5px] font-bold text-accent ring-1 ring-accent/40 transition-transform hover:scale-[1.02] active:scale-95"
                   >
                     <Sparkles size={12} /> Ask why this site
                   </button>

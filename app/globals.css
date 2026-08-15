@@ -334,12 +334,16 @@ button,
   outline: none;
 }
 
-.maplibregl-ctrl-attrib,
-.maplibregl-ctrl-bottom-right,
-.maplibregl-compact {
-  display: none !important;
-  visibility: hidden !important;
-  pointer-events: none !important;
+.maplibregl-ctrl-attrib {
+  background: var(--glass-bg) !important;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border-radius: 8px 0 0 0;
+  font-size: 10px;
+  box-shadow: var(--glass-inset-1);
+}
+.maplibregl-ctrl-attrib a {
+  color: hsl(var(--muted-foreground)) !important;
 }
 
 /* Candidate rank markers */
@@ -418,78 +422,4 @@ button,
   pointer-events: none;
   z-index: var(--z-panel);
   transform: translate(-50%, calc(-100% - 14px));
-}
-
-/* ======================== Specular Glass Border Glow ======================= */
-
-:root {
-  --x: -5000;
-  --y: -5000;
-  --xp: 0.5;
-  --yp: 0.5;
-  --border-size: 1.5px;
-  --spotlight-size: 260px;
-}
-
-[data-glow],
-.glass-glow-card {
-  position: relative;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  transition: border-color 0.3s ease, box-shadow 0.3s ease;
-}
-
-.dark [data-glow],
-.dark .glass-glow-card {
-  border: 1px solid rgba(255, 255, 255, 0.14);
-}
-
-[data-glow]::before,
-[data-glow]::after,
-.glass-glow-card::before,
-.glass-glow-card::after {
-  pointer-events: none;
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background-attachment: fixed;
-  background-size: 100vw 100vh;
-  background-repeat: no-repeat;
-  background-position: 0 0;
-  padding: 1.5px;
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  mask-composite: exclude;
-  z-index: 30;
-  transition: opacity 0.2s ease;
-}
-
-/* Bright, vibrant colored specular hue ONLY directly where the cursor moves */
-[data-glow]::before,
-.glass-glow-card::before {
-  background-image: radial-gradient(
-    calc(var(--spotlight-size, 260px) * 0.75) calc(var(--spotlight-size, 260px) * 0.75) at
-    calc(var(--x, -5000) * 1px)
-    calc(var(--y, -5000) * 1px),
-    hsla(var(--hue, 195) 100% 65% / 0.95) 0%,
-    hsla(var(--hue, 195) 100% 65% / 0.35) 50%,
-    transparent 100%
-  );
-  filter: brightness(1.6) drop-shadow(0 0 6px hsla(var(--hue, 195) 100% 65% / 0.7));
-  opacity: 0.95;
-}
-
-/* Ultra-crisp diamond-white specular apex highlight ONLY directly at the cursor point */
-[data-glow]::after,
-.glass-glow-card::after {
-  background-image: radial-gradient(
-    calc(var(--spotlight-size, 260px) * 0.4) calc(var(--spotlight-size, 260px) * 0.4) at
-    calc(var(--x, -5000) * 1px)
-    calc(var(--y, -5000) * 1px),
-    rgba(255, 255, 255, 0.98) 0%,
-    rgba(255, 255, 255, 0.4) 40%,
-    transparent 100%
-  );
-  opacity: 1;
 }

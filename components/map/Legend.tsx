@@ -74,7 +74,7 @@ export default function Legend() {
     return null;
 
   return (
-    <div data-glow className="glass max-w-[270px] rounded-3xl p-3.5 shadow-elev-2">
+    <div className="glass max-w-[270px] rounded-3xl p-3.5 shadow-elev-2">
       {showPopHeat && (
         <HeatmapLegendBar
           title="Population Density Heatmap"

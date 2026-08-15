@@ -14,7 +14,6 @@ import {
 import { PanelShell, Section } from "./PanelShell";
 import { Switch } from "@/components/ui/switch";
 import { AnimatedNumber } from "@/components/shared/AnimatedNumber";
-import { GlowCard } from "@/components/ui/spotlight-card";
 import { useApp } from "@/lib/store";
 import { fetchGrowthSummary, fetchTransitions, fetchGrowthExplanation } from "@/services/growth";
 import { LANDUSE_COLORS } from "@/lib/mapdata";
@@ -68,17 +67,16 @@ export default function GrowthPanel() {
           {YEARS.map((y) => (
             <button
               key={y}
-              type="button"
               onClick={() => setYear(y)}
               className={cn(
-                "relative z-10 h-9 rounded-xl text-[13px] font-semibold transition-all num cursor-pointer",
+                "relative z-10 h-9 rounded-xl text-[13px] font-semibold transition-all num",
                 year === y ? "text-accent-foreground" : "text-muted-foreground hover:text-foreground"
               )}
             >
               {year === y && (
                 <motion.span
                   layoutId="year-pill"
-                  className="pointer-events-none absolute inset-0 -z-10 rounded-xl bg-accent shadow-md shadow-accent/30"
+                  className="absolute inset-0 -z-10 rounded-xl bg-accent shadow-md shadow-accent/30"
                   transition={{ type: "spring", stiffness: 500, damping: 40 }}
                 />
               )}
@@ -106,12 +104,7 @@ export default function GrowthPanel() {
             </span>
           }
         >
-          <GlowCard
-            glowColor="rgba(56, 189, 248, 0.2)"
-            borderGlowColor="rgba(56, 189, 248, 0.5)"
-            className="h-[115px] p-2.5 shadow-sm"
-            interactive={false}
-          >
+          <div className="glass-card h-[115px] rounded-2xl p-2.5 shadow-sm">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData} margin={{ top: 6, right: 6, bottom: 0, left: -18 }}>
                 <defs>
@@ -151,7 +144,7 @@ export default function GrowthPanel() {
                 />
               </AreaChart>
             </ResponsiveContainer>
-          </GlowCard>
+          </div>
         </Section>
       )}
 
@@ -164,12 +157,12 @@ export default function GrowthPanel() {
         ) : (
           <div className="space-y-1.5">
             {transitions.map((t, i) => (
-              <GlowCard
+              <motion.div
                 key={`${t.from}-${t.to}`}
-                glowColor="rgba(245, 158, 11, 0.2)"
-                borderGlowColor="rgba(245, 158, 11, 0.5)"
-                className="flex items-center gap-2 rounded-xl px-3 py-2"
-                interactive={true}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.06 }}
+                className="glass-card flex items-center gap-2 rounded-xl px-3 py-2"
               >
                 <span className="h-2.5 w-2.5 rounded-[4px] ring-1 ring-black/15 dark:ring-white/20" style={{ background: LANDUSE_COLORS[t.from] }} />
                 <span className="text-[11.5px] font-medium capitalize">{t.from}</span>
@@ -179,7 +172,7 @@ export default function GrowthPanel() {
                 <span className="num ml-auto text-[11.5px] font-bold text-warning">
                   +{t.areaHa} ha
                 </span>
-              </GlowCard>
+              </motion.div>
             ))}
           </div>
         )}
@@ -187,12 +180,7 @@ export default function GrowthPanel() {
 
       {/* 2030 prediction */}
       <Section label="2030 Growth Probability">
-        <GlowCard
-          glowColor="rgba(56, 189, 248, 0.2)"
-          borderGlowColor="rgba(56, 189, 248, 0.5)"
-          className="p-3.5 shadow-sm"
-          interactive={false}
-        >
+        <div className="glass-card rounded-2xl p-3.5 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
               <div className="text-[12.5px] font-semibold text-foreground">Prediction overlay</div>
@@ -210,12 +198,11 @@ export default function GrowthPanel() {
             >
               <div className="mt-3 border-t border-border/70 pt-2.5">
                 <button
-                  type="button"
                   onClick={() => {
                     highlightWards(["w-gota", "w-chandkheda"]);
                     flyTo([72.52, 23.1], 12);
                   }}
-                  className="mb-2 flex items-center gap-1.5 text-[11.5px] font-semibold text-accent hover:underline cursor-pointer"
+                  className="mb-2 flex items-center gap-1.5 text-[11.5px] font-semibold text-accent hover:underline"
                 >
                   <TrendingUp size={12} /> Why is the NW corridor predicted to grow?
                 </button>
@@ -230,11 +217,10 @@ export default function GrowthPanel() {
               </div>
             </motion.div>
           )}
-        </GlowCard>
+        </div>
       </Section>
 
       <button
-        type="button"
         onClick={() => setMode("infrastructure")}
         className="group flex w-full items-center justify-center gap-1.5 rounded-2xl bg-accent/15 py-2.5 text-[12px] font-semibold text-accent ring-1 ring-accent/30 shadow-sm transition-all hover:bg-accent/25 hover:scale-[1.01] active:scale-95 cursor-pointer"
       >

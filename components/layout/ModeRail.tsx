@@ -15,6 +15,7 @@ import type { Mode } from "@/types";
 import { MODE_META } from "@/config/layers";
 import { useApp } from "@/lib/store";
 import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const MODES: { id: Mode; label: string; icon: LucideIcon }[] = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
@@ -31,135 +32,96 @@ export default function ModeRail() {
   const [hovered, setHovered] = useState<number | null>(null);
 
   return (
-    <div className="flex items-center justify-center select-none">
-      <div
-        data-glow
-        onMouseLeave={() => setHovered(null)}
-        className="glass-strong pointer-events-auto relative flex flex-col gap-1.5 rounded-[28px] p-2 shadow-elev-3 backdrop-blur-2xl"
+    <div className="flex items-center justify-center">
+      <motion.div
+        animate={{ y: [0, -3, 0] }}
+        transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
+        className="glass pointer-events-auto flex flex-col gap-2 rounded-3xl p-2 shadow-elev-3"
+        style={{
+          transform: "perspective(800px) rotateY(3deg)",
+        }}
       >
-        {MODES.map((m, i) => {
-          const active = mode === m.id;
-          const isHovered = hovered === i;
-          const Icon = m.icon;
+        <TooltipProvider delayDuration={100}>
+          {MODES.map((m, i) => {
+            const active = mode === m.id;
+            const isHovered = hovered === i;
+            const Icon = m.icon;
 
-          return (
-            <motion.div
-              key={m.id}
-              animate={{
-                scale: isHovered ? 1.06 : 1,
-                rotate: isHovered && !active ? -1.5 : 0,
-              }}
-              transition={{
-                scale: { type: "spring", stiffness: 350, damping: 20 },
-                rotate: { type: "spring", stiffness: 350, damping: 20 },
-              }}
-              className="relative"
-            >
-              <button
-                type="button"
-                onClick={() => setMode(m.id)}
-                onMouseEnter={() => setHovered(i)}
-                onMouseLeave={() => setHovered(null)}
-                onFocus={() => setHovered(i)}
-                onBlur={() => setHovered(null)}
-                aria-label={MODE_META[m.id].label}
-                className={cn(
-                  "group relative flex h-[54px] w-[56px] flex-col items-center justify-center gap-1 rounded-2xl px-0.5 transition-colors cursor-pointer outline-none active:scale-[0.94]",
-                  active
-                    ? "text-accent-foreground font-bold"
-                    : "text-foreground/75 hover:text-foreground"
-                )}
-              >
-                {/* 1. Active Mode Pill Indicator */}
-                {active && (
-                  <motion.span
-                    layoutId="mode-rail-active-pill"
-                    className="pointer-events-none absolute inset-0 rounded-2xl bg-accent shadow-[0_0_18px_rgba(56,189,248,0.5)] ring-1 ring-accent/60"
-                    transition={{ type: "spring", stiffness: 450, damping: 32 }}
-                  />
-                )}
-
-                {/* 2. Hover Glowing Ring Effect (Exact Basemap style) */}
-                <AnimatePresence>
-                  {isHovered && !active && (
-                    <motion.span
-                      initial={{ opacity: 0, scale: 0.94 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.94 }}
-                      transition={{ duration: 0.15 }}
-                      className="pointer-events-none absolute inset-0 rounded-2xl border border-accent/50 bg-accent/15 shadow-[0_0_14px_rgba(56,189,248,0.3)]"
-                    />
-                  )}
-                </AnimatePresence>
-
-                {/* Icon */}
-                <span className="pointer-events-none relative z-10">
-                  <Icon
-                    size={18}
-                    className={cn(
-                      "transition-colors",
-                      active
-                        ? "text-accent-foreground"
-                        : isHovered
-                          ? "text-accent"
-                          : "text-foreground/80"
-                    )}
-                  />
-                </span>
-
-                {/* Label text */}
-                <span
-                  className={cn(
-                    "pointer-events-none relative z-10 text-[8.5px] font-bold uppercase tracking-tight leading-none text-center transition-colors",
-                    active
-                      ? "text-accent-foreground"
-                      : isHovered
-                        ? "text-foreground font-bold"
-                        : "text-foreground/70 font-semibold"
-                  )}
-                >
-                  {m.label}
-                </span>
-
-                {/* Active Dot indicator on the right edge */}
-                {active && (
-                  <motion.span
-                    layoutId="mode-rail-active-dot"
-                    className="pointer-events-none absolute -right-1 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-accent ring-2 ring-white dark:ring-slate-900 shadow-[0_0_8px_rgba(56,189,248,0.9)] z-20"
-                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                  />
-                )}
-              </button>
-
-              {/* 3. Floating Tooltip Pill */}
-              <AnimatePresence>
-                {isHovered && (
+            return (
+              <Tooltip key={m.id}>
+                <TooltipTrigger asChild>
                   <motion.div
-                    initial={{ opacity: 0, x: -8, scale: 0.92 }}
-                    animate={{ opacity: 1, x: 0, scale: 1 }}
-                    exit={{ opacity: 0, x: -6, scale: 0.94 }}
-                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                    className="pointer-events-none absolute left-[68px] top-1/2 -translate-y-1/2 z-[50] flex flex-col whitespace-nowrap rounded-xl bg-slate-950/90 dark:bg-slate-900/95 px-3 py-1.5 shadow-elev-3 backdrop-blur-xl border border-white/15"
+                    onMouseEnter={() => setHovered(i)}
+                    onMouseLeave={() => setHovered(null)}
+                    animate={{
+                      scale: isHovered ? 1.15 : 1,
+                      x: isHovered ? 3 : 0,
+                      rotate: isHovered && !active ? -3 : 0,
+                    }}
+                    transition={{ type: "spring", stiffness: 350, damping: 20 }}
+                    className="relative flex flex-col items-center"
                   >
-                    <div className="flex items-center gap-1.5 text-[12px] font-bold text-white">
-                      <span>{MODE_META[m.id].label}</span>
-                      {active && (
-                        <span className="h-1.5 w-1.5 rounded-full bg-accent animate-pulse shadow-[0_0_6px_rgba(56,189,248,0.9)]" />
+                    <button
+                      onClick={() => setMode(m.id)}
+                      aria-label={MODE_META[m.id].label}
+                      className={cn(
+                        "relative flex h-[54px] w-[56px] flex-col items-center justify-center gap-1 rounded-2xl px-0.5 transition-all active:scale-95",
+                        active
+                          ? "text-accent-foreground font-bold"
+                          : "text-foreground/80 hover:text-foreground",
+                        isHovered && "shadow-lg shadow-accent/20"
                       )}
-                    </div>
-                    <div className="text-[10px] text-slate-400 font-medium leading-tight">
-                      {MODE_META[m.id].caption}
-                    </div>
+                    >
+                      {/* Active Mode Pill Indicator */}
+                      {active && (
+                        <motion.span
+                          layoutId="mode-pill"
+                          className="absolute inset-0 rounded-2xl bg-accent shadow-md shadow-accent/40 ring-1 ring-accent/60"
+                          transition={{ type: "spring", stiffness: 450, damping: 32 }}
+                        />
+                      )}
 
-                    {/* Left arrow nub */}
-                    <div className="absolute -left-1 top-1/2 -translate-y-1/2 h-2 w-2 rotate-45 bg-slate-950/90 dark:bg-slate-900/95 border-l border-b border-white/15" />
+                      {/* Hover Glowing Ring Effect */}
+                      <AnimatePresence>
+                        {isHovered && !active && (
+                          <motion.span
+                            layoutId="rail-hover-glow"
+                            className="absolute inset-0 rounded-2xl border border-accent/60 bg-accent/20 shadow-[0_0_16px_rgba(56,189,248,0.35)] -z-0"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ type: "spring", stiffness: 350, damping: 25 }}
+                          />
+                        )}
+                      </AnimatePresence>
+
+                      <span className="relative z-10">
+                        <Icon size={18} className="transition-colors" />
+                      </span>
+                      <span className="relative z-10 text-[8.5px] font-bold uppercase tracking-tight leading-none text-center">
+                        {m.label}
+                      </span>
+
+                      {/* Active Dot indicator on the right edge */}
+                      {active && (
+                        <motion.div
+                          layoutId="active-dot"
+                          className="absolute -right-1 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-accent ring-2 ring-white dark:ring-slate-900 shadow-[0_0_8px_rgba(56,189,248,0.9)] z-20"
+                          transition={{ type: "spring", stiffness: 450, damping: 30 }}
+                        />
+                      )}
+                    </button>
                   </motion.div>
-                )}
-              </AnimatePresence>
-            </motion.div>
-          );
-        })}
-      </div>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="shadow-elev-2" sideOffset={8}>
+                  <div className="text-[12px] font-bold">{MODE_META[m.id].label}</div>
+                  <div className="text-[10.5px] text-muted-foreground">{MODE_META[m.id].caption}</div>
+                </TooltipContent>
+              </Tooltip>
+            );
+          })}
+        </TooltipProvider>
+      </motion.div>
     </div>
   );
 }

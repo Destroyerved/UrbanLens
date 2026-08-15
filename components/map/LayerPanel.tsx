@@ -59,15 +59,7 @@ export default function LayerPanel({ open }: { open: boolean }) {
           animate={{ opacity: 1, x: 0, scale: 1 }}
           exit={{ opacity: 0, x: 12, scale: 0.96 }}
           transition={{ type: "spring", damping: 26, stiffness: 380, mass: 0.5 }}
-          data-glow
-          style={{
-            "--base": 195,
-            "--spread": 50,
-            "--radius": 24,
-            "--border-size": "1.5px",
-            "--spotlight-size": "300px",
-          } as React.CSSProperties}
-          className="glass-strong relative w-[280px] rounded-3xl p-3.5 shadow-elev-3 backdrop-blur-2xl transition-all duration-300"
+          className="glass-strong w-[280px] rounded-3xl p-3.5 shadow-elev-3"
         >
           {/* Header */}
           <div className="mb-3 flex items-center justify-between">

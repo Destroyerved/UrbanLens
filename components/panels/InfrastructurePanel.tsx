@@ -5,7 +5,6 @@ import { motion } from "framer-motion";
 import { ArrowRight, Check, Crosshair, X } from "lucide-react";
 import { PanelShell, Section, LoadingBlock } from "./PanelShell";
 import { MiniScore } from "@/components/shared/ScoreBar";
-import { GlowCard } from "@/components/ui/spotlight-card";
 import { useApp } from "@/lib/store";
 import { fetchWardGaps, analyzeAccessibility } from "@/services/infrastructure";
 import { WARD_BY_ID } from "@/data/wards";
@@ -60,10 +59,9 @@ export default function InfrastructurePanel() {
           {CATEGORIES.map((c) => (
             <button
               key={c.id}
-              type="button"
               onClick={() => setGapCategory(c.id)}
               className={cn(
-                "relative h-7 rounded-xl text-[10.5px] font-semibold transition-all cursor-pointer",
+                "relative h-7 rounded-xl text-[10.5px] font-semibold transition-all",
                 gapCategory === c.id
                   ? "text-accent-foreground"
                   : "text-muted-foreground hover:text-foreground"
@@ -72,7 +70,7 @@ export default function InfrastructurePanel() {
               {gapCategory === c.id && (
                 <motion.span
                   layoutId="gap-pill"
-                  className="pointer-events-none absolute inset-0 -z-0 rounded-xl bg-accent shadow-md shadow-accent/30"
+                  className="absolute inset-0 -z-0 rounded-xl bg-accent shadow-md shadow-accent/30"
                   transition={{ type: "spring", stiffness: 500, damping: 40 }}
                 />
               )}
@@ -91,20 +89,18 @@ export default function InfrastructurePanel() {
               const score = g.scores[gapCategory];
               const active = highlightedWardIds.includes(g.wardId);
               return (
-                <GlowCard
+                <button
                   key={g.wardId}
                   onClick={() => {
                     highlightWards([g.wardId]);
                     const w = WARD_BY_ID.get(g.wardId);
                     if (w) flyTo(w.centroid, 12.1);
                   }}
-                  glowColor={score < 40 ? "rgba(239, 68, 68, 0.05)" : "rgba(56, 189, 248, 0.05)"}
-                  borderGlowColor={score < 40 ? "rgba(239, 68, 68, 0.45)" : "rgba(56, 189, 248, 0.45)"}
                   className={cn(
-                    "w-full px-3 py-2.5 text-left",
+                    "glass-card w-full rounded-2xl px-3 py-2.5 text-left transition-all hover:scale-[1.01]",
                     active
                       ? "border-accent/60 bg-accent/15 ring-1 ring-accent/40"
-                      : ""
+                      : "hover:border-accent/40"
                   )}
                 >
                   <div className="mb-1.5 flex items-baseline justify-between">
@@ -119,7 +115,7 @@ export default function InfrastructurePanel() {
                       {formatCompact(g.affectedPopulation)} beyond 3.5 km of a hospital
                     </div>
                   )}
-                </GlowCard>
+                </button>
               );
             })}
           </div>
@@ -139,12 +135,7 @@ export default function InfrastructurePanel() {
             15-minute accessibility at that point.
           </div>
         ) : (
-          <GlowCard
-            glowColor="rgba(34, 197, 94, 0.05)"
-            borderGlowColor="rgba(34, 197, 94, 0.45)"
-            className="p-3.5 shadow-sm"
-            interactive={false}
-          >
+          <div className="glass-card rounded-2xl p-3.5 shadow-sm">
             <div className="space-y-1.5">
               {access.items.map((it) => (
                 <div key={it.label} className="flex items-center justify-between text-[12px]">
@@ -167,12 +158,11 @@ export default function InfrastructurePanel() {
                 <span className="text-[11px] font-normal text-muted-foreground"> / 100</span>
               </span>
             </div>
-          </GlowCard>
+          </div>
         )}
       </Section>
 
       <button
-        type="button"
         onClick={() => setMode("sites")}
         className="group flex w-full items-center justify-center gap-1.5 rounded-2xl bg-accent/15 py-2.5 text-[12px] font-semibold text-accent ring-1 ring-accent/30 shadow-sm transition-all hover:bg-accent/25 hover:scale-[1.01] active:scale-95 cursor-pointer"
       >

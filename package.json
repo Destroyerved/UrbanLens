@@ -11,10 +11,10 @@
     "sanity": "tsx scripts/sanity.ts"
   },
   "dependencies": {
-    "@paper-design/shaders": "^0.0.80",
     "@radix-ui/react-slider": "^1.2.0",
     "@radix-ui/react-switch": "^1.1.0",
     "@radix-ui/react-tooltip": "^1.1.2",
+    "@react-three/fiber": "^8.17.10",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "cmdk": "^1.0.0",
@@ -28,12 +28,14 @@
     "recharts": "^2.13.0",
     "sonner": "^1.5.0",
     "tailwind-merge": "^2.5.4",
+    "three": "^0.185.1",
     "zustand": "^4.5.5"
   },
   "devDependencies": {
     "@types/node": "^20.16.11",
     "@types/react": "^18.3.11",
     "@types/react-dom": "^18.3.1",
+    "@types/three": "^0.185.4",
     "autoprefixer": "^10.4.20",
     "eslint": "^8.57.1",
     "eslint-config-next": "14.2.15",
