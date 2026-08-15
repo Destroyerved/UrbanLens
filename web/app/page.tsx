@@ -24,6 +24,15 @@ export default function Home() {
 
   useEffect(() => {
     setMounted(true);
+    // Direct entry: `/?app=1` skips the landing sequence and opens the product
+    // straight away. The normal path hands off through requestAnimationFrame,
+    // which browsers suspend in a backgrounded tab — so without this the app can
+    // be unreachable in exactly the situations where you most need it: a demo
+    // machine that lost focus, an automated check, a deploy smoke test.
+    if (typeof window !== "undefined" && new URLSearchParams(window.location.search).has("app")) {
+      setShowApp(true);
+      setPhase("done");
+    }
   }, []);
 
   // ── ANIMATION DRIVER ──────────────────────────────────────────────────────

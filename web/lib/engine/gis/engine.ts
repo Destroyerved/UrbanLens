@@ -1,7 +1,12 @@
 import * as turf from "@turf/turf";
 import { getCityConfig } from "@/lib/engine/data/store";
 import { DEFAULT_CORRIDORS } from "@/lib/engine/config";
-import { populationWithinKm, densityAt, populationSamples } from "@/lib/engine/gis/population";
+import {
+  populationWithinKm,
+  densityAt,
+  populationSamples,
+  getPopulationGrid,
+} from "@/lib/engine/gis/population";
 import {
   buildPointIndex,
   nearestInIndex,
@@ -245,18 +250,121 @@ function landCompatibility(parcel: Parcel, spec: ProjectSpec): number {
   return clamp(0.32 * zoningMatch + 0.25 * ownership + 0.23 * areaScore + 0.2 * useScore);
 }
 
+/**
+ * Per-cell distance to the nearest facility of a type, over the population
+ * raster. Computed once per type (one nearest-neighbour query per cell) and
+ * cached, which makes "how many people here are *not* already served?" a cheap
+ * windowed sum rather than a per-parcel scan of every facility.
+ */
+const gCov = globalThis as unknown as {
+  __urbanlens_cov__?: Map<string, Map<FacilityType, Float64Array>>;
+};
+const covCache: Map<string, Map<FacilityType, Float64Array>> = gCov.__urbanlens_cov__ ?? new Map();
+gCov.__urbanlens_cov__ = covCache;
+
+function facilityDistanceField(dataset: CityDataset, type: FacilityType): Float64Array {
+  let perCity = covCache.get(dataset.cityId);
+  if (!perCity) {
+    perCity = new Map();
+    covCache.set(dataset.cityId, perCity);
+  }
+  const hit = perCity.get(type);
+  if (hit) return hit;
+
+  const grid = getPopulationGrid(dataset);
+  const field = new Float64Array(grid.cols * grid.rows).fill(Infinity);
+  for (let r = 0; r < grid.rows; r++) {
+    const lat = grid.minLat + (r + 0.5) * grid.cellLat;
+    for (let c = 0; c < grid.cols; c++) {
+      const i = r * grid.cols + c;
+      if (grid.pop[i] === 0) continue; // only populated cells matter
+      const lng = grid.minLng + (c + 0.5) * grid.cellLng;
+      field[i] = nearestByType(dataset, [lng, lat], type).km;
+    }
+  }
+  perCity.set(type, field);
+  return field;
+}
+
+/**
+ * People within `radiusKm` of a point who are NOT already within
+ * `serviceRadiusKm` of an existing facility of this type — i.e. the population a
+ * new facility here would actually start serving.
+ */
+export function unservedPopulationWithinKm(
+  dataset: CityDataset,
+  center: [number, number],
+  radiusKm: number,
+  type: FacilityType,
+  serviceRadiusKm: number
+): number {
+  const grid = getPopulationGrid(dataset);
+  const field = facilityDistanceField(dataset, type);
+  const dLat = radiusKm / 111.32;
+  const dLng = radiusKm / (111.32 * Math.max(Math.cos((center[1] * Math.PI) / 180), 0.01));
+
+  const r0 = Math.max(0, Math.floor((center[1] - dLat - grid.minLat) / grid.cellLat));
+  const r1 = Math.min(grid.rows - 1, Math.ceil((center[1] + dLat - grid.minLat) / grid.cellLat));
+  const c0 = Math.max(0, Math.floor((center[0] - dLng - grid.minLng) / grid.cellLng));
+  const c1 = Math.min(grid.cols - 1, Math.ceil((center[0] + dLng - grid.minLng) / grid.cellLng));
+
+  let sum = 0;
+  for (let r = r0; r <= r1; r++) {
+    const lat = grid.minLat + (r + 0.5) * grid.cellLat;
+    for (let c = c0; c <= c1; c++) {
+      const i = r * grid.cols + c;
+      if (grid.pop[i] === 0) continue;
+      if (field[i] <= serviceRadiusKm) continue; // already served
+      const lng = grid.minLng + (c + 0.5) * grid.cellLng;
+      if (distanceKm(center, [lng, lat]) <= radiusKm) sum += grid.pop[i];
+    }
+  }
+  return Math.round(sum);
+}
+
+/**
+ * Population need for a project.
+ *
+ * For a facility that provides a service, need means **unmet** need: the people
+ * a new facility would actually start serving. Scoring raw catchment population
+ * instead ranks dense, central, already-well-served land highest — which then
+ * simulates as zero improvement, because everyone there can already reach one.
+ * Aligning this with what the simulator measures keeps site selection and
+ * impact telling the same story.
+ */
 function populationNeed(
   dataset: CityDataset,
   parcel: Parcel,
   spec: ProjectSpec,
   enriched: EnrichedParcel
-): { score: number; pop: number; nearestNeedKm: number } {
+): { score: number; pop: number; unserved: number; nearestNeedKm: number } {
   const pop = populationWithinKm(dataset, parcel.properties.centroid, spec.serviceRadiusKm);
   const popScore = norm(pop, 4000, 130000);
-  if (!spec.needFacility) return { score: popScore, pop, nearestNeedKm: -1 };
+  if (!spec.needFacility) {
+    // Housing, commercial and industrial are not services — raw demand is the
+    // right signal for them.
+    return { score: popScore, pop, unserved: pop, nearestNeedKm: -1 };
+  }
+
+  const unserved = unservedPopulationWithinKm(
+    dataset,
+    parcel.properties.centroid,
+    spec.serviceRadiusKm,
+    spec.needFacility,
+    spec.serviceRadiusKm
+  );
+  const unservedScore = norm(unserved, 2000, 80000);
   const nearestNeedKm = enriched.nearest[spec.needFacility];
   const gap = 100 - decayScore(nearestNeedKm, spec.serviceRadiusKm * 0.5, spec.serviceRadiusKm * 2.2);
-  return { score: clamp(0.55 * popScore + 0.45 * gap), pop, nearestNeedKm };
+
+  // Unmet population dominates; distance to the nearest existing facility and
+  // overall density remain as secondary signals.
+  return {
+    score: clamp(0.6 * unservedScore + 0.25 * gap + 0.15 * popScore),
+    pop,
+    unserved,
+    nearestNeedKm,
+  };
 }
 
 export interface SuitabilityResult {
@@ -264,6 +372,8 @@ export interface SuitabilityResult {
   breakdown: ScoreBreakdown;
   final: number;
   pop: number;
+  /** Of `pop`, those not already within the service radius of this facility type. */
+  unserved: number;
   nearestNeedKm: number;
   metrics: { roadKm: number; floodRisk: string; ownership: string; areaAcres: number };
   explanation: { pros: string[]; cons: string[] };
@@ -296,9 +406,19 @@ export function suitabilityForParcel(
   else cons.push("Privately owned — may require land acquisition");
   if (e.roadKm < 1.2) pros.push(`${e.roadKm.toFixed(1)} km from an arterial road`);
   else cons.push(`${e.roadKm.toFixed(1)} km from nearest arterial road`);
-  if (spec.needFacility && need.nearestNeedKm > spec.serviceRadiusKm)
-    pros.push(`Serves ~${need.pop.toLocaleString()} residents currently ${need.nearestNeedKm.toFixed(1)} km from a ${spec.label.toLowerCase()}`);
-  else if (need.pop > 30000) pros.push(`High local demand — ~${need.pop.toLocaleString()} residents within ${spec.serviceRadiusKm} km`);
+  // Lead with unmet need — the people this would actually start serving —
+  // rather than raw catchment, which flatters already-covered central land.
+  if (spec.needFacility && need.unserved > 2000) {
+    pros.push(
+      `Reaches ~${need.unserved.toLocaleString()} residents with no ${spec.label.toLowerCase()} within ${spec.serviceRadiusKm} km`
+    );
+  } else if (spec.needFacility) {
+    cons.push(
+      `Little unmet demand — almost everyone within ${spec.serviceRadiusKm} km can already reach a ${spec.label.toLowerCase()}`
+    );
+  }
+  if (need.pop > 30000)
+    pros.push(`Dense catchment — ~${need.pop.toLocaleString()} residents within ${spec.serviceRadiusKm} km`);
   if (p.flood_risk === "low") pros.push("Low flood exposure");
   else cons.push(`${p.flood_risk === "high" ? "High" : "Moderate"} flood risk`);
   if (breakdown.transit < 45) cons.push(`Limited public transport — ${e.nearest.bus_stop.toFixed(1)} km to nearest bus stop`);
@@ -312,6 +432,7 @@ export function suitabilityForParcel(
     breakdown,
     final,
     pop: need.pop,
+    unserved: need.unserved,
     nearestNeedKm: need.nearestNeedKm,
     metrics: { roadKm: e.roadKm, floodRisk: p.flood_risk, ownership: p.ownership, areaAcres: p.area_acres },
     explanation: { pros, cons },
@@ -329,9 +450,23 @@ export interface SiteSearchRequest {
   government_land?: boolean;
   max_road_distance_km?: number;
   low_flood_risk?: boolean;
+  /**
+   * Minimum residents currently beyond reach of this service. Defaults to
+   * DEFAULT_MIN_UNSERVED for facilities that provide one; pass 0 to rank purely
+   * on the weighted score.
+   *
+   * This is a constraint rather than a weight because "nobody new is served" is
+   * disqualifying for a service facility, not merely one factor among six —
+   * without it, dense well-served central land outranks genuine need, and the
+   * chosen site then simulates as zero improvement.
+   */
+  min_unserved_population?: number;
   weights?: Weights;
   limit?: number;
 }
+
+/** Enough people to justify a facility, and enough to show up in a simulation. */
+export const DEFAULT_MIN_UNSERVED = 5000;
 
 export function searchSites(dataset: CityDataset, req: SiteSearchRequest): {
   results: SuitabilityResult[];
@@ -342,6 +477,9 @@ export function searchSites(dataset: CityDataset, req: SiteSearchRequest): {
   const minHa = req.minimum_area_hectares ?? spec.minAreaHa;
   const weights = req.weights ?? DEFAULT_WEIGHTS;
   const limit = req.limit ?? 12;
+  const minUnserved = spec.addsFacility
+    ? (req.min_unserved_population ?? DEFAULT_MIN_UNSERVED)
+    : 0;
 
   let eligible = 0;
   const scored: SuitabilityResult[] = [];
@@ -352,8 +490,10 @@ export function searchSites(dataset: CityDataset, req: SiteSearchRequest): {
     if (req.low_flood_risk && p.flood_risk === "high") continue;
     const e = getEnriched(dataset).byId.get(p.id)!;
     if (req.max_road_distance_km != null && e.roadKm > req.max_road_distance_km) continue;
+    const result = suitabilityForParcel(dataset, parcel, req.project_type, weights);
+    if (minUnserved > 0 && result.unserved < minUnserved) continue;
     eligible++;
-    scored.push(suitabilityForParcel(dataset, parcel, req.project_type, weights));
+    scored.push(result);
   }
   scored.sort((a, b) => b.final - a.final);
   return { results: scored.slice(0, limit), evaluated: dataset.parcels.features.length, eligible };
