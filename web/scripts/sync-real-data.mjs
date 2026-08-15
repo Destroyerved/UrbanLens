@@ -190,6 +190,71 @@ const roads = roadsFC.features
 writeFileSync(join(OUT, "roads.json"), JSON.stringify(roads));
 console.log(`  roads       ${roads.length}`);
 
+// --- analysis grid ---------------------------------------------------------
+// The grid drives uncovered-population, coverage, the simulator's before/after
+// and the growth layer. Leaving it seeded while wards, parcels and facilities
+// are real is what makes every candidate score populationNeed = 0: synthetic
+// cells measured against 1,200+ real facilities look entirely covered.
+// step=2 keeps the grid ~1,800 cells — enough resolution for coverage maths
+// without making the per-parcel scans in lib/analysis quadratic.
+const POP_STEP = 2;
+const popFC = await get(`/api/population?step=${POP_STEP}`);
+const predFC = await get("/api/growth/prediction");
+
+// Nearest 2030 growth probability per population cell.
+const predPts = predFC.features.map((f) => {
+  const ring = f.geometry.coordinates[0];
+  let x = 0, y = 0;
+  for (const c of ring) { x += c[0]; y += c[1]; }
+  return { lng: x / ring.length, lat: y / ring.length, p: f.properties.growth_probability };
+});
+const hospitals = facilities.filter((f) => f.type === "hospital").map((f) => f.coord);
+
+const d2 = (ax, ay, bx, by) => (ax - bx) ** 2 + (ay - by) ** 2;
+function nearestGrowth(lng, lat) {
+  let best = 0, bd = Infinity;
+  for (const q of predPts) {
+    const dd = d2(lng, lat, q.lng, q.lat);
+    if (dd < bd) { bd = dd; best = q.p; }
+  }
+  return best;
+}
+function nearestKm(lng, lat, pts) {
+  let bd = Infinity;
+  for (const [px, py] of pts) {
+    const dd = d2(lng, lat, px, py);
+    if (dd < bd) bd = dd;
+  }
+  // Degrees → km at this latitude; adequate for a nearest-distance field.
+  return Math.sqrt(bd) * 111.32 * 0.92;
+}
+
+const CELL_DEG = 0.00225 * POP_STEP; // cell edge in degrees at this sampling
+const wardOf = new Map(wards.map((w) => [w.id, w]));
+const grid = popFC.features.map((f, i) => {
+  const [lng, lat] = f.geometry.coordinates;
+  const h = CELL_DEG / 2;
+  return {
+    id: `cell-${i}`,
+    center: [lng, lat],
+    ring: [
+      [lng - h, lat - h], [lng + h, lat - h],
+      [lng + h, lat + h], [lng - h, lat + h], [lng - h, lat - h],
+    ],
+    // Each sampled cell stands in for a POP_STEP x POP_STEP block of raster
+    // cells, so it carries that block's population — otherwise the grid holds
+    // only a fraction of the city and every coverage figure is wrong.
+    population: Math.round(f.properties.population * POP_STEP * POP_STEP),
+    wardId: wards[0]?.id ?? "",
+    growthProb: round(nearestGrowth(lng, lat), 3),
+    hospitalDistKm: round(nearestKm(lng, lat, hospitals), 2),
+    inCity: true,
+  };
+});
+void wardOf;
+writeFileSync(join(OUT, "grid.json"), JSON.stringify(grid));
+console.log(`  grid        ${grid.length} cells (${grid.reduce((s, c) => s + c.population, 0).toLocaleString("en-IN")} people)`);
+
 // --- provenance ------------------------------------------------------------
 const health = await get("/api/health");
 writeFileSync(

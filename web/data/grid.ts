@@ -14,6 +14,7 @@ import { mulberry32, clamp } from "@/lib/seeded";
 import { WARDS, wardForPoint } from "./wards";
 import { ROADS } from "./roads";
 import { FACILITY_COORDS } from "./facilities";
+import REAL_GRID from "./real/grid.json";
 
 /**
  * Analysis grid (~1.1 km cells) + historical built-up extents + 2030 growth
@@ -174,7 +175,20 @@ function buildGrid(): GridCell[] {
   return cells;
 }
 
-export const GRID: GridCell[] = buildGrid();
+/**
+ * Real analysis grid synced from the spatial engine's population raster
+ * (`npm run sync:data`), carrying real population, real growth probability and
+ * real distance-to-hospital per cell.
+ *
+ * This has to move in step with wards, parcels and facilities. A seeded grid
+ * measured against real facilities reports everything as already covered, which
+ * silently zeroes population-need across every candidate and flattens the
+ * simulator's before/after.
+ */
+export const GRID: GridCell[] = REAL_GRID.length
+  ? (REAL_GRID as unknown as GridCell[])
+  : buildGrid();
+export const USING_REAL_GRID = REAL_GRID.length > 0;
 
 export const CITY_CELLS = GRID.filter((c) => c.inCity && c.population > 0);
 
