@@ -427,6 +427,25 @@ export function suitabilityForParcel(
   else cons.push(`Below preferred size (${(p.area_sqm / 10_000).toFixed(1)} ha < ${spec.minAreaHa} ha)`);
   if (breakdown.environment < 55) cons.push("Environmental constraints reduce suitability");
 
+  // A recommendation with nothing on the other side of the ledger invites more
+  // trust than it has earned. When no threshold was tripped, still name the
+  // weakest factor so a planner always sees where this site is softest
+  // (PRD §20 — every recommendation carries its potential issues).
+  if (!cons.length) {
+    const labels: Record<keyof ScoreBreakdown, string> = {
+      accessibility: "road access",
+      population_need: "unmet demand",
+      transit: "public transport",
+      infrastructure: "surrounding infrastructure",
+      environment: "environmental suitability",
+      land_compatibility: "land-use fit",
+    };
+    const weakest = (Object.keys(breakdown) as (keyof ScoreBreakdown)[]).reduce((a, b) =>
+      breakdown[a] <= breakdown[b] ? a : b
+    );
+    cons.push(`Weakest factor is ${labels[weakest]} at ${breakdown[weakest]}/100`);
+  }
+
   return {
     parcel_id: p.parcel_id,
     breakdown,

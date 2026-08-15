@@ -103,7 +103,7 @@ check(
 );
 
 // ── 5 ───────────────────────────────────────────────────────────────────────
-step("Population + who is beyond reach of a hospital");
+step(`Population + who is beyond reach of a ${PROJECT.replace("_", " ")}`);
 const popGrid = await get("/api/population");
 check(popGrid.features?.length > 0, `${fmt(popGrid.features.length)} population cells at ${popGrid.properties.cell_size_m} m`);
 check(
@@ -115,7 +115,7 @@ const underserved = gaps.wards.filter((w) => w.scores.healthcare < 50);
 ok(`${underserved.length} units below 50/100 on healthcare, ${fmt(underserved.reduce((s, w) => s + w.population, 0))} residents`);
 
 // ── 6 ───────────────────────────────────────────────────────────────────────
-step('Ask: "Where should a new public hospital be built?"');
+step(`Ask: "Where should a new ${PROJECT.replace("_", " ")} be built?"`);
 const ask = await post("/api/copilot/query", { query: `Where should we build a new ${PROJECT.replace("_", " ")}?` });
 check(ask.tool === "site_search", `Routed to the ${ask.tool} tool`, `expected site_search, got ${ask.tool}`);
 check((ask.items ?? []).length > 0, `${ask.items.length} candidate sites returned`);
@@ -159,7 +159,7 @@ check(
 );
 
 // ── 10 ──────────────────────────────────────────────────────────────────────
-step("Simulate a hospital on that exact site");
+step(`Simulate a ${PROJECT.replace("_", " ")} on that exact site`);
 const sim = await post("/api/scenarios/simulate", {
   project_type: PROJECT,
   lng: top.centroid[0],
