@@ -3,6 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { OrbitalHeroSection } from "@/components/ui/orbital-hero-section";
+import { PARCELS } from "@/data/parcels";
+
+/**
+ * Headline parcel count, derived rather than written down — it was hard-coded at
+ * "135+" while the dataset held far more, and a stat on the landing page should
+ * never be able to drift from the data behind it.
+ */
+const PARCEL_COUNT_LABEL = `${PARCELS.length.toLocaleString("en-IN")}`;
 
 // GlobeScene uses WebGL — must be client-only and no SSR
 const GlobeScene = dynamic(() => import("@/components/globe/GlobeScene"), {
@@ -311,7 +319,7 @@ const FEATURES = [
       </svg>
     ),
     title: "GLIS Parcel Intelligence",
-    desc: "Analyse 135+ geo-coded parcels across Ahmedabad with land-use history, zoning conflicts, and factor scores — all visualised in real-time.",
+    desc: `Analyse ${PARCEL_COUNT_LABEL} mapped land parcels across Ahmedabad with land-use history, zoning conflicts, and factor scores — all visualised in real-time.`,
     color: "from-blue-500/20 to-cyan-500/5",
     border: "border-blue-500/20",
     glow: "shadow-blue-500/10",
@@ -911,7 +919,7 @@ export default function LandingPage({ onEnterApp }: LandingPageProps) {
 
               <div className="mt-8 flex gap-6">
                 {[
-                  { val: "135+", label: "GLIS Parcels" },
+                  { val: PARCEL_COUNT_LABEL, label: "Land Parcels" },
                   { val: "2030", label: "Growth Forecast" },
                   { val: "15min", label: "City Analyser" },
                 ].map((s) => (

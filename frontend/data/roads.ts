@@ -1,6 +1,7 @@
 import type { LngLat, Road } from "@/types";
 import { offsetKm } from "@/lib/geo";
 import { ACTIVE_CITY } from "@/config/city";
+import REAL_ROADS from "./real/roads.json";
 
 /**
  * Illustrative/demo road network modelled on Ahmedabad's arterial structure.
@@ -16,7 +17,7 @@ function ringPath(center: LngLat, radiusKm: number, n = 48): LngLat[] {
   return path;
 }
 
-export const ROADS: Road[] = [
+const SEEDED_ROADS: Road[] = [
   {
     id: "rd-sg",
     name: "S.G. Highway",
@@ -95,3 +96,17 @@ export const ROADS: Road[] = [
     ],
   },
 ];
+
+/**
+ * Real road network synced from the spatial engine (`npm run sync:data`):
+ * OSM motorway/trunk/primary/secondary, rivers excluded. Importance is not
+ * carried across, so every synced way renders as an arterial.
+ */
+export const ROADS: Road[] = REAL_ROADS.length
+  ? (REAL_ROADS as { id: string; name: string; path: LngLat[] }[]).map((r) => ({
+      ...r,
+      importance: "arterial" as const,
+    }))
+  : SEEDED_ROADS;
+export const USING_REAL_ROADS = REAL_ROADS.length > 0;
+

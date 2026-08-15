@@ -1,0 +1,53 @@
+{
+  "city": "ahmedabad",
+  "api": "http://localhost:3200",
+  "syncedAt": "2026-08-15T15:59:55.493Z",
+  "counts": {
+    "wards": 48,
+    "parcels": 2566,
+    "facilities": 1252,
+    "roads": 2473
+  },
+  "sources": {
+    "wards": {
+      "source": "official",
+      "label": "Ahmedabad municipal ward map",
+      "detail": "48 digitised ward boundaries (441.1 km²) with measured area, perimeter, compactness and OSM road density."
+    },
+    "population": {
+      "source": "derived",
+      "label": "Modelled from census totals",
+      "detail": "AMC Census 2011 (5,570,585) projected to 2026 at ~2.3%/yr; total distributed by area_km2 x road_density^1.35. Estimates, not ward-level census counts."
+    },
+    "parcels": {
+      "source": "osm",
+      "label": "OpenStreetMap land polygons",
+      "detail": "2,566 real mapped land boundaries with their real land-use tag (landuse / natural / leisure). These are surveyed blocks and estates, not cadastral title plots — GLIS records are not public. Built-up and vegetation cover are modelled from the tag and local urban intensity."
+    },
+    "tenure": {
+      "source": "derived",
+      "label": "Ownership — mostly modelled",
+      "detail": "Land ownership is not in any public dataset. OpenStreetMap confirms public ownership for only 10 of 2,566 parcels; the rest is modelled from land use and distance to centre. Treat government/private status as indicative, not as a title record."
+    },
+    "zoning": {
+      "source": "synthetic",
+      "label": "Official zoning — modelled",
+      "detail": "Development-plan zoning sheets are not published in machine-readable form, so the official designation is modelled. Zoning conflicts therefore demonstrate the detection method against real land use; they are not confirmed violations."
+    },
+    "facilities": {
+      "source": "osm",
+      "label": "OpenStreetMap",
+      "detail": "1252 facilities via the Overpass API, de-duplicated and re-classified (fetched 2026-08-15)."
+    },
+    "roads": {
+      "source": "osm",
+      "label": "OpenStreetMap",
+      "detail": "2480 major road segments via the Overpass API, geometry decimated for spatial math."
+    },
+    "prediction": {
+      "source": "derived",
+      "label": "Growth model output",
+      "detail": "Per-cell 2030 growth probability from a transparent weighted model over distance-to-road, distance-to-built-up, distance-to-centre and current land use."
+    }
+  }
+}

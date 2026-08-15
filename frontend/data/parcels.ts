@@ -6,6 +6,7 @@ import { ROADS } from "./roads";
 import { FACILITY_COORDS } from "./facilities";
 import { CITY_CELLS, isUrbanized } from "./grid";
 import { distKm } from "@/lib/geo";
+import REAL_PARCELS from "./real/parcels.json";
 
 /**
  * Illustrative/demo GLIS-style parcel dataset modelled on Ahmedabad.
@@ -238,6 +239,26 @@ function buildParcels(): Parcel[] {
   return parcels;
 }
 
-export const PARCELS: Parcel[] = buildParcels();
+/**
+ * Real land parcels synced from the spatial engine (`npm run sync:data`):
+ * mapped OpenStreetMap land boundaries carrying their real land-use tag. Falls
+ * back to the seeded generator when no sync has been run.
+ */
+export const PARCELS: Parcel[] = REAL_PARCELS.length
+  ? (REAL_PARCELS as unknown as Parcel[])
+  : buildParcels();
+export const USING_REAL_PARCELS = REAL_PARCELS.length > 0;
 export const PARCEL_BY_ID = new Map(PARCELS.map((p) => [p.id, p]));
-export const FLAGSHIP_PARCEL_ID = "GJ-AHD-1028";
+
+/**
+ * The parcel the demo opens on. With seeded data this is the scripted flagship;
+ * with real data that id does not exist, so the strongest government parcel of
+ * a workable size stands in for it.
+ */
+export const FLAGSHIP_PARCEL_ID: string = (() => {
+  if (!USING_REAL_PARCELS) return "GJ-AHD-1028";
+  const best = PARCELS
+    .filter((p) => p.ownership === "government" && p.areaHa >= 2)
+    .sort((a, b) => b.infraReadiness - a.infraReadiness)[0];
+  return best?.id ?? PARCELS[0]?.id ?? "";
+})();

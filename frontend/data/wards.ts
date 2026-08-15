@@ -1,6 +1,7 @@
 import type { LngLat, Ward } from "@/types";
 import { mulberry32, rngRange } from "@/lib/seeded";
 import { ringAreaKm2, ringCentroid } from "@/lib/geo";
+import REAL_WARDS from "./real/wards.json";
 
 /**
  * Illustrative/demo data modelled on Ahmedabad ward geography and a
@@ -83,7 +84,12 @@ function cellRing(col: number, row: number): LngLat[] {
   return ring;
 }
 
-export const WARDS: Ward[] = WARD_SEEDS.map((s) => {
+/**
+ * Real municipal ward boundaries synced from the spatial engine
+ * (`npm run sync:data`). Empty until then, in which case the seeded lattice
+ * below is used and the demo still runs with no engine available.
+ */
+const SEEDED_WARDS: Ward[] = WARD_SEEDS.map((s) => {
   const ring = cellRing(s.col, s.row);
   const pop2022 = Math.round(s.pop2018 + (s.pop2026 - s.pop2018) * 0.55);
   return {
@@ -95,6 +101,9 @@ export const WARDS: Ward[] = WARD_SEEDS.map((s) => {
     population: { 2018: s.pop2018, 2022: pop2022, 2026: s.pop2026 },
   };
 });
+
+export const WARDS: Ward[] = REAL_WARDS.length ? (REAL_WARDS as Ward[]) : SEEDED_WARDS;
+export const USING_REAL_WARDS = REAL_WARDS.length > 0;
 
 export const WARD_BY_ID = new Map(WARDS.map((w) => [w.id, w]));
 

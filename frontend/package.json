@@ -8,7 +8,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "sanity": "tsx scripts/sanity.ts"
+    "sanity": "tsx scripts/sanity.ts",
+    "sync:data": "node scripts/sync-real-data.mjs"
   },
   "dependencies": {
     "@radix-ui/react-slider": "^1.2.0",

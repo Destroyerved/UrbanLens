@@ -1,5 +1,6 @@
 import type { Facility, FacilityType, LngLat } from "@/types";
 import { wardForPoint } from "./wards";
+import REAL_FACILITIES from "./real/facilities.json";
 
 /**
  * Illustrative/demo facility dataset modelled on Ahmedabad's public
@@ -15,7 +16,7 @@ function f(id: string, name: string, type: FacilityType, coord: LngLat): Facilit
   return { id, name, type, coord, wardId: wardForPoint(coord).id };
 }
 
-export const FACILITIES: Facility[] = [
+const SEEDED_FACILITIES: Facility[] = [
   // Hospitals — centre/east heavy
   f("h-civil", "Civil Hospital, Asarwa", "hospital", [72.605, 23.052]),
   f("h-vs", "V.S. Hospital, Ellisbridge", "hospital", [72.567, 23.017]),
@@ -83,6 +84,20 @@ export const FACILITIES: Facility[] = [
   f("g-3", "AUDA Office", "govt", [72.53, 23.03]),
   f("g-4", "Zonal Office, Naroda", "govt", [72.636, 23.07]),
 ];
+
+/**
+ * Real facilities synced from the spatial engine (`npm run sync:data`) —
+ * OpenStreetMap records, de-duplicated and re-classified. `wardId` is resolved
+ * here with the same point-in-ward helper the seeded set uses, so both paths
+ * produce identical shapes.
+ */
+export const FACILITIES: Facility[] = REAL_FACILITIES.length
+  ? (REAL_FACILITIES as { id: string; name: string; type: FacilityType; coord: LngLat }[]).map(
+      (r) => ({ ...r, wardId: wardForPoint(r.coord).id })
+    )
+  : SEEDED_FACILITIES;
+export const USING_REAL_FACILITIES = REAL_FACILITIES.length > 0;
+
 
 export const FACILITIES_BY_TYPE = (type: FacilityType): Facility[] =>
   FACILITIES.filter((x) => x.type === type);
