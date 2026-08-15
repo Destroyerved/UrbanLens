@@ -191,6 +191,17 @@ body {
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
+button,
+[role="button"],
+.bg-accent,
+.bg-gov,
+.bg-good,
+.bg-warning,
+.bg-critical,
+.text-accent-foreground {
+  text-shadow: none !important;
+}
+
 .num {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;

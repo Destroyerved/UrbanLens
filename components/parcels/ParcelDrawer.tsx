@@ -218,10 +218,10 @@ export default function ParcelDrawer() {
                 setSimTarget(parcel.id);
                 setMode("simulator");
               }}
-              className="glass flex h-10 w-full items-center justify-center gap-2 rounded-2xl bg-accent text-[12.5px] font-bold text-accent-foreground shadow-elev-2 transition-all hover:scale-[1.01] hover:brightness-110 active:scale-95"
+              className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-accent text-[13px] font-bold text-accent-foreground shadow-md shadow-accent/25 ring-1 ring-accent/60 transition-all hover:scale-[1.01] hover:brightness-110 active:scale-95 cursor-pointer"
             >
-              <FlaskConical size={14} />
-              Simulate intervention here
+              <FlaskConical size={16} />
+              <span>Simulate intervention here</span>
             </button>
           </div>
         </motion.aside>

@@ -193,7 +193,7 @@ export default function SiteSelectionPanel() {
       <button
         onClick={runAnalysis}
         disabled={analysisRunning}
-        className="glass group flex w-full items-center justify-center gap-2 rounded-2xl bg-accent py-2.5 text-[12.5px] font-bold text-accent-foreground shadow-elev-2 transition-all hover:scale-[1.01] active:scale-95 disabled:opacity-50"
+        className="group flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-accent text-[13px] font-bold text-accent-foreground shadow-md shadow-accent/25 ring-1 ring-accent/60 transition-all hover:scale-[1.01] hover:brightness-110 active:scale-95 disabled:opacity-50 cursor-pointer"
       >
         <Play size={14} className={cn("fill-current", analysisRunning && "animate-spin")} />
         {analysisRunning ? "Evaluating parcels…" : "Run Multi-Criteria Site Search"}

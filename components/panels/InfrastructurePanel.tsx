@@ -164,7 +164,7 @@ export default function InfrastructurePanel() {
 
       <button
         onClick={() => setMode("sites")}
-        className="glass group flex w-full items-center justify-center gap-1.5 rounded-2xl bg-accent/15 py-2.5 text-[12px] font-semibold text-accent ring-1 ring-accent/30 shadow-sm transition-all hover:bg-accent/25 hover:scale-[1.01] active:scale-95"
+        className="group flex w-full items-center justify-center gap-1.5 rounded-2xl bg-accent/15 py-2.5 text-[12px] font-semibold text-accent ring-1 ring-accent/30 shadow-sm transition-all hover:bg-accent/25 hover:scale-[1.01] active:scale-95 cursor-pointer"
       >
         Next: find the best site to intervene
         <ArrowRight size={13} className="transition-transform group-hover:translate-x-0.5" />
