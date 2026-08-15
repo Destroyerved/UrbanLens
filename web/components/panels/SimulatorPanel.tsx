@@ -181,7 +181,7 @@ export default function SimulatorPanel() {
         <button
           onClick={() => void runSim()}
           disabled={!target || simPhase === "running"}
-          className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-gov text-[13px] font-bold text-white shadow-md shadow-gov/25 ring-1 ring-gov/60 transition-all hover:scale-[1.01] hover:brightness-110 active:scale-[0.98] disabled:opacity-50 cursor-pointer"
+          className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-gov text-[13px] font-bold text-white shadow-md shadow-gov/25 ring-1 ring-gov/60 transition-all hover:scale-[1.01] hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
         >
           {simPhase === "running" ? (
             <>

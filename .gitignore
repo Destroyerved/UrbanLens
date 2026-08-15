@@ -9,8 +9,12 @@ raw/osm/*_log.txt
 
 # Run logs
 logs/
+
 # Python
-__pycache__/
-*.pyc
 .venv/
-backend/models/
+
+# backend/models/ is deliberately NOT ignored. The trained development model is
+# what makes the 2030 growth layer an actual classifier (PRD §44) rather than
+# the proximity heuristic it silently falls back to; ignoring it meant every
+# clone served the fallback while the UI described a model. ~2.8 MB of JSON,
+# regenerated with: python -m app.ml.train <city>

@@ -10,6 +10,7 @@
     "web": "npm run dev --prefix web",
     "build": "npm run build --prefix web",
     "demo": "npm run demo --prefix web",
-    "setup": "npm install --prefix web && python -m pip install -r backend/requirements.txt"
+    "setup": "npm install --prefix web && python -m pip install -r backend/requirements.txt",
+    "verify:ui": "npm run verify:ui --prefix web"
   }
 }

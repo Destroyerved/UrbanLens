@@ -585,4 +585,11 @@ def ml_train(city: str | None = Query(default=None)) -> dict:
     from dataclasses import asdict
 
     ds = _dataset(city)
-    return asdict(development_model.train(ds))
+    try:
+        return asdict(development_model.train(ds))
+    except ImportError as exc:  # xgboost is the only optional dependency here
+        raise HTTPException(
+            status_code=503,
+            detail=f"Training needs xgboost, which is not installed ({exc}). "
+                   "Run: pip install -r backend/requirements.txt",
+        ) from exc

@@ -35,16 +35,20 @@ export default function TopBar() {
 
       <div className="mx-1 h-5 w-px bg-white/25 dark:bg-white/15" />
 
-      {/* Global search */}
+      {/* Global search.
+          The label is held on one line and truncated rather than allowed to
+          wrap: the pill is a fixed h-8, so a second line rendered outside the
+          rounded container instead of growing it. `shrink-0` keeps the icon and
+          the shortcut badge at full size so only the label gives way. */}
       <button
         onClick={() => setPaletteOpen(true)}
-        className="glass-card group flex h-8 w-[250px] items-center gap-2 rounded-full px-3 text-left transition-all hover:scale-[1.01]"
+        className="glass-card group flex h-8 w-[280px] items-center gap-2 rounded-full px-3 text-left transition-all hover:scale-[1.01]"
       >
-        <Search size={13.5} className="text-muted-foreground transition-colors group-hover:text-accent" />
-        <span className="flex-1 text-[12px] font-medium text-muted-foreground group-hover:text-foreground">
+        <Search size={13.5} className="shrink-0 text-muted-foreground transition-colors group-hover:text-accent" />
+        <span className="flex-1 truncate text-[12px] font-medium text-muted-foreground group-hover:text-foreground">
           Search parcels, wards, actions…
         </span>
-        <kbd className="num rounded-full border border-border/70 bg-white/20 dark:bg-white/10 px-1.5 py-0.5 text-[9.5px] font-semibold text-muted-foreground">
+        <kbd className="num shrink-0 rounded-full border border-border/70 bg-white/20 dark:bg-white/10 px-1.5 py-0.5 text-[9.5px] font-semibold text-muted-foreground">
           ⌘K
         </kbd>
       </button>

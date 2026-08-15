@@ -5,24 +5,28 @@
 > GLIS tells planners *what land exists*. UrbanLens helps them understand *what is happening
 > there, what is likely to happen next, and what should be built where.*
 
-One application. The UI, the spatial engine and the API all live in `web/`.
+Two processes. The Python spatial engine computes; the Next app renders.
 
 ---
 
 ## Layout
 
 ```text
+backend/              The spatial engine (FastAPI). Every figure originates here.
+  app/api/            Route handlers — the engine's HTTP surface (PRD §56)
+  app/gis/            Analysis: scoring, parcels, population raster, copilot tools
+  app/ml/             Development model — training, prediction grid
+  app/llm/            Ollama client + the LLM/GIS split the PRD §29 requires
+  app/data/           Layer loading and normalisation
+  models/             Trained models, committed so the ML layer is real on clone
+
 web/                  The application.
   app/                Landing page + AppShell (single-page product UI)
-  app/api/            23 route handlers — the spatial engine's HTTP surface
   components/         Map, panels, copilot, command palette, shadcn/Radix UI
-  lib/                UI-side analysis, map adapters, state
-  lib/engine/         The GIS engine: scoring, population raster, spatial index,
-                      suitability, simulation, city datasets
+  lib/                Engine client, map adapters, state
   data/engine/        Real source layers the engine serves (wards, land, OSM)
-  data/real/          Engine output in the UI's shapes, refreshed by `sync:data`
   services/           Thin facades the UI calls
-  scripts/            Data pipeline + sync + sanity checks
+  scripts/            Data pipeline + the PRD §74 demo walkthrough
 
 scripts/              Python pipeline — AMC GIS scraping, Census 2011, geocoding
 raw/                  Source data as fetched (AMC GIS, OSM, census workbooks)
@@ -58,6 +62,24 @@ npm run web          # next dev
 curl localhost:8000/api/health?city=ahmedabad
 curl localhost:8000/api/livability?city=ahmedabad-metro
 ```
+
+### Checking it works
+
+```bash
+npm run demo         # PRD §74 story through the engine, 12 steps
+npm run verify:ui    # drives the real UI headlessly, 31 assertions
+```
+
+`verify:ui` needs both processes running and a Chromium to drive — pass the path, or set
+`CHROME_PATH`:
+
+```bash
+npm run verify:ui -- http://localhost:3000 "C:/Program Files/Google/Chrome/Application/chrome.exe"
+```
+
+It runs with reduced motion, which is also the accessibility path the app honours via
+`MotionConfig` — without it the mode rail's perpetual float means no control is ever a settled
+click target.
 
 ### Optional deep links
 
@@ -133,9 +155,9 @@ on `/api/health` and `/api/layers`. The weakest layer in play is what gets repor
 | Land parcels | **OpenStreetMap** — real mapped land boundaries with their real land-use tag |
 | Facilities, roads | **OpenStreetMap** — Overpass, de-duplicated and re-classified |
 | Population | **Derived** — census municipal totals distributed by area × road density |
-| Ownership | **Derived** — no public dataset records tenure; OSM confirms it for 10 of 2,566 parcels |
+| Ownership | **Derived** — no public dataset records tenure; OSM confirms it for 10 of 2,567 parcels |
 | Official zoning | **Synthetic** — DP sheets are not published machine-readably |
-| Growth prediction | **Derived** — transparent weighted model |
+| Growth prediction | **Modelled** — XGBoost classifier trained on real OSM land-use labels |
 
 Two things this project deliberately does **not** do: present synthetic data as official, and report
 a score without its confidence. Where OpenStreetMap under-maps a facility type — 121 schools and 141
@@ -154,9 +176,18 @@ pipeline), `frontend-main` and `frontend-landing-globe` (UI, developed as an unr
 ## Known gaps
 
 - No satellite imagery. Built-up history for 2018/2022/2026 is modelled, not observed (PRD §31).
-- The copilot is a deterministic intent router over the real engine, not an LLM (PRD §28). It
-  satisfies §29 by construction — it never invents numbers.
-- No Python/FastAPI/PostGIS backend (PRD §41–43). Turf.js runs server-side in route handlers.
-- No trained growth model (PRD §44). The 2030 layer is a transparent weighted model.
+- The copilot uses Ollama when it is running and a deterministic intent router when it is not
+  (PRD §28). Either way the engine produces every number, so §29 holds by construction. Without
+  Ollama the answers are identical but fixed in wording.
+- No PostGIS (PRD §42). Layers are GeoJSON and the spatial work is shapely + pyproj + numpy, which
+  keeps the install working without GDAL. The ST_* operations the PRD lists have direct
+  equivalents in what is used; nothing in the analysis is blocked by the absence.
+- The growth model is a development-*pressure* classifier, not a dated forecast (PRD §11, §44). It
+  is trained on real OSM land-use labels and scores 0.955–0.962 ROC AUC across the four areas, but
+  a true "will this urbanise by 2030" model needs observed built-up extent at two dates (GHSL or
+  Sentinel-2), which this repo does not hold. `app/ml/development_model.py` states this at length.
 - Elevation is modelled, not sampled from a DEM — it feeds flood risk.
-- No automated tests beyond `npm run demo`, which walks the PRD §74 story end to end.
+- No unit tests. Verification is two end-to-end harnesses: `npm run demo` walks the PRD §74 story
+  through the engine against all four study areas, and `npm run verify:ui` drives the real
+  interface in a headless browser and asserts each panel renders engine-computed content, failing
+  on any console error or failed request.

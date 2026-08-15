@@ -1,0 +1,23 @@
+{
+  "trained_at": "2026-08-15T21:31:03.995341+00:00",
+  "city_id": "gandhinagar",
+  "samples": 1766,
+  "positives": 963,
+  "accuracy": 0.8846153846153846,
+  "roc_auc": 0.958010775995541,
+  "cv_mean": 0.9200233924950922,
+  "cv_std": 0.03026687436257759,
+  "feature_importance": {
+    "built_km": 0.3548620939254761,
+    "area_ha": 0.18636684119701385,
+    "school_km": 0.07520182430744171,
+    "hospital_km": 0.07306717336177826,
+    "pop_3km": 0.06986645609140396,
+    "transit_km": 0.06573162227869034,
+    "core_km": 0.0646011084318161,
+    "road_km": 0.05538443103432655,
+    "pop_density": 0.054918546229600906
+  },
+  "label_definition": "1 = OSM land use is residential/commercial/industrial/institutional; 0 = farmland/green/vacant/water",
+  "caveat": "Predicts how developed a location looks from real geometry, not whether it will urbanise by a future date. A temporal forecast needs observed built-up extent at two dates (GHSL or Sentinel-2), which this repo does not yet hold."
+}

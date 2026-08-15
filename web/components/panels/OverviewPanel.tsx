@@ -6,7 +6,7 @@ import { PanelShell, Section, LoadingBlock } from "./PanelShell";
 import { AnimatedNumber } from "@/components/shared/AnimatedNumber";
 import { fetchCityKpis } from "@/services/infrastructure";
 import { useApp } from "@/lib/store";
-import { formatCompact } from "@/lib/utils";
+import { formatCompact, formatNumber } from "@/lib/utils";
 
 
 type Kpis = Awaited<ReturnType<typeof fetchCityKpis>>;
@@ -95,7 +95,14 @@ export default function OverviewPanel() {
                 format={formatCompact}
                 accent="critical"
               />
-              <Kpi label="GLIS parcels tracked" value={kpis.totalParcels} />
+              {/* Grouped, not compact: "2.6K" loses the precision that makes a
+                  parcel count worth showing, but "2567" beside 7.2M and 1.0M
+                  read as an unformatted raw value. */}
+              <Kpi
+                label="GLIS parcels tracked"
+                value={kpis.totalParcels}
+                format={(n) => formatNumber(n)}
+              />
               <Kpi
                 label="Vacant government land"
                 value={kpis.vacantGovtHa}

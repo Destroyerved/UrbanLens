@@ -158,11 +158,21 @@ function CardHoverContainer({
     finalTransform = `${baseTransform} scale(${hoverScaleMultiplier}) rotate(-1deg)`;
   }
 
-  // Border brightening on hover
-  let borderColor = style?.borderColor || "rgba(255, 255, 255, 0.08)";
-  if (isHovered && !isTouch) {
-    borderColor = `rgba(${accentRgb}, 0.35)`;
-  }
+  // Border brightening on hover.
+  //
+  // The card owns its border colour, so it has to own the whole declaration.
+  // Callers pass a `border` shorthand; emitting a `borderColor` longhand
+  // alongside it left the result dependent on property order and made React
+  // warn on every hover ("Updating border/borderColor"). Split the caller's
+  // shorthand into width+style and colour, then re-emit one shorthand.
+  const { border: callerBorder, borderColor: callerBorderColor, ...restStyle } = style ?? {};
+  const borderParts = typeof callerBorder === "string" ? callerBorder.trim().split(/\s+/) : [];
+  const borderWidthStyle = borderParts.length >= 2 ? borderParts.slice(0, 2).join(" ") : "1px solid";
+  const restingColor =
+    callerBorderColor ??
+    (borderParts.length > 2 ? borderParts.slice(2).join(" ") : undefined) ??
+    "rgba(255, 255, 255, 0.08)";
+  const borderColor = isHovered && !isTouch ? `rgba(${accentRgb}, 0.35)` : restingColor;
 
   return (
     <div
@@ -173,9 +183,9 @@ function CardHoverContainer({
       onMouseLeave={handleMouseLeave}
       onTouchStart={handleTouchStart}
       style={{
-        ...style,
+        ...restStyle,
         transform: finalTransform,
-        borderColor,
+        border: `${borderWidthStyle} ${borderColor}`,
       }}
     >
       {/* 1. Ambient Background Glow Blobs (Effect 1) */}

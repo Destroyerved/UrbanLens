@@ -1,0 +1,23 @@
+{
+  "trained_at": "2026-08-15T21:30:58.941970+00:00",
+  "city_id": "ahmedabad",
+  "samples": 3224,
+  "positives": 1825,
+  "accuracy": 0.8796526054590571,
+  "roc_auc": 0.9562687969924812,
+  "cv_mean": 0.9392213454537803,
+  "cv_std": 0.03784031512532629,
+  "feature_importance": {
+    "built_km": 0.324820339679718,
+    "area_ha": 0.25489968061447144,
+    "core_km": 0.08375334739685059,
+    "pop_3km": 0.060208097100257874,
+    "road_km": 0.05778025463223457,
+    "pop_density": 0.057519447058439255,
+    "transit_km": 0.05665944144129753,
+    "school_km": 0.055901266634464264,
+    "hospital_km": 0.04845808818936348
+  },
+  "label_definition": "1 = OSM land use is residential/commercial/industrial/institutional; 0 = farmland/green/vacant/water",
+  "caveat": "Predicts how developed a location looks from real geometry, not whether it will urbanise by a future date. A temporal forecast needs observed built-up extent at two dates (GHSL or Sentinel-2), which this repo does not yet hold."
+}

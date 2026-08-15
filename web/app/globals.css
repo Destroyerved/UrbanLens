@@ -41,8 +41,12 @@
   --shadow-2: 0 8px 24px -2px rgba(0, 0, 0, 0.16), 0 2px 6px -1px rgba(0, 0, 0, 0.08);
   --shadow-3: 0 16px 40px -4px rgba(0, 0, 0, 0.22), 0 4px 16px -2px rgba(0, 0, 0, 0.12);
 
-  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  /* --font-plex-* are emitted by next/font in app/layout.tsx (self-hosted).
+     The literal family names remain as a fallback so the design still resolves
+     if the variables are ever absent — e.g. a component rendered outside the
+     root layout in a test. */
+  --font-sans: var(--font-plex-sans), "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: var(--font-plex-mono), "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
 
   /* z-index scale */
   --z-chrome: 10;
@@ -422,4 +426,21 @@ button,
   pointer-events: none;
   z-index: var(--z-panel);
   transform: translate(-50%, calc(-100% - 14px));
+}
+
+/* Reduced motion.
+   MotionConfig in app/providers.tsx covers everything framer-motion drives.
+   These are the CSS-driven animations Tailwind emits (animate-pulse,
+   animate-spin) plus the keyframes declared above, which framer never sees.
+   Duration is collapsed rather than set to `none` so any animation that a
+   layout depends on still reaches its final frame. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

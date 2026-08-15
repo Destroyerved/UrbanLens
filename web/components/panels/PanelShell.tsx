@@ -18,6 +18,10 @@ export function PanelShell({
 }) {
   return (
     <motion.div
+      // Stable hook for scripts/verify-ui.mjs: the panel is the one region that
+      // every mode swaps, so assertions need to find it without matching on
+      // presentation classes.
+      data-panel={title}
       initial={{ opacity: 0, x: 16 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: 16 }}

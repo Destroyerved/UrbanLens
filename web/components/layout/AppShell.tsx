@@ -61,8 +61,15 @@ export default function AppShell() {
         </div>
       )}
 
-      {/* Chrome TopBar */}
-      <div className="pointer-events-none absolute inset-x-4 top-4 z-[10]">
+      {/* Chrome TopBar.
+          Sits at overlay level rather than chrome level because it owns the
+          study-area menu, which opens downward across the intelligence panel.
+          `z-index` on a positioned element starts a stacking context, so the
+          menu's own z-[50] was being resolved *inside* this wrapper — at chrome
+          level (10) the whole subtree painted beneath the panel (20) and the
+          panel swallowed the clicks. Every study area past the first was
+          unreachable by mouse. */}
+      <div className="pointer-events-none absolute inset-x-4 top-4 z-[45]">
         <TopBar />
       </div>
 

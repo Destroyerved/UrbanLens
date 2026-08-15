@@ -43,10 +43,21 @@ def risk_category(p: float) -> str:
 
 @lru_cache(maxsize=4)
 def _model(city_id: str):
-    import xgboost as xgb
+    """The trained classifier, or None if it cannot be used.
 
+    Returning None is a supported state, not a failure: `growth_grid` falls back
+    to the proximity heuristic and labels the layer accordingly. Both reasons to
+    give up — no model file, and no xgboost on the machine — have to reach that
+    fallback. Importing xgboost at the top of this function meant an install
+    without it raised straight through the route and the 2030 layer (PRD §11)
+    500'd instead of degrading.
+    """
     path = MODEL_DIR / f"development_{city_id}.json"
     if not path.exists():
+        return None
+    try:
+        import xgboost as xgb
+    except ImportError:
         return None
     booster = xgb.XGBClassifier()
     booster.load_model(str(path))
