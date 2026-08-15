@@ -1,0 +1,155 @@
+{
+  "project": "UrbanLens",
+  "city": "Ahmedabad",
+  "analysis": {
+    "wards_analyzed": 48,
+    "candidate_sites_evaluated": 10,
+    "analysis_type": "Geospatial infrastructure planning"
+  },
+  "recommended_site": {
+    "rank": 1,
+    "parcel_id": "GJ-AHD-00387",
+    "ward": "46 LAMBHA",
+    "latitude": 22.956449,
+    "longitude": 72.521781,
+    "suitability_score": 80.3638,
+    "decision_score": 72.92,
+    "population_benefiting": 165902,
+    "newly_covered_population": 165902,
+    "distance_improvement_km": 0.07,
+    "coverage_improvement_percent": 2.35,
+    "reason": "Selected as the highest-ranked site because it provides strong land suitability while extending healthcare access to approximately 165,902 additional residents."
+  },
+  "alternatives": [
+    {
+      "rank": 2,
+      "parcel_id": "GJ-AHD-00434",
+      "ward": "46 LAMBHA",
+      "latitude": 22.966449,
+      "longitude": 72.526781,
+      "suitability_score": 79.3698,
+      "decision_score": 63.96,
+      "population_benefiting": 165902,
+      "newly_covered_population": 165902,
+      "distance_improvement_km": 0.04,
+      "coverage_improvement_percent": 2.35
+    },
+    {
+      "rank": 3,
+      "parcel_id": "GJ-AHD-00523",
+      "ward": "46 LAMBHA",
+      "latitude": 22.961449,
+      "longitude": 72.536781,
+      "suitability_score": 75.1405,
+      "decision_score": 52.59,
+      "population_benefiting": 165902,
+      "newly_covered_population": 165902,
+      "distance_improvement_km": 0.03,
+      "coverage_improvement_percent": 2.35
+    },
+    {
+      "rank": 4,
+      "parcel_id": "GJ-AHD-00741",
+      "ward": "46 LAMBHA",
+      "latitude": 22.946449,
+      "longitude": 72.561781,
+      "suitability_score": 75.3058,
+      "decision_score": 40.86,
+      "population_benefiting": 472450,
+      "newly_covered_population": 0,
+      "distance_improvement_km": 0.11,
+      "coverage_improvement_percent": 0.0
+    },
+    {
+      "rank": 5,
+      "parcel_id": "GJ-AHD-01411",
+      "ward": "48 RAMOL HATHIJAN",
+      "latitude": 22.966449,
+      "longitude": 72.646781,
+      "suitability_score": 76.6849,
+      "decision_score": 34.18,
+      "population_benefiting": 383505,
+      "newly_covered_population": 0,
+      "distance_improvement_km": 0.08,
+      "coverage_improvement_percent": 0.0
+    },
+    {
+      "rank": 6,
+      "parcel_id": "GJ-AHD-01445",
+      "ward": "48 RAMOL HATHIJAN",
+      "latitude": 22.946449,
+      "longitude": 72.651781,
+      "suitability_score": 77.1678,
+      "decision_score": 32.95,
+      "population_benefiting": 383505,
+      "newly_covered_population": 0,
+      "distance_improvement_km": 0.07,
+      "coverage_improvement_percent": 0.0
+    },
+    {
+      "rank": 7,
+      "parcel_id": "GJ-AHD-01481",
+      "ward": "48 RAMOL HATHIJAN",
+      "latitude": 22.936449,
+      "longitude": 72.656781,
+      "suitability_score": 84.2044,
+      "decision_score": 32.18,
+      "population_benefiting": 383505,
+      "newly_covered_population": 0,
+      "distance_improvement_km": 0.0,
+      "coverage_improvement_percent": 0.0
+    },
+    {
+      "rank": 8,
+      "parcel_id": "GJ-AHD-00603",
+      "ward": "46 LAMBHA",
+      "latitude": 22.931449,
+      "longitude": 72.546781,
+      "suitability_score": 79.3198,
+      "decision_score": 9.49,
+      "population_benefiting": 0,
+      "newly_covered_population": 0,
+      "distance_improvement_km": 0.0,
+      "coverage_improvement_percent": 0.0
+    },
+    {
+      "rank": 9,
+      "parcel_id": "GJ-AHD-00568",
+      "ward": "46 LAMBHA",
+      "latitude": 22.971449,
+      "longitude": 72.541781,
+      "suitability_score": 74.906,
+      "decision_score": 5.27,
+      "population_benefiting": 165902,
+      "newly_covered_population": 0,
+      "distance_improvement_km": 0.0,
+      "coverage_improvement_percent": 0.0
+    },
+    {
+      "rank": 10,
+      "parcel_id": "GJ-AHD-01490",
+      "ward": "48 RAMOL HATHIJAN",
+      "latitude": 22.981449,
+      "longitude": 72.656781,
+      "suitability_score": 75.2517,
+      "decision_score": 0.74,
+      "population_benefiting": 0,
+      "newly_covered_population": 0,
+      "distance_improvement_km": 0.0,
+      "coverage_improvement_percent": 0.0
+    }
+  ],
+  "methodology": {
+    "population_source": "WorldPop population raster",
+    "infrastructure_source": "OpenStreetMap",
+    "decision_factors": [
+      "Population need",
+      "Existing hospital availability",
+      "Land suitability",
+      "Accessibility",
+      "Public transport access",
+      "Infrastructure need",
+      "Simulated healthcare coverage"
+    ]
+  }
+}
