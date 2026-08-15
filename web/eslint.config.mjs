@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Vendored CesiumJS build staged by scripts/copy-cesium.mjs — third-party
+    // dist code, not ours to lint.
+    "public/cesium/**",
   ]),
 ]);
 

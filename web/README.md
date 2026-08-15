@@ -23,11 +23,15 @@ npm run dev
 Requires Node 18+. No database, no API keys, no external services required to run — the real ward
 and OpenStreetMap layers are committed under `data/real/`.
 
+`npm install` also runs `scripts/copy-cesium.mjs`, which stages the self-hosted CesiumJS build into
+`public/cesium` for the optional 3D view. Those ~14 MB are gitignored because they are derived from
+`node_modules`; without them the 3D toggle reports that it is unavailable and 2D is unaffected.
+
 ### Rebuilding the real data (optional)
 
 ```bash
-node scripts/build-wards.mjs        # refined/*.geojson  → data/real/<city>_wards.json
-node scripts/fetch-osm.mjs          # Overpass API       → data/real/<city>_{facilities,roads}.json
+npm run data:wards        # refined/*.geojson  → data/real/<city>_wards.json
+npm run data:osm          # Overpass API       → data/real/<city>_{facilities,roads}.json
 ```
 
 Run `build-wards.mjs` first: `fetch-osm.mjs` derives its query bbox from the real ward extent (plus

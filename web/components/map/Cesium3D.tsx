@@ -2,6 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import * as React from "react";
+import { api } from "@/lib/client";
 import { LAND_USE_COLOR, OWNERSHIP_COLOR, FLOOD_COLOR } from "@/lib/ui";
 import type { ParcelColorMode } from "./CityMap";
 
@@ -94,14 +95,14 @@ export function Cesium3D({ parcelColorMode = "development", showFacilities = tru
         viewer.scene.fog.enabled = false;
 
         // Parcels — extruded by built-up %
-        const fc = await fetch("/api/parcels").then((r) => r.json());
+        const fc = await api<GeoJSON.FeatureCollection>("/api/parcels");
         const pds = await Cesium.GeoJsonDataSource.load(fc, { clampToGround: false });
         parcelDsRef.current = pds;
         await viewer.dataSources.add(pds);
         styleParcels(Cesium, pds, modeRef.current);
 
         if (showFacilities) {
-          const ffc = await fetch("/api/facilities").then((r) => r.json());
+          const ffc = await api<GeoJSON.FeatureCollection>("/api/facilities");
           const fds = await Cesium.GeoJsonDataSource.load(ffc, { clampToGround: false });
           facDsRef.current = fds;
           await viewer.dataSources.add(fds);
