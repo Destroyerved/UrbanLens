@@ -1,6 +1,6 @@
 /**
  * Compose the Ahmedabad–Gandhinagar twin-city region from the two municipal
- * datasets already staged in data/real/.
+ * datasets already staged in data/engine/.
  *
  * Run after build-wards.mjs and fetch-osm.mjs:
  *   node scripts/build-region.mjs
@@ -25,7 +25,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const DIR = join(__dirname, "..", "data", "real");
+const DIR = join(__dirname, "..", "data", "engine");
 
 const REGION_ID = "ahmedabad-gandhinagar";
 const PARTS = ["ahmedabad", "gandhinagar"];

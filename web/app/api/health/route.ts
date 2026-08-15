@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
-import { getDataset } from "@/lib/data/store";
-import { cityIdFrom, json } from "@/lib/api";
-import { getPopulationGrid } from "@/lib/gis/population";
+import { getDataset } from "@/lib/engine/data/store";
+import { cityIdFrom, json } from "@/lib/engine/api";
+import { getPopulationGrid } from "@/lib/engine/gis/population";
 
 export async function GET(req: NextRequest) {
   const t = Date.now();

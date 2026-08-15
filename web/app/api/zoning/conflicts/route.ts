@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
-import { getDataset } from "@/lib/data/store";
-import { zoningConflicts } from "@/lib/gis/engine";
-import { cityIdFrom, json } from "@/lib/api";
+import { getDataset } from "@/lib/engine/data/store";
+import { zoningConflicts } from "@/lib/engine/gis/engine";
+import { cityIdFrom, json } from "@/lib/engine/api";
 
 /**
  * Parcels whose detected land use diverges from their official designation

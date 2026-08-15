@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
-import { getDataset } from "@/lib/data/store";
-import { runCopilot } from "@/lib/gis/copilot";
-import { cityIdFrom, json, badRequest } from "@/lib/api";
+import { getDataset } from "@/lib/engine/data/store";
+import { runCopilot } from "@/lib/engine/gis/copilot";
+import { cityIdFrom, json, badRequest } from "@/lib/engine/api";
 
 export async function POST(req: NextRequest) {
   let body: { query?: string };

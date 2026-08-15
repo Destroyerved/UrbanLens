@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
-import { getDataset } from "@/lib/data/store";
-import { coverageReport, infrastructureGaps } from "@/lib/gis/engine";
-import { cityIdFrom, json } from "@/lib/api";
+import { getDataset } from "@/lib/engine/data/store";
+import { coverageReport, infrastructureGaps } from "@/lib/engine/gis/engine";
+import { cityIdFrom, json } from "@/lib/engine/api";
 
 export async function GET(req: NextRequest) {
   const ds = getDataset(cityIdFrom(req));

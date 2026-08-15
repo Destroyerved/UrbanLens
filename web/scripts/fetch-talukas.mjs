@@ -1,7 +1,7 @@
 /**
  * Fetch real taluka (sub-district) boundaries from OpenStreetMap.
  *
- * Run: `node scripts/fetch-talukas.mjs`  → data/real/talukas.json
+ * Run: `node scripts/fetch-talukas.mjs`  → data/engine/talukas.json
  *
  * This is what makes peri-urban coverage possible. Municipal wards stop at the
  * corporation limit, but the land that a metropolitan area actually expands into
@@ -22,7 +22,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const OUT = join(__dirname, "..", "data", "real");
+const OUT = join(__dirname, "..", "data", "engine");
 mkdirSync(OUT, { recursive: true });
 
 /** Study area: both districts plus margin. south,west,north,east */

@@ -32,7 +32,7 @@ import { dirname, join } from "node:path";
 import * as turf from "@turf/turf";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const DIR = join(__dirname, "..", "data", "real");
+const DIR = join(__dirname, "..", "data", "engine");
 const METRO_ID = "ahmedabad-metro";
 
 /**
@@ -65,7 +65,7 @@ function read(name) {
 
 const talukaFile = read("talukas");
 if (!talukaFile) {
-  console.error("! data/real/talukas.json missing — run fetch-talukas.mjs first");
+  console.error("! data/engine/talukas.json missing — run fetch-talukas.mjs first");
   process.exit(1);
 }
 const wardFiles = ["ahmedabad_wards", "gandhinagar_wards"].map(read);

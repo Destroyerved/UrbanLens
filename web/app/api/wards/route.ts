@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
-import { getDataset } from "@/lib/data/store";
-import { infrastructureGaps, livability } from "@/lib/gis/engine";
-import { cityIdFrom, json } from "@/lib/api";
+import { getDataset } from "@/lib/engine/data/store";
+import { infrastructureGaps, livability } from "@/lib/engine/gis/engine";
+import { cityIdFrom, json } from "@/lib/engine/api";
 
 /** Ward polygons enriched with infrastructure + livability scores. */
 export async function GET(req: NextRequest) {

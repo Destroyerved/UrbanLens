@@ -1,10 +1,10 @@
 import { NextRequest } from "next/server";
-import { getDataset } from "@/lib/data/store";
-import { parcelIntelligence } from "@/lib/gis/engine";
-import { cityIdFrom, json, notFound } from "@/lib/api";
+import { getDataset } from "@/lib/engine/data/store";
+import { parcelIntelligence } from "@/lib/engine/gis/engine";
+import { cityIdFrom, json, notFound } from "@/lib/engine/api";
 
-export async function GET(req: NextRequest, ctx: RouteContext<"/api/parcels/[id]">) {
-  const { id } = await ctx.params;
+export async function GET(req: NextRequest, ctx: { params: { id: string } }) {
+  const { id } = ctx.params;
   const ds = getDataset(cityIdFrom(req));
   const parcel = ds.parcels.features.find(
     (p) => p.properties.id === id || p.properties.parcel_id === id

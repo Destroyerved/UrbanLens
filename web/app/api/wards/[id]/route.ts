@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
-import { getDataset } from "@/lib/data/store";
-import { infrastructureGaps, livability, fifteenMinute } from "@/lib/gis/engine";
-import { cityIdFrom, json, notFound } from "@/lib/api";
+import { getDataset } from "@/lib/engine/data/store";
+import { infrastructureGaps, livability, fifteenMinute } from "@/lib/engine/gis/engine";
+import { cityIdFrom, json, notFound } from "@/lib/engine/api";
 
 /**
  * Full profile for a single ward (PRD §56 `/api/wards/{id}`): boundary,
@@ -10,8 +10,8 @@ import { cityIdFrom, json, notFound } from "@/lib/api";
  *
  * Accepts either the ward code (AMC-01) or the ward name, case-insensitively.
  */
-export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const { id } = await ctx.params;
+export async function GET(req: NextRequest, ctx: { params: { id: string } }) {
+  const { id } = ctx.params;
   const ds = getDataset(cityIdFrom(req));
   const key = decodeURIComponent(id).toLowerCase();
 

@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
-import { getDataset } from "@/lib/data/store";
-import { getEnriched } from "@/lib/gis/engine";
-import { cityIdFrom, json } from "@/lib/api";
+import { getDataset } from "@/lib/engine/data/store";
+import { getEnriched } from "@/lib/engine/gis/engine";
+import { cityIdFrom, json } from "@/lib/engine/api";
 
 /**
  * Parcels as GeoJSON for the map. Each feature carries its geometry plus the

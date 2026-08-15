@@ -1,8 +1,8 @@
 import { NextRequest } from "next/server";
-import { getDataset } from "@/lib/data/store";
-import { suitabilityForParcel } from "@/lib/gis/engine";
-import { PROJECTS, DEFAULT_WEIGHTS, ProjectType, Weights } from "@/lib/scoring";
-import { cityIdFrom, json, badRequest, notFound } from "@/lib/api";
+import { getDataset } from "@/lib/engine/data/store";
+import { suitabilityForParcel } from "@/lib/engine/gis/engine";
+import { PROJECTS, DEFAULT_WEIGHTS, ProjectType, Weights } from "@/lib/engine/scoring";
+import { cityIdFrom, json, badRequest, notFound } from "@/lib/engine/api";
 
 interface CalculateRequest {
   parcel_id: string;

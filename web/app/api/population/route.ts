@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
-import { getDataset } from "@/lib/data/store";
-import { getPopulationGrid, populationCells } from "@/lib/gis/population";
-import { cityIdFrom, json } from "@/lib/api";
+import { getDataset } from "@/lib/engine/data/store";
+import { getPopulationGrid, populationCells } from "@/lib/engine/gis/population";
+import { cityIdFrom, json } from "@/lib/engine/api";
 
 /**
  * The population raster as GeoJSON points, one per populated cell, for the

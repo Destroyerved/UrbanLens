@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
-import { getDataset } from "@/lib/data/store";
-import { livability, LIVABILITY_WEIGHTS, coverageReport } from "@/lib/gis/engine";
-import { cityIdFrom, json } from "@/lib/api";
+import { getDataset } from "@/lib/engine/data/store";
+import { livability, LIVABILITY_WEIGHTS, coverageReport } from "@/lib/engine/gis/engine";
+import { cityIdFrom, json } from "@/lib/engine/api";
 
 /**
  * Urban Livability Score per ward (PRD §15). The component weights are returned

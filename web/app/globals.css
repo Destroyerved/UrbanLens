@@ -1,168 +1,425 @@
-@import "tailwindcss";
-@import "maplibre-gl/dist/maplibre-gl.css";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-/*
- * UrbanLens — dark "urban command center" design system.
- * The product is deliberately single-theme (dark, map-first) per spec §67.
- */
+/* ==========================================================================
+   UrbanLens Liquid Glass Design Tokens & System
+   Ultra-translucent, refractive glassmorphic UI revealing live map underneath
+   ========================================================================== */
 
 :root {
-  --bg: #070b12;
-  --bg-elev: #0d131d;
-  --panel: #0f1723;
-  --panel-2: #141d2b;
-  --panel-hover: #182334;
-  --line: #1e2a3a;
-  --line-strong: #2a3a4f;
+  /* Light theme */
+  --background: 216 30% 97%;
+  --foreground: 222 47% 11%;
+  --muted: 218 24% 92%;
+  --muted-foreground: 220 25% 30%;
+  --surface-1: 0 0% 100%;
+  --surface-2: 216 28% 95%;
+  --surface-3: 216 22% 89%;
+  --border: 218 20% 78%;
+  --accent: 195 95% 33%;
+  --accent-foreground: 0 0% 100%;
+  --good: 152 75% 28%;
+  --moderate: 42 96% 36%;
+  --warning: 27 96% 40%;
+  --critical: 0 82% 44%;
+  --gov: 216 92% 44%;
 
-  --text: #e6edf6;
-  --text-muted: #8ea1b8;
-  --text-dim: #5f7189;
+  /* Liquid Glass — Ultra Translucent Light */
+  --glass-bg: rgba(255, 255, 255, 0.28);
+  --glass-bg-strong: rgba(255, 255, 255, 0.38);
+  --glass-card-bg: rgba(255, 255, 255, 0.22);
+  --glass-border: rgba(255, 255, 255, 0.75);
+  --glass-border-subtle: rgba(255, 255, 255, 0.50);
+  --glass-inset-1: inset 1.5px 1.5px 1px 0 rgba(255, 255, 255, 0.85);
+  --glass-inset-2: inset -1px -1px 1px 1px rgba(255, 255, 255, 0.45);
+  --glass-shadow: 0 8px 28px 0 rgba(0, 0, 0, 0.14), 0 2px 8px 0 rgba(0, 0, 0, 0.06);
+  --glass-shadow-strong: 0 16px 44px 0 rgba(0, 0, 0, 0.20), 0 4px 16px 0 rgba(0, 0, 0, 0.10);
+  --glass-ease: cubic-bezier(0.175, 0.885, 0.32, 1.2);
 
-  --accent: #38bdf8; /* cyan — government / infrastructure */
-  --accent-2: #22d3ee;
-  --accent-ink: #0b2233;
+  --shadow-1: 0 2px 8px rgba(0, 0, 0, 0.10);
+  --shadow-2: 0 8px 24px -2px rgba(0, 0, 0, 0.16), 0 2px 6px -1px rgba(0, 0, 0, 0.08);
+  --shadow-3: 0 16px 40px -4px rgba(0, 0, 0, 0.22), 0 4px 16px -2px rgba(0, 0, 0, 0.12);
 
-  --good: #22c55e;
-  --moderate: #eab308;
-  --warning: #f97316;
-  --critical: #ef4444;
-  --gov: #3b82f6;
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
 
-  --shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
+  /* z-index scale */
+  --z-chrome: 10;
+  --z-panel: 20;
+  --z-drawer: 30;
+  --z-overlay: 40;
+  --z-modal: 50;
+  --z-toast: 60;
 }
 
-@theme inline {
-  --color-bg: var(--bg);
-  --color-bg-elev: var(--bg-elev);
-  --color-panel: var(--panel);
-  --color-panel-2: var(--panel-2);
-  --color-panel-hover: var(--panel-hover);
-  --color-line: var(--line);
-  --color-line-strong: var(--line-strong);
-  --color-ink: var(--text);
-  --color-muted: var(--text-muted);
-  --color-dim: var(--text-dim);
-  --color-accent: var(--accent);
-  --color-accent-2: var(--accent-2);
-  --color-good: var(--good);
-  --color-moderate: var(--moderate);
-  --color-warning: var(--warning);
-  --color-critical: var(--critical);
-  --color-gov: var(--gov);
+.dark {
+  --background: 222 30% 6%;
+  --foreground: 213 28% 96%;
+  --muted: 220 18% 13%;
+  --muted-foreground: 216 18% 75%;
+  --surface-1: 221 26% 9%;
+  --surface-2: 220 22% 12%;
+  --surface-3: 219 20% 16%;
+  --border: 218 18% 30%;
+  --accent: 187 95% 52%;
+  --accent-foreground: 222 47% 7%;
+  --good: 152 70% 48%;
+  --moderate: 46 96% 58%;
+  --warning: 28 96% 58%;
+  --critical: 0 85% 62%;
+  --gov: 214 95% 65%;
 
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  /* Liquid Glass — Ultra Translucent Dark */
+  --glass-bg: rgba(10, 15, 26, 0.35);
+  --glass-bg-strong: rgba(8, 12, 22, 0.45);
+  --glass-card-bg: rgba(255, 255, 255, 0.08);
+  --glass-border: rgba(255, 255, 255, 0.30);
+  --glass-border-subtle: rgba(255, 255, 255, 0.18);
+  --glass-inset-1: inset 1.5px 1.5px 1px 0 rgba(255, 255, 255, 0.55);
+  --glass-inset-2: inset -1px -1px 1px 1px rgba(255, 255, 255, 0.18);
+  --glass-shadow: 0 10px 36px 0 rgba(0, 0, 0, 0.50), 0 0 24px rgba(0, 0, 0, 0.25);
+  --glass-shadow-strong: 0 20px 56px 0 rgba(0, 0, 0, 0.65), 0 0 36px rgba(0, 0, 0, 0.35);
+  --glass-ease: cubic-bezier(0.175, 0.885, 0.32, 1.2);
+
+  --shadow-1: 0 2px 8px rgba(0, 0, 0, 0.45);
+  --shadow-2: 0 8px 30px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.35);
+  --shadow-3: 0 18px 50px rgba(0, 0, 0, 0.68), 0 4px 16px rgba(0, 0, 0, 0.45);
+}
+
+.dim {
+  --background: 260 28% 7%;
+  --foreground: 260 25% 96%;
+  --muted: 260 20% 14%;
+  --muted-foreground: 260 16% 75%;
+  --surface-1: 260 25% 10%;
+  --surface-2: 260 22% 13%;
+  --surface-3: 260 20% 17%;
+  --border: 260 20% 28%;
+  --accent: 270 95% 65%;
+  --accent-foreground: 260 47% 7%;
+  --good: 152 70% 48%;
+  --moderate: 46 96% 58%;
+  --warning: 28 96% 58%;
+  --critical: 0 85% 62%;
+  --gov: 260 95% 68%;
+
+  /* Liquid Glass — Ultra Translucent Dim */
+  --glass-bg: rgba(18, 12, 30, 0.38);
+  --glass-bg-strong: rgba(15, 10, 26, 0.48);
+  --glass-card-bg: rgba(255, 255, 255, 0.09);
+  --glass-border: rgba(192, 132, 252, 0.35);
+  --glass-border-subtle: rgba(192, 132, 252, 0.20);
+  --glass-inset-1: inset 1.5px 1.5px 1px 0 rgba(255, 255, 255, 0.55);
+  --glass-inset-2: inset -1px -1px 1px 1px rgba(168, 85, 247, 0.25);
+  --glass-shadow: 0 10px 36px 0 rgba(0, 0, 0, 0.55), 0 0 24px rgba(147, 51, 234, 0.15);
+  --glass-shadow-strong: 0 20px 56px 0 rgba(0, 0, 0, 0.70), 0 0 36px rgba(147, 51, 234, 0.25);
+  --glass-ease: cubic-bezier(0.175, 0.885, 0.32, 1.2);
+
+  --shadow-1: 0 2px 8px rgba(0, 0, 0, 0.45);
+  --shadow-2: 0 8px 30px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.35);
+  --shadow-3: 0 18px 50px rgba(0, 0, 0, 0.68), 0 4px 16px rgba(0, 0, 0, 0.45);
+}
+
+.dim .glass,
+.dim .glass-strong,
+.dim .glass-card {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
 }
 
 * {
-  border-color: var(--line);
+  border-color: hsl(var(--border) / 0.5);
 }
 
 html,
 body {
   height: 100%;
+  overscroll-behavior: none;
 }
 
 body {
-  background: var(--bg);
-  color: var(--text);
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
   font-family: var(--font-sans);
+  font-feature-settings: "cv05", "ss01";
   -webkit-font-smoothing: antialiased;
-  overflow: hidden; /* app shell owns scrolling regions */
 }
 
-/* Scrollbars */
-::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: var(--line-strong);
-  border-radius: 999px;
-  border: 2px solid var(--bg);
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #35485f;
+
+/* ============================== Liquid Glass System ============================== */
+
+.glass {
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(16px) saturate(200%);
+  backdrop-filter: blur(16px) saturate(200%);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow), var(--glass-inset-1), var(--glass-inset-2);
 }
 
-/* Utility helpers layered on Tailwind */
-.panel {
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 12px;
+.glass-strong {
+  background: var(--glass-bg-strong);
+  -webkit-backdrop-filter: blur(20px) saturate(210%);
+  backdrop-filter: blur(20px) saturate(210%);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow-strong), var(--glass-inset-1), var(--glass-inset-2);
 }
-.panel-2 {
-  background: var(--panel-2);
-  border: 1px solid var(--line);
-  border-radius: 10px;
+
+.glass-card {
+  background: var(--glass-card-bg);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  backdrop-filter: blur(12px) saturate(180%);
+  border: 1px solid var(--glass-border-subtle);
+  box-shadow: var(--shadow-1), var(--glass-inset-1), var(--glass-inset-2);
+  transition: transform 150ms ease;
 }
-.hairline {
-  border-color: var(--line);
+
+.glass-card:hover {
+  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.18);
+  border-color: var(--glass-border);
+  box-shadow: var(--shadow-2), var(--glass-inset-1), var(--glass-inset-2);
 }
-.mono {
+
+.glass-border-glow {
+  box-shadow: 0 0 0 1px var(--glass-border), var(--glass-inset-1), var(--glass-inset-2), var(--glass-shadow);
+}
+
+/* Text clarity in glass containers */
+.dark .glass,
+.dark .glass-strong,
+.dark .glass-card {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+button,
+[role="button"],
+.bg-accent,
+.bg-gov,
+.bg-good,
+.bg-warning,
+.bg-critical,
+.text-accent-foreground {
+  text-shadow: none !important;
+}
+
+.num {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
-}
-.tnum {
-  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
 }
 
-.glow-accent {
-  box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.25), 0 0 24px rgba(56, 189, 248, 0.12);
-}
-
-/* MapLibre dark tuning */
-.maplibregl-map {
-  font-family: var(--font-sans);
-}
-.maplibregl-ctrl-attrib {
-  background: rgba(7, 11, 18, 0.7) !important;
-  color: var(--text-dim) !important;
+.label-caps {
   font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: hsl(var(--foreground) / 0.75);
+}
+
+/* ============================== Glass Theme Switcher ============================== */
+
+.switcher {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px 4px;
+  border-radius: 9999px;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(16px) saturate(200%);
+  backdrop-filter: blur(16px) saturate(200%);
+  box-shadow: var(--glass-shadow), var(--glass-inset-1), var(--glass-inset-2);
+  margin: 0;
+}
+
+.switcher__legend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.switcher__option {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 9999px;
+  cursor: pointer;
+  --c: hsl(var(--muted-foreground));
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.2);
+}
+
+.switcher__option:hover {
+  --c: hsl(var(--foreground));
+  transform: scale(1.08);
+}
+
+.switcher__option[data-active="true"] {
+  transform: scale(1.05);
+}
+
+.switcher__option[data-value="light"][data-active="true"] {
+  --c: #f59e0b;
+}
+
+.switcher__option[data-value="dark"][data-active="true"] {
+  --c: #38bdf8;
+}
+
+.switcher__option[data-value="dim"][data-active="true"] {
+  --c: #c084fc;
+}
+
+.switcher__input {
+  position: absolute;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+  margin: 0;
+  z-index: 3;
+}
+
+.switcher__icon {
+  width: 18px;
+  height: 18px;
+  display: block;
+  transition: transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.2), fill 0.25s ease;
+}
+
+.switcher__option:hover .switcher__icon {
+  transform: scale(1.12) rotate(4deg);
+}
+
+.switcher__filter {
+  position: absolute;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  opacity: 0;
+  overflow: hidden;
+}
+
+/* ============================== Scrollbars =============================== */
+
+.panel-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+}
+.panel-scroll::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+.panel-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.35);
+  border-radius: 999px;
+}
+.panel-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ============================ MapLibre Chrome ============================ */
+
+.maplibregl-canvas {
+  outline: none;
+}
+
+.maplibregl-ctrl-attrib {
+  background: var(--glass-bg) !important;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border-radius: 8px 0 0 0;
+  font-size: 10px;
+  box-shadow: var(--glass-inset-1);
 }
 .maplibregl-ctrl-attrib a {
-  color: var(--text-muted) !important;
-}
-.maplibregl-popup-content {
-  background: var(--panel-2) !important;
-  color: var(--text) !important;
-  border: 1px solid var(--line-strong);
-  border-radius: 10px !important;
-  box-shadow: var(--shadow);
-  padding: 10px 12px !important;
-}
-.maplibregl-popup-tip {
-  border-top-color: var(--panel-2) !important;
-  border-bottom-color: var(--panel-2) !important;
-}
-.maplibregl-ctrl-group {
-  background: var(--panel-2) !important;
-  border: 1px solid var(--line-strong) !important;
-}
-.maplibregl-ctrl-group button + button {
-  border-top: 1px solid var(--line) !important;
-}
-.maplibregl-ctrl button .maplibregl-ctrl-icon {
-  filter: invert(0.9);
+  color: hsl(var(--muted-foreground)) !important;
 }
 
-@keyframes fadein {
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
+/* Candidate rank markers */
+.ul-rank-marker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: hsl(var(--accent-foreground));
+  background: hsl(var(--accent));
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35), 0 0 0 4px hsl(var(--accent) / 0.3);
+  cursor: pointer;
+  transform-origin: center;
+  animation: rank-pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
-.animate-in {
-  animation: fadein 0.25s ease both;
+.ul-rank-marker[data-rank="1"] {
+  width: 38px;
+  height: 38px;
+  font-size: 14px;
+  box-shadow: 0 0 0 6px hsl(var(--accent) / 0.35), var(--shadow-2);
+}
+@keyframes rank-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.3) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 
-@keyframes pulsering {
-  0% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.5); }
-  70% { box-shadow: 0 0 0 10px rgba(56, 189, 248, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0); }
+.ul-sim-pin {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: hsl(var(--gov));
+  color: white;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 0 0 8px hsl(var(--gov) / 0.3), var(--shadow-3);
+  animation: pin-drop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
-.pulse {
-  animation: pulsering 2s infinite;
+@keyframes pin-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-26px) scale(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* cmdk group headings */
+[cmdk-group-heading] {
+  padding: 6px 8px 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: hsl(var(--muted-foreground));
+}
+
+/* Map hover tooltip */
+.ul-map-tooltip {
+  position: absolute;
+  pointer-events: none;
+  z-index: var(--z-panel);
+  transform: translate(-50%, calc(-100% - 14px));
 }

@@ -1,9 +1,9 @@
 import { NextRequest } from "next/server";
-import { getDataset, getCityConfig } from "@/lib/data/store";
-import { zoningConflicts } from "@/lib/gis/engine";
-import { getPopulationGrid } from "@/lib/gis/population";
-import { cityIdFrom, json } from "@/lib/api";
-import type { CityDataset, DataLayerKey } from "@/lib/types";
+import { getDataset, getCityConfig } from "@/lib/engine/data/store";
+import { zoningConflicts } from "@/lib/engine/gis/engine";
+import { getPopulationGrid } from "@/lib/engine/gis/population";
+import { cityIdFrom, json } from "@/lib/engine/api";
+import type { CityDataset, DataLayerKey } from "@/lib/engine/types";
 
 /**
  * Catalogue of the spatial layers available for a city (PRD §56 `/api/layers`):

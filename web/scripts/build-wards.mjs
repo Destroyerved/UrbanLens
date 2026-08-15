@@ -11,7 +11,7 @@
  *       centroid_lon/lat, road_length_km, road_density_km_per_km2
  *       (road metrics are measured against the OSM road network)
  *
- * Output: web/data/real/<city>_wards.json
+ * Output: web/data/engine/<city>_wards.json
  *
  * WHAT IS REAL vs DERIVED — this distinction is load-bearing for the product,
  * so it is recorded in the output file and surfaced in the UI:
@@ -32,7 +32,7 @@ import { dirname, join } from "node:path";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO = join(__dirname, "..", "..");
 const REFINED = join(REPO, "refined");
-const OUT = join(__dirname, "..", "data", "real");
+const OUT = join(__dirname, "..", "data", "engine");
 
 /**
  * Exponent applied to road density when allocating population. 1.35 reproduces

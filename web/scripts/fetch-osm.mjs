@@ -1,6 +1,6 @@
 /**
  * Fetch REAL city infrastructure from OpenStreetMap via the Overpass API and
- * cache it to web/data/real/.
+ * cache it to web/data/engine/.
  *
  *   node scripts/fetch-osm.mjs             # every configured city
  *   node scripts/fetch-osm.mjs ahmedabad   # one city
@@ -8,7 +8,7 @@
  * Facilities + major roads + rivers become authoritative "real" layers; parcels
  * remain synthetic demo data.
  *
- * The query bbox is derived from the REAL ward extent (data/real/<city>_wards.json,
+ * The query bbox is derived from the REAL ward extent (data/engine/<city>_wards.json,
  * produced by build-wards.mjs) and padded outward. This matters: a bbox tighter
  * than the municipal boundary leaves edge wards with no facilities at all, which
  * shows up as a fake "infrastructure desert" in the gap analysis. Run
@@ -19,7 +19,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const OUT = join(__dirname, "..", "data", "real");
+const OUT = join(__dirname, "..", "data", "engine");
 mkdirSync(OUT, { recursive: true });
 
 /**

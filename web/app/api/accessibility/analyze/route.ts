@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
-import { getDataset } from "@/lib/data/store";
-import { fifteenMinute } from "@/lib/gis/engine";
-import { cityIdFrom, json, badRequest } from "@/lib/api";
+import { getDataset } from "@/lib/engine/data/store";
+import { fifteenMinute } from "@/lib/engine/gis/engine";
+import { cityIdFrom, json, badRequest } from "@/lib/engine/api";
 
 interface AnalyzeRequest {
   points?: { lng: number; lat: number; label?: string }[];
