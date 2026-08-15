@@ -1,7 +1,7 @@
 import * as turf from "@turf/turf";
 import { getCityConfig } from "@/lib/data/store";
 import { DEFAULT_CORRIDORS } from "@/lib/config";
-import { populationWithinKm, densityAt } from "@/lib/gis/population";
+import { populationWithinKm, densityAt, populationSamples } from "@/lib/gis/population";
 import {
   buildPointIndex,
   nearestInIndex,
@@ -521,6 +521,13 @@ export interface WardInfra {
   name: string;
   population: number;
   centroid: [number, number];
+  /**
+   * Municipal ward or peri-urban taluka remnant. They differ by two orders of
+   * magnitude in area, so a consumer ranking them must be able to say which is
+   * which rather than presenting a 500 km² rural unit as a comparable "ward".
+   */
+  kind: "ward" | "taluka";
+  area_km2: number;
   scores: {
     healthcare: number;
     education: number;
@@ -591,19 +598,35 @@ export function coverageReport(dataset: CityDataset): CoverageReport[] {
 
 export function infrastructureGaps(dataset: CityDataset): WardInfra[] {
   const out: WardInfra[] = [];
-  for (const w of dataset.wards.features) {
-    const c = w.properties.centroid;
+  for (let wi = 0; wi < dataset.wards.features.length; wi++) {
+    const w = dataset.wards.features[wi];
+
+    // Score where the people are, not at the geometric centre. For a compact
+    // city ward these coincide; for a large peri-urban unit the centroid sits in
+    // open land and would report every service as unreachable.
+    const samples = populationSamples(dataset, wi);
+    const points: { point: [number, number]; weight: number }[] = samples.length
+      ? samples
+      : [{ point: w.properties.centroid, weight: 1 }];
+    const weightSum = points.reduce((s, p) => s + p.weight, 0) || 1;
+
     const perCap = (type: FacilityType, radius: number, good: number, bad: number) => {
-      const nearest = nearestByType(dataset, c, type).km;
-      const count = facilityCountWithinKm(dataset, c, type, radius);
-      const per100k = (count / Math.max(w.properties.population, 1)) * 100_000;
-      return clamp(0.6 * decayScore(nearest, good, bad) + 0.4 * norm(per100k, 0, 6));
+      let acc = 0;
+      for (const { point, weight } of points) {
+        const nearest = nearestByType(dataset, point, type).km;
+        const count = facilityCountWithinKm(dataset, point, type, radius);
+        const per100k = (count / Math.max(w.properties.population, 1)) * 100_000;
+        acc += weight * clamp(0.6 * decayScore(nearest, good, bad) + 0.4 * norm(per100k, 0, 6));
+      }
+      return acc / weightSum;
     };
     const healthcare = clamp(0.6 * perCap("hospital", 6, 1.5, 7) + 0.4 * perCap("clinic", 3, 0.6, 2.5));
     const education = clamp(0.7 * perCap("school", 3, 0.8, 3) + 0.3 * perCap("college", 8, 2, 9));
     const parks = perCap("park", 2.5, 0.8, 2.5);
     const transportation = clamp(0.6 * perCap("bus_stop", 1.5, 0.3, 1.5) + 0.4 * perCap("metro_station", 6, 0.8, 6));
-    const road_connectivity = decayScore(roadDistanceKm(dataset, c), 0.3, 2.5);
+    const road_connectivity =
+      points.reduce((s, { point, weight }) => s + weight * decayScore(roadDistanceKm(dataset, point), 0.3, 2.5), 0) /
+      weightSum;
     const overall = clamp(
       0.3 * healthcare + 0.22 * education + 0.16 * parks + 0.22 * transportation + 0.1 * road_connectivity
     );
@@ -612,6 +635,8 @@ export function infrastructureGaps(dataset: CityDataset): WardInfra[] {
       name: w.properties.name,
       population: w.properties.population,
       centroid: w.properties.centroid,
+      kind: w.properties.kind ?? "ward",
+      area_km2: Number((w.properties.area_sqm / 1e6).toFixed(1)),
       scores: {
         healthcare: Math.round(healthcare),
         education: Math.round(education),

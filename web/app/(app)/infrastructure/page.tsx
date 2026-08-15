@@ -13,6 +13,8 @@ interface Ward {
   population: number;
   centroid: [number, number];
   overall: number;
+  kind: "ward" | "taluka";
+  area_km2: number;
   scores: { healthcare: number; education: number; parks: number; transportation: number; road_connectivity: number };
 }
 interface Access {
@@ -340,8 +342,21 @@ export default function InfrastructurePage() {
               <div className="flex items-center gap-3 px-3 py-2.5">
                 <span className="mono text-xs text-dim w-5">{i + 1}</span>
                 <div className="min-w-0 flex-1">
-                  <div className="text-[13px] text-ink truncate">{w.name}</div>
-                  <div className="text-[11px] text-dim">{fmtCompact(w.population)} residents · {w.ward_code}</div>
+                  <div className="text-[13px] text-ink truncate flex items-center gap-1.5">
+                    <span className="truncate">{w.name}</span>
+                    {w.kind === "taluka" && (
+                      <span
+                        className="shrink-0 rounded px-1 text-[9px] font-medium uppercase tracking-wide"
+                        style={{ color: "var(--moderate)", background: "color-mix(in srgb, var(--moderate) 14%, transparent)" }}
+                        title={`Peri-urban taluka remnant, ${w.area_km2} km² — far larger than a municipal ward and only sparsely mapped in OpenStreetMap.`}
+                      >
+                        rural
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-[11px] text-dim">
+                    {fmtCompact(w.population)} residents · {w.kind === "taluka" ? `${w.area_km2} km²` : w.ward_code}
+                  </div>
                 </div>
                 <div className="tnum text-base font-bold" style={{ color: scoreColor(w.overall) }}>
                   {w.overall}

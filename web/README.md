@@ -7,16 +7,36 @@ interactive, explainable urban-planning decision-support system. It ships with t
 switchable from the top bar — practical proof that nothing is hard-coded to one city (add another in
 `lib/config.ts`):
 
-| Area | Wards | Extent | Parcels |
-|---|---|---|---|
-| **Ahmedabad** | 48 AMC | 441 km² | 2,566 |
-| **Gandhinagar** | 11 GMC | 196 km² | 732 |
-| **Ahmedabad–Gandhinagar** | 59 combined | 637 km² | 3,297 |
+| Area | Units | Extent | Parcels | Population |
+|---|---|---|---|---|
+| **Ahmedabad** | 48 AMC wards | 441 km² | 2,566 | 7.20M |
+| **Gandhinagar** | 11 GMC wards | 196 km² | 732 | 0.35M |
+| **Ahmedabad–Gandhinagar** | 59 wards | 637 km² | 3,297 | 7.55M |
+| **Ahmedabad Metro Region** | 59 wards + 5 talukas | 2,915 km² | 4,273 | 8.65M |
 
-The combined region matters because the corridor between the two cities — GIFT City, Adalaj, the SG
-Highway spine — is where the conurbation is actually growing, and neither municipality sees it when
-analysed alone. It is composed from both municipal datasets by `scripts/build-region.mjs`, and
-declares a **Gandhinagar Corridor** growth axis that exists only at regional scale.
+The **twin-city region** matters because the corridor between the two cities — GIFT City, Adalaj, the
+SG Highway spine — is where the conurbation is actually growing, and neither municipality sees it
+alone. It declares a **Gandhinagar Corridor** growth axis that exists only at regional scale.
+
+The **metro region** goes further, past every corporation limit. Municipal wards stop at the city
+edge, but the farmland that a metropolitan area expands into lies beyond it, and the only real
+administrative units out there are talukas. Taluka boundaries (OSM `admin_level=6`) are clipped to
+their non-municipal remainder so nothing is double-counted, giving Daskroi, Sanand, Kalol and
+Gandhinagar rural alongside the 59 city wards.
+
+Metro population is derived without inventing any census figure. No taluka here publishes one — none
+carries a `population` tag in OSM, and none of their Wikidata items carries a P1082 claim (checked
+for every one). Districts do, so:
+
+```
+peri-urban 2011  = district total (Census 2011) − municipal total (Census 2011)
+peri-urban density = that population ÷ (district area − municipal area)
+taluka population  = clipped area × density × 1.196   (rural growth 2011→2026)
+```
+
+Both inputs are published counts and the subtraction is exact. What is modelled is the assumption of
+uniform peri-urban density within a district — far more defensible outside a city than inside it —
+and that single growth factor.
 
 **One convincing workflow, end to end:**
 `Detect Growth → Find Infrastructure Gap → Identify Land → Recommend Site → Simulate Impact → Explain Decision`
@@ -41,15 +61,23 @@ and OpenStreetMap layers are committed under `data/real/`.
 ### Rebuilding the real data (optional)
 
 ```bash
-npm run data:wards        # refined/*.geojson  → data/real/<city>_wards.json
-npm run data:osm          # Overpass API       → data/real/<city>_{facilities,roads,land}.json
-npm run data:region       # merges both cities → data/real/ahmedabad-gandhinagar_*.json
+npm run data:wards                    # refined/*.geojson → data/real/<city>_wards.json
+npm run data:osm                      # Overpass API      → <city>_{facilities,roads,land}.json
+npm run data:region                   # merge both cities → ahmedabad-gandhinagar_*.json
+npm run data:talukas                  # Overpass API      → talukas.json (admin_level 5/6)
+npm run data:metro                    # compose           → ahmedabad-metro_wards.json
+npm run data:osm ahmedabad-metro      # peri-urban OSM coverage for the metro extent
 ```
 
-Run them in that order. `data:region` merges the two municipal datasets rather than re-querying
-Overpass for a bbox twice the size: the two fetch bboxes already overlap and every feature carries a
-stable OSM id, so de-duplicating on that id reconstructs the region exactly with no extra load on a
-public API.
+Run them in that order. Two things worth knowing:
+
+- `data:region` merges the two municipal datasets rather than re-querying Overpass for a bbox twice
+  the size. The fetch bboxes already overlap and every feature carries a stable OSM id, so
+  de-duplicating on that id reconstructs the region exactly with no extra load on a public API.
+- The final `data:osm ahmedabad-metro` is not optional if you care about peri-urban results. Without
+  it the metro area reuses the municipal-core layers, and talukas with no mapped facilities score
+  zero across the board — an artefact of where data was fetched, not a finding. `data:metro` will not
+  overwrite a metro-wide fetch once one exists.
 
 Run `build-wards.mjs` first: `fetch-osm.mjs` derives its query bbox from the real ward extent (plus
 ~3 km of padding). That padding matters — a bbox tighter than the municipal boundary leaves edge

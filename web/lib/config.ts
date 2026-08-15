@@ -114,10 +114,40 @@ export const AHMEDABAD_GANDHINAGAR: CityConfig = {
   ],
 };
 
+/**
+ * The metropolitan region: both municipalities plus the peri-urban talukas
+ * around them. This is the scale at which land actually changes use — the
+ * farmland on the fringe is where the next decade of development lands, and it
+ * sits entirely outside every corporation limit.
+ *
+ * Composed by scripts/build-metro.mjs. Municipal wards keep their own
+ * populations; taluka remnants carry a density derived by subtracting municipal
+ * Census 2011 counts from district Census 2011 counts.
+ */
+export const AHMEDABAD_METRO: CityConfig = {
+  id: "ahmedabad-metro",
+  name: "Ahmedabad Metro Region",
+  state: "Gujarat",
+  code: "AMR",
+  center: [72.55, 23.08],
+  cores: [AHMEDABAD.center, GANDHINAGAR.center],
+  /** 59 municipal wards + 5 clipped peri-urban talukas. */
+  bbox: [72.0893, 22.7706, 72.8426, 23.4355],
+  radiusKm: 45,
+  /** AMC + GMC projections plus the derived peri-urban remainder. */
+  population: 8_651_395,
+  zoom: 9.3,
+  corridors: [
+    { name: "Gandhinagar Corridor", bearing: 8, width: 26, reachKm: 26, risk: "Very High" },
+    ...DEFAULT_CORRIDORS,
+  ],
+};
+
 export const CITIES: Record<string, CityConfig> = {
   ahmedabad: AHMEDABAD,
   gandhinagar: GANDHINAGAR,
   "ahmedabad-gandhinagar": AHMEDABAD_GANDHINAGAR,
+  "ahmedabad-metro": AHMEDABAD_METRO,
 };
 
 export const DEFAULT_CITY = AHMEDABAD;

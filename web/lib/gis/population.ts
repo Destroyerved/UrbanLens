@@ -78,17 +78,38 @@ function inPolygon(lng: number, lat: number, rings: number[][][]): boolean {
   return true;
 }
 
+/**
+ * A ward's geometry as a list of polygons, each a list of rings. Clipping a
+ * taluka against the municipal footprint routinely produces MultiPolygons, and
+ * treating one as a Polygon silently loses the whole unit — its cells never
+ * match, so its population is dropped from the raster entirely.
+ */
+function polygonsOf(w: Ward): number[][][][] {
+  return w.geometry.type === "Polygon"
+    ? [w.geometry.coordinates as number[][][]]
+    : (w.geometry.coordinates as number[][][][]);
+}
+
+function contains(w: Ward, lng: number, lat: number): boolean {
+  for (const rings of polygonsOf(w)) {
+    if (inPolygon(lng, lat, rings)) return true;
+  }
+  return false;
+}
+
 function wardBBox(w: Ward): [number, number, number, number] {
   let minLng = Infinity;
   let minLat = Infinity;
   let maxLng = -Infinity;
   let maxLat = -Infinity;
-  for (const ring of w.geometry.coordinates) {
-    for (const c of ring) {
-      if (c[0] < minLng) minLng = c[0];
-      if (c[1] < minLat) minLat = c[1];
-      if (c[0] > maxLng) maxLng = c[0];
-      if (c[1] > maxLat) maxLat = c[1];
+  for (const rings of polygonsOf(w)) {
+    for (const ring of rings) {
+      for (const c of ring) {
+        if (c[0] < minLng) minLng = c[0];
+        if (c[1] < minLat) minLat = c[1];
+        if (c[0] > maxLng) maxLng = c[0];
+        if (c[1] > maxLat) maxLat = c[1];
+      }
     }
   }
   return [minLng, minLat, maxLng, maxLat];
@@ -105,7 +126,7 @@ export function makeWardLocator(wards: Ward[]): (lng: number, lat: number) => nu
     for (let w = 0; w < wards.length; w++) {
       const b = boxes[w];
       if (lng < b[0] || lng > b[2] || lat < b[1] || lat > b[3]) continue;
-      if (inPolygon(lng, lat, wards[w].geometry.coordinates)) return w;
+      if (contains(wards[w], lng, lat)) return w;
     }
     return -1;
   };
@@ -152,7 +173,7 @@ function build(dataset: CityDataset): PopulationGrid {
       for (let w = 0; w < wards.length; w++) {
         const b = boxes[w];
         if (lng < b[0] || lng > b[2] || lat < b[1] || lat > b[3]) continue;
-        if (!inPolygon(lng, lat, wards[w].geometry.coordinates)) continue;
+        if (!contains(wards[w], lng, lat)) continue;
         wardIdx[r * cols + c] = w;
         wardArea[w] += rowAreaKm2[r];
         break;
@@ -235,6 +256,52 @@ export function densityAt(dataset: CityDataset, p: [number, number]): number {
   const r = Math.floor((p[1] - grid.minLat) / grid.cellLat);
   if (c < 0 || r < 0 || c >= grid.cols || r >= grid.rows) return 0;
   return grid.density[r * grid.cols + c];
+}
+
+/**
+ * Population-weighted sample points inside one unit, for metrics that would
+ * otherwise be evaluated at its centroid.
+ *
+ * A centroid represents a 9 km² city ward well. It represents an 800 km²
+ * peri-urban taluka not at all — the centroid of such a unit typically lands in
+ * open farmland, so every accessibility score reads as zero regardless of the
+ * towns inside it. Sampling where the people actually are fixes that, and makes
+ * ward-level scores more faithful too.
+ *
+ * Cells are picked by descending population so the sample follows settlement
+ * rather than area, and each carries its own weight.
+ */
+export function populationSamples(
+  dataset: CityDataset,
+  wardIndex: number,
+  maxSamples = 12
+): { point: [number, number]; weight: number }[] {
+  const grid = getPopulationGrid(dataset);
+  const cells: { point: [number, number]; weight: number }[] = [];
+
+  for (let r = 0; r < grid.rows; r++) {
+    for (let c = 0; c < grid.cols; c++) {
+      const i = r * grid.cols + c;
+      if (grid.wardIdx[i] !== wardIndex) continue;
+      cells.push({
+        point: [grid.minLng + (c + 0.5) * grid.cellLng, grid.minLat + (r + 0.5) * grid.cellLat],
+        weight: grid.pop[i],
+      });
+    }
+  }
+  if (cells.length <= maxSamples) return cells;
+
+  // Densest cells first, then an even stride across the rest so a large unit is
+  // not represented solely by its single biggest town.
+  cells.sort((a, b) => b.weight - a.weight);
+  const head = cells.slice(0, Math.ceil(maxSamples / 2));
+  const rest = cells.slice(head.length);
+  const stride = Math.max(1, Math.floor(rest.length / (maxSamples - head.length)));
+  const tail: typeof cells = [];
+  for (let i = 0; i < rest.length && tail.length < maxSamples - head.length; i += stride) {
+    tail.push(rest[i]);
+  }
+  return [...head, ...tail];
 }
 
 export interface PopulationCell {

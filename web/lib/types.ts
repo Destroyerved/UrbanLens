@@ -107,9 +107,20 @@ export interface WardProps {
   road_density?: number; // km of road per km²
   compactness?: number; // Polsby-Popper, 0..1
   perimeter_km?: number;
+  /**
+   * Municipal ward or peri-urban taluka remnant. These differ by two orders of
+   * magnitude in area (~9 km² vs ~500 km²), so anything ranking units has to be
+   * able to tell them apart rather than compare them directly.
+   */
+  kind?: "ward" | "taluka";
+  admin_level?: number;
 }
 
-export type Ward = Feature<Polygon, WardProps>;
+/**
+ * MultiPolygon is not hypothetical here: clipping a taluka against the municipal
+ * footprint routinely yields several disjoint remnants.
+ */
+export type Ward = Feature<Polygon | MultiPolygon, WardProps>;
 
 export interface FacilityProps {
   id: string;
@@ -186,7 +197,7 @@ export interface CityDataset {
   generatedAt: string;
   sources: Record<DataLayerKey, LayerProvenance>;
   boundary: Feature<Polygon | MultiPolygon>;
-  wards: FeatureCollection<Polygon, WardProps>;
+  wards: FeatureCollection<Polygon | MultiPolygon, WardProps>;
   parcels: FeatureCollection<Polygon, ParcelProps>;
   facilities: FeatureCollection<Point, FacilityProps>;
   roads: FeatureCollection<LineString, RoadProps>;

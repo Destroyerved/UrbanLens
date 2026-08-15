@@ -10,7 +10,9 @@
     "postinstall": "node scripts/copy-cesium.mjs",
     "data:wards": "node scripts/build-wards.mjs",
     "data:osm": "node scripts/fetch-osm.mjs",
-    "data:region": "node scripts/build-region.mjs"
+    "data:region": "node scripts/build-region.mjs",
+    "data:talukas": "node scripts/fetch-talukas.mjs",
+    "data:metro": "node scripts/build-metro.mjs"
   },
   "dependencies": {
     "@deck.gl/mapbox": "^9.3.10",
