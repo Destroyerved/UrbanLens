@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { OrbitalHeroSection } from "@/components/ui/orbital-hero-section";
+import { MorphingText } from "@/components/ui/morphing-text";
 import { PARCELS } from "@/data/parcels";
 
 /**
@@ -899,22 +900,18 @@ export default function LandingPage({ onEnterApp }: LandingPageProps) {
 
             {/* Left copy */}
             <div className={`${narrow ? "text-center max-w-sm" : "max-w-lg flex-shrink-0"}`}>
-              <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-500/10 px-3.5 py-1.5 text-xs font-medium text-blue-300 backdrop-blur-sm">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-blue-400" />
-                SIH 2026 · PS-SW-001 · Urban Intelligence
-              </div>
-
               <h1 className="text-4xl font-light leading-[1.08] tracking-[-0.03em] text-white md:text-5xl lg:text-[3.5rem]">
                 See Your City
                 <br />
-                <span className="bg-gradient-to-r from-blue-300 via-cyan-300 to-emerald-300 bg-clip-text text-transparent">
-                  Like Never Before
-                </span>
+                <MorphingText
+                  texts={["Mapped.", "Forecasted.", "Simulated.", "Decided."]}
+                  className="text-cyan-400 font-light"
+                />
               </h1>
 
               <p className="mt-5 max-w-sm text-[0.92rem] leading-relaxed text-white/55">
                 UrbanLens is an AI-powered urban planning platform — mapping parcels, forecasting growth,
-                selecting optimal sites and simulating interventions across Ahmedabad in real-time.
+                and simulating interventions for cities across India in real-time.
               </p>
 
               <div className="mt-8 flex gap-6">
