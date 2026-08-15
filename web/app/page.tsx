@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
+import { useApp } from "@/lib/store";
+import { MODES, type Mode } from "@/types";
 
 // Dynamically import components to avoid SSR issues with canvas/three.js
 const LandingPage = dynamic(
@@ -29,9 +31,17 @@ export default function Home() {
     // which browsers suspend in a backgrounded tab — so without this the app can
     // be unreachable in exactly the situations where you most need it: a demo
     // machine that lost focus, an automated check, a deploy smoke test.
-    if (typeof window !== "undefined" && new URLSearchParams(window.location.search).has("app")) {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.has("app")) {
       setShowApp(true);
       setPhase("done");
+    }
+    // `?mode=infrastructure` opens straight onto a panel, so a planner can send
+    // a colleague the view they are talking about rather than a set of clicks.
+    const mode = params.get("mode");
+    if (mode && (MODES as readonly string[]).includes(mode)) {
+      useApp.getState().setMode(mode as Mode);
     }
   }, []);
 

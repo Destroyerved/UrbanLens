@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Landmark, MoveRight, ShieldAlert } from "lucide-react";
 import { PanelShell, Section, EmptyBlock } from "./PanelShell";
 import { Switch } from "@/components/ui/switch";
@@ -8,8 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { useApp } from "@/lib/store";
 import { PARCELS, PARCEL_BY_ID } from "@/data/parcels";
 import { WARD_BY_ID } from "@/data/wards";
-import { computeSuitability, detectZoningConflicts } from "@/lib/analysis";
-import { DEFAULT_WEIGHTS } from "@/types";
+import { fetchZoningConflicts, type ZoningConflictRow } from "@/services/land";
 import { cn, scoreTone, toneText } from "@/lib/utils";
 
 /**
@@ -30,15 +29,24 @@ export default function LandPanel() {
       if (p.landUse === "water") return false;
       return true;
     })
-      .map((p) => ({
-        parcel: p,
-        score: computeSuitability(p, "mixed", DEFAULT_WEIGHTS).score,
-      }))
+      // The engine's development-potential score travels with each parcel, so
+      // ranking opportunities needs no per-parcel request and no second
+      // implementation of the scoring.
+      .map((p) => ({ parcel: p, score: p.developmentPotential ?? 0 }))
       .sort((a, b) => b.score - a.score)
       .slice(0, 8);
   }, [govtOnly, lowRisk, developableOnly]);
 
-  const conflicts = useMemo(() => detectZoningConflicts().slice(0, 6), []);
+  const [conflicts, setConflicts] = useState<ZoningConflictRow[]>([]);
+  useEffect(() => {
+    let alive = true;
+    fetchZoningConflicts()
+      .then((rows) => alive && setConflicts(rows.slice(0, 6)))
+      .catch(() => alive && setConflicts([]));
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   return (
     <PanelShell

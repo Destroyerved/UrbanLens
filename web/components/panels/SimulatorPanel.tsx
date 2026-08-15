@@ -52,7 +52,11 @@ function BeforeAfter({
   invert?: boolean;
   unit?: string;
 }) {
-  const improved = invert ? after < before : after > before;
+  // Three states, not two: an intervention that leaves a metric untouched is a
+  // real and common result — a hospital does not move a ward's school access —
+  // and colouring it amber would read as a regression that did not happen.
+  const delta = invert ? before - after : after - before;
+  const tone = delta > 0 ? "text-good" : delta < 0 ? "text-warning" : "text-muted-foreground";
   return (
     <div className="glass-card rounded-2xl p-3.5 shadow-sm">
       <div className="label-caps mb-2 font-bold">{label}</div>
@@ -64,9 +68,9 @@ function BeforeAfter({
           </div>
           <div className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground/80">Before</div>
         </div>
-        <ArrowDown className={cn("-rotate-90", improved ? "text-good" : "text-warning")} size={16} />
+        <ArrowDown className={cn("-rotate-90", tone)} size={16} />
         <div className="text-center">
-          <div className={cn("num text-[22px] font-bold", improved ? "text-good" : "text-warning")}>
+          <div className={cn("num text-[22px] font-bold", tone)}>
             <AnimatedNumber value={after} format={format} duration={1200} />
             {unit}
           </div>

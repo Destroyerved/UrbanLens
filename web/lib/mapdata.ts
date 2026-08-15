@@ -5,11 +5,8 @@ import { WARDS } from "@/data/wards";
 import { ROADS } from "@/data/roads";
 import { FACILITIES } from "@/data/facilities";
 import { GRID, BUILTUP_RINGS, urbanPosition } from "@/data/grid";
-import { detectZoningConflicts } from "@/lib/analysis";
 
 /** GeoJSON adapters for the MapLibre layer stack (built once, module-level). */
-
-const conflictIds = new Set(detectZoningConflicts().map((c) => c.parcelId));
 
 export const parcelsFC: FeatureCollection = {
   type: "FeatureCollection",
@@ -26,7 +23,7 @@ export const parcelsFC: FeatureCollection = {
       use2018: p.landUseByYear[2018],
       use2022: p.landUseByYear[2022],
       use2026: p.landUseByYear[2026],
-      conflict: conflictIds.has(p.id),
+      conflict: p.zoningConflict,
       government: p.ownership === "government",
     },
     geometry: { type: "Polygon", coordinates: [p.ring] },

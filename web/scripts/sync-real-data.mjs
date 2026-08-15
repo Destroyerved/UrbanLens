@@ -1,8 +1,8 @@
 /**
  * Pull real city data from the UrbanLens spatial engine (../web) into this app.
  *
- *   npm run sync:data                       # against http://localhost:3000
- *   URBANLENS_API=http://localhost:3111 npm run sync:data
+ *   npm run sync:data                       # against http://localhost:8000
+ *   URBANLENS_API=http://localhost:8001 npm run sync:data
  *   URBANLENS_CITY=ahmedabad-metro npm run sync:data
  *
  * WHY A BUILD-TIME SYNC RATHER THAN RUNTIME FETCHES:
@@ -23,7 +23,7 @@ import { dirname, join } from "node:path";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const OUT = join(__dirname, "..", "data", "real");
 
-const API = (process.env.URBANLENS_API ?? "http://localhost:3000").replace(/\/$/, "");
+const API = (process.env.URBANLENS_API ?? "http://localhost:8000").replace(/\/$/, "");
 const CITY = process.env.URBANLENS_CITY ?? "ahmedabad";
 
 async function get(path) {
@@ -155,6 +155,8 @@ const parcels = parcelsFC.features.map((f) => {
     floodRisk: p.flood_risk,
     infraReadiness: p.infrastructure_readiness ?? 0,
     envSensitivity: p.environmental_sensitivity ?? 0,
+    developmentPotential: p.development_potential ?? 0,
+    zoningConflict: Boolean(p.zoning_conflict),
   };
 });
 writeFileSync(join(OUT, "parcels.json"), JSON.stringify(parcels));

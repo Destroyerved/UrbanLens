@@ -1,6 +1,7 @@
 "use client";
 
 import { create } from "zustand";
+import { DEFAULT_CONSTRAINTS } from "@/types";
 import type {
   CopilotMessage,
   GapCategory,
@@ -16,7 +17,6 @@ import type {
 } from "@/types";
 import { DEFAULT_WEIGHTS } from "@/types";
 import { MODE_PRESETS, type LayerId, type BasemapType } from "@/config/layers";
-import { DEFAULT_CONSTRAINTS } from "@/lib/analysis";
 import { runSiteSearch, reRankSites } from "@/services/suitability";
 import { runSimulation } from "@/services/simulation";
 import { copilotQuery } from "@/services/copilot";

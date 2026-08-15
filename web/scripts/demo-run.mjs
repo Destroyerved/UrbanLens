@@ -1,7 +1,7 @@
 /**
  * Walks the PRD §74 demo scenario end to end against the running app.
  *
- *   npm run demo            # against http://localhost:3000
+ *   npm run demo            # against http://localhost:8000
  *   URBANLENS_API=… URBANLENS_CITY=ahmedabad-metro npm run demo
  *
  * Each step feeds the next — the site chosen in step 8 is the site simulated in
@@ -11,7 +11,7 @@
  * This exercises the engine and the numbers the demo quotes. It does not click
  * the UI; the interaction layer still needs a human at a real screen.
  */
-const API = (process.env.URBANLENS_API ?? "http://localhost:3000").replace(/\/$/, "");
+const API = (process.env.URBANLENS_API ?? "http://localhost:8000").replace(/\/$/, "");
 const CITY = process.env.URBANLENS_CITY ?? "ahmedabad";
 /** The intervention the story is built around. Hospital is the PRD's example. */
 const PROJECT = process.env.URBANLENS_PROJECT ?? "hospital";

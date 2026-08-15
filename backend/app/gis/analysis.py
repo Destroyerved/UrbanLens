@@ -395,6 +395,28 @@ def livability(city_id: str) -> list[dict]:
 # 15-minute city (PRD §14)
 # ---------------------------------------------------------------------------
 
+# Which livability component a new facility of each type improves.
+SERVICE_FOR_FACILITY: dict[str, str] = {
+    "hospital": "healthcare", "clinic": "healthcare",
+    "school": "education", "college": "education",
+    "park": "green_space",
+    "bus_stop": "transportation", "metro_station": "transportation",
+    "fire_station": "public_services", "police_station": "public_services",
+    "government_office": "public_services",
+}
+
+
+def _ward_at(ds, lng: float, lat: float) -> int | None:
+    """Index of the ward containing a point, or None."""
+    from shapely.geometry import Point, shape
+
+    pt = Point(lng, lat)
+    for i, w in enumerate(ds.wards):
+        if shape(w["geometry"]).contains(pt):
+            return i
+    return None
+
+
 WALK_KMH, DRIVE_KMH = 4.8, 22.0
 FIFTEEN_MIN = (
     ("hospital", "drive"), ("clinic", "walk"), ("school", "walk"), ("park", "walk"),
@@ -474,9 +496,58 @@ def simulate(city_id: str, project: str, lng: float, lat: float) -> dict:
     window_pop = population_within_km(ds.grid, lng, lat, analysis_radius)
     newly = round(window_pop * ((covered_after - covered_before) / w_sum)) if w_sum else 0
 
+    # Citywide figures alongside the local window. The window answers "does this
+    # help here"; the citywide pair answers "does it move the city", and a
+    # planner needs both — a large local gain can be a rounding error at city
+    # scale, which is worth seeing rather than hiding.
+    field_arr = ds.facility_distance_field(spec.adds_facility)
+    pop_all = ds.grid.pop
+    served_before = float(pop_all[(field_arr <= R) & (pop_all > 0)].sum())
+    lng_g, lat_g = ds.grid.cell_centres()
+    dist_new = haversine_km(lng_g, lat_g, lng, lat)
+    served_after = float(pop_all[((field_arr <= R) | (dist_new <= R)) & (pop_all > 0)].sum())
+    total_pop = float(pop_all.sum()) or 1.0
+
+    # Accessibility at the site, before and after. `after` credits the proposed
+    # facility as reachable, which is the only term that changes.
+    acc_before = fifteen_minute(city_id, lng, lat)["score"]
+    items_after = [
+        {**i, "reachable": True if i["facility_type"] == spec.adds_facility else i["reachable"]}
+        for i in fifteen_minute(city_id, lng, lat)["items"]
+    ]
+    acc_after = round(100 * sum(1 for i in items_after if i["reachable"]) / len(items_after))
+
+    # Livability for the ward containing the site, before and after.
+    #
+    # The uplift is an estimate with a stated rule: the share of this ward's
+    # population that the facility newly covers closes that fraction of the
+    # remaining headroom on the matching livability component, which is then
+    # re-blended with the published weights. It is not a re-run of the whole
+    # ward analysis, and it is reported as an estimate rather than a measurement.
+    live_before = live_after = None
+    ward_name = None
+    component = SERVICE_FOR_FACILITY.get(spec.adds_facility)
+    if component:
+        locator = _ward_at(ds, lng, lat)
+        if locator is not None:
+            ward_code = ds.wards[locator]["properties"]["ward_code"]
+            ward_name = ds.wards[locator]["properties"]["name"]
+            row = next((l for l in livability(city_id) if l["ward_code"] == ward_code), None)
+            if row:
+                live_before = row["score"]
+                ward_pop = max(ds.wards[locator]["properties"]["population"], 1)
+                share = min(1.0, newly / ward_pop)
+                comps = dict(row["components"])
+                headroom = 100 - comps[component]
+                comps[component] = round(min(100, comps[component] + headroom * share))
+                live_after = round(clamp(sum(LIVABILITY_WEIGHTS[k] * comps[k] for k in LIVABILITY_WEIGHTS)))
+
     return {
         "project_type": project, "label": spec.label, "site": [lng, lat],
         "applicable": True,
+        "ward_name": ward_name,
+        "livability_before": live_before,
+        "livability_after": live_after,
         "service_radius_km": R,
         "analysis_radius_km": round(analysis_radius, 1),
         "window_population": window_pop,
@@ -486,6 +557,15 @@ def simulate(city_id: str, project: str, lng: float, lat: float) -> dict:
         "coverage_after_pct": round(after_pct, 1),
         "avg_distance_before_km": round(dist_before / w_sum, 2) if w_sum else 0,
         "avg_distance_after_km": round(dist_after / w_sum, 2) if w_sum else 0,
+        "citywide": {
+            "coverage_before_pct": round(served_before / total_pop * 100, 1),
+            "coverage_after_pct": round(served_after / total_pop * 100, 1),
+            "covered_before": round(served_before),
+            "covered_after": round(served_after),
+            "total_population": round(total_pop),
+        },
+        "accessibility_before": acc_before,
+        "accessibility_after": acc_after,
     }
 
 
@@ -494,18 +574,33 @@ def simulate(city_id: str, project: str, lng: float, lat: float) -> dict:
 # ---------------------------------------------------------------------------
 
 
+def classify_zoning_conflict(p) -> tuple[str, str]:
+    """The zoning-conflict rule, in one place.
+
+    Both the Land panel's list and the map's conflict shading read this, so the
+    highlighted parcels are always the same set the list enumerates.
+
+    Official zoning is modelled — Gujarat's development-plan schedules are not
+    published as machine-readable geometry — so a flagged parcel demonstrates the
+    detection method rather than confirming a breach on the ground.
+
+    Returns ("", "") when the parcel is not in conflict.
+    """
+    if p.zoning == "agricultural" and p.built_up_percent > 40:
+        return "Agricultural land built-up", ("high" if p.built_up_percent > 65 else "medium")
+    if p.zoning == "residential" and p.land_use == "industrial":
+        return "Industrial use in residential zone", "high"
+    if p.zoning == "recreational" and p.built_up_percent > 35:
+        return "Encroachment on recreational land", "high"
+    if p.zoning == "public_semi_public" and p.land_use == "commercial":
+        return "Commercial use on public land", "medium"
+    return "", ""
+
+
 def zoning_conflicts(city_id: str) -> list[dict]:
     out = []
     for p in get_parcels(city_id):
-        kind, severity = "", "medium"
-        if p.zoning == "agricultural" and p.built_up_percent > 40:
-            kind, severity = "Agricultural land built-up", ("high" if p.built_up_percent > 65 else "medium")
-        elif p.zoning == "residential" and p.land_use == "industrial":
-            kind, severity = "Industrial use in residential zone", "high"
-        elif p.zoning == "recreational" and p.built_up_percent > 35:
-            kind, severity = "Encroachment on recreational land", "high"
-        elif p.zoning == "public_semi_public" and p.land_use == "commercial":
-            kind, severity = "Commercial use on public land", "medium"
+        kind, severity = classify_zoning_conflict(p)
         if not kind:
             continue
         out.append({

@@ -5,13 +5,16 @@
  * touching components.
  */
 
-export type Mode =
-  | "overview"
-  | "growth"
-  | "infrastructure"
-  | "land"
-  | "sites"
-  | "simulator";
+export const MODES = [
+  "overview",
+  "growth",
+  "infrastructure",
+  "land",
+  "sites",
+  "simulator",
+] as const;
+
+export type Mode = (typeof MODES)[number];
 
 export type Year = 2018 | 2022 | 2026;
 export const YEARS: Year[] = [2018, 2022, 2026];
@@ -57,6 +60,10 @@ export interface Parcel {
   infraReadiness: number;
   /** 0–100, higher = more ecologically sensitive */
   envSensitivity: number;
+  /** 0–100 development potential, scored by the engine and carried with the parcel. */
+  developmentPotential: number;
+  /** Flagged by the engine's zoning rule; see /api/zoning/conflicts. */
+  zoningConflict: boolean;
 }
 
 export interface Ward {
@@ -135,6 +142,16 @@ export const DEFAULT_WEIGHTS: SuitabilityWeights = {
   infrastructure: 15,
   environment: 15,
   landCompatibility: 10,
+};
+
+export const DEFAULT_CONSTRAINTS: SiteConstraints = {
+  minAreaHa: 4,
+  governmentOnly: true,
+  maxRoadDistKm: 2.5,
+  lowFloodOnly: false,
+  maxEnvSensitivity: 60,
+  maxBuiltUpPct: 40,
+  excludeFloodHazard: false,
 };
 
 export interface SiteConstraints {

@@ -334,6 +334,7 @@ def parcels(
                     "area_acres": p.area_acres, "built_up_percent": p.built_up_percent,
                     "flood_risk": p.flood_risk, "ward": p.ward, "source": p.source,
                     "development_potential": round(p.scores["development_potential"]),
+                    "zoning_conflict": bool(analysis.classify_zoning_conflict(p)[0]),
                     "h2018": p.history.get(2018, 0), "h2022": p.history.get(2022, 0),
                     "h2026": p.history.get(2026, 0),
                     **(

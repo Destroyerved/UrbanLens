@@ -93,6 +93,22 @@ function landUseHistory(
   return { byYear, urbanUse, ruralUse };
 }
 
+/** Seeded stand-in for the engine's development-potential score, used only when
+ *  no real parcel layer has been synced. */
+/** Seeded stand-in for the engine's zoning rule (agricultural land built up). */
+function seededConflict(zoning: string, landUse: string, builtUpPct: number): boolean {
+  return (
+    (zoning === "agriculture" && builtUpPct > 40) ||
+    (zoning === "residential" && landUse === "industrial")
+  );
+}
+
+function seededPotential(isGovt: boolean, infraReadiness: number, builtUpPct: number, areaHa: number): number {
+  return Math.round(
+    Math.min(98, (isGovt ? 28 : 14) + infraReadiness * 0.4 + (100 - builtUpPct) * 0.25 + Math.min(10, areaHa * 1.5)),
+  );
+}
+
 function buildParcels(): Parcel[] {
   const rng = mulberry32(20260814);
   const parcels: Parcel[] = [];
@@ -148,6 +164,8 @@ function buildParcels(): Parcel[] {
         clamp(88 - d.roadDistKm * 16 + rngRange(rng, -10, 6) + (isBuilt ? 8 : 0), 15, 82)
       );
 
+      const ownership = rng() < 0.26 || landUse === "public" ? "government" : "private";
+
       parcels.push({
         id: `GJ-AHD-${idNum}`,
         surveyNumber: `SN-${rngInt(rng, 100, 999)}/${rngInt(rng, 1, 9)}`,
@@ -155,7 +173,7 @@ function buildParcels(): Parcel[] {
         centroid,
         ring: rectRing(centroid, areaHa, rngRange(rng, 0.6, 1.8), rngRange(rng, -30, 30)),
         areaHa,
-        ownership: rng() < 0.26 || landUse === "public" ? "government" : "private",
+        ownership,
         zoning,
         landUse,
         landUseByYear: byYear,
@@ -165,6 +183,8 @@ function buildParcels(): Parcel[] {
         floodRisk,
         infraReadiness,
         envSensitivity,
+        developmentPotential: seededPotential(ownership === "government", infraReadiness, builtUpPct, areaHa),
+        zoningConflict: seededConflict(zoning, landUse, builtUpPct),
       });
     }
   }
@@ -203,6 +223,17 @@ function buildParcels(): Parcel[] {
       floodRisk: opts.floodRisk,
       infraReadiness: opts.infraReadiness,
       envSensitivity: opts.envSensitivity,
+      developmentPotential: seededPotential(
+        true,
+        opts.infraReadiness,
+        opts.landUse === "vacant" ? 4 : 2,
+        areaHa,
+      ),
+      zoningConflict: seededConflict(
+        opts.zoning,
+        opts.landUse,
+        opts.landUse === "vacant" ? 4 : 2,
+      ),
     };
   };
 

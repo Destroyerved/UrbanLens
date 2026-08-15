@@ -1,7 +1,7 @@
 {
   "city": "ahmedabad",
   "api": "http://localhost:8000",
-  "syncedAt": "2026-08-15T19:33:39.956Z",
+  "syncedAt": "2026-08-15T20:05:54.733Z",
   "counts": {
     "wards": 48,
     "parcels": 2567,
