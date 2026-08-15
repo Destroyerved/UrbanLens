@@ -818,7 +818,7 @@ export default function LandingPage({ onEnterApp }: LandingPageProps) {
   };
 
   return (
-    <div className="relative min-h-screen w-full overflow-x-hidden bg-black font-sans text-white">
+    <div className="relative min-h-screen w-full overflow-x-hidden font-sans text-white" style={{ background: '#05070C' }}>
 
       {/* ═══════════════════════════════════════════════════════════
           SCROLL 1 — HERO
@@ -847,6 +847,14 @@ export default function LandingPage({ onEnterApp }: LandingPageProps) {
           style={{
             background:
               "linear-gradient(to right, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.42) 40%, transparent 64%)",
+          }}
+        />
+
+        {/* Bottom transition gradient to Scroll 2 background */}
+        <div
+          className="pointer-events-none absolute bottom-0 left-0 right-0 h-44 z-10"
+          style={{
+            background: "linear-gradient(to top, #05070C 0%, rgba(5, 7, 12, 0.55) 55%, transparent 100%)",
           }}
         />
 
@@ -970,7 +978,7 @@ export default function LandingPage({ onEnterApp }: LandingPageProps) {
       {/* ═══════════════════════════════════════════════════════════
           SECTION 2 (Scroll 2) — DOMAINS WE SOLVE FOR
       ═══════════════════════════════════════════════════════════ */}
-      <section ref={domainsRef} className="relative min-h-screen w-full overflow-hidden bg-black px-6 py-24 md:px-12 lg:px-20 flex flex-col justify-center">
+      <section ref={domainsRef} className="relative min-h-screen w-full overflow-hidden px-6 py-24 md:px-12 lg:px-20 flex flex-col justify-center" style={{ background: '#05070C' }}>
         {/* Background gradient blobs */}
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
           <div className="absolute -left-40 top-20 h-[500px] w-[500px] rounded-full bg-blue-900/5 blur-[120px]" />
@@ -1475,7 +1483,7 @@ export default function LandingPage({ onEnterApp }: LandingPageProps) {
       {/* ═══════════════════════════════════════════════════════════
           SCROLL 2 — CORE ANALYTICS
       ═══════════════════════════════════════════════════════════ */}
-      <section ref={scroll2Ref} className="relative min-h-screen w-full overflow-hidden bg-black px-6 py-24 md:px-12 lg:px-20">
+      <section ref={scroll2Ref} className="relative min-h-screen w-full overflow-hidden px-6 py-24 md:px-12 lg:px-20" style={{ background: '#05070C' }}>
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
           <div className="absolute -left-40 top-20 h-[500px] w-[500px] rounded-full bg-blue-600/5 blur-[120px]" />
           <div className="absolute -right-40 bottom-20 h-[400px] w-[400px] rounded-full bg-violet-600/5 blur-[100px]" />
@@ -1591,7 +1599,7 @@ export default function LandingPage({ onEnterApp }: LandingPageProps) {
       {/* ═══════════════════════════════════════════════════════════
           SCROLL 3 — SIMULATORS
       ═══════════════════════════════════════════════════════════ */}
-      <section ref={scroll3Ref} className="relative min-h-screen w-full overflow-hidden bg-[#02020a] px-6 py-24 md:px-12 lg:px-20">
+      <section ref={scroll3Ref} className="relative min-h-screen w-full overflow-hidden px-6 py-24 md:px-12 lg:px-20" style={{ background: '#05070C' }}>
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
           <div className="absolute left-1/2 top-0 h-[1px] w-3/4 -translate-x-1/2 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
           <div className="absolute right-0 top-1/3 h-[600px] w-[600px] rounded-full bg-orange-600/4 blur-[140px]" />
@@ -1742,7 +1750,7 @@ export default function LandingPage({ onEnterApp }: LandingPageProps) {
       {/* ═══════════════════════════════════════════════════════════
           SCROLL 4 — AI COPILOT + FOOTER
       ═══════════════════════════════════════════════════════════ */}
-      <section ref={scroll4Ref} className="relative w-full overflow-hidden bg-black px-6 pb-0 pt-24 md:px-12 lg:px-20">
+      <section ref={scroll4Ref} className="relative w-full overflow-hidden px-6 pb-0 pt-24 md:px-12 lg:px-20" style={{ background: '#05070C' }}>
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
           <div className="absolute left-1/2 top-0 h-[1px] w-3/4 -translate-x-1/2 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
           <div className="absolute left-1/2 top-1/3 h-[700px] w-[700px] -translate-x-1/2 rounded-full bg-violet-600/5 blur-[160px]" />

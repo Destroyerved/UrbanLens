@@ -254,6 +254,7 @@ export function OrbitalHeroSection({
   paused = false,
   sunColor = "#FFF2CC",
   className = "",
+  style,
   children,
   ...rest
 }: OrbitalHeroSectionProps) {
@@ -275,7 +276,7 @@ export function OrbitalHeroSection({
     const host = hostRef.current;
     const canvas = canvasRef.current;
     if (!host || !canvas) return;
-    const ctx = canvas.getContext("2d", { alpha: false });
+    const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
     const reduced =
@@ -678,8 +679,7 @@ export function OrbitalHeroSection({
       }
 
       ctx!.globalCompositeOperation = "source-over";
-      ctx!.fillStyle = "#000000";
-      ctx!.fillRect(0, 0, width, height);
+      ctx!.clearRect(0, 0, width, height);
       ctx!.globalCompositeOperation = "lighter";
 
       /* stars ------------------------------------------------------------- */
@@ -953,7 +953,13 @@ export function OrbitalHeroSection({
   return (
     <div
       ref={hostRef}
-      className={`relative isolate h-full w-full overflow-hidden bg-black ${className}`}
+      className={`relative isolate h-full w-full overflow-hidden ${className}`}
+      style={{
+        backgroundImage: "linear-gradient(to bottom, rgba(5, 7, 12, 0.45), rgba(5, 7, 12, 0.75)), url('/textures/hero-bg.png')",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        ...style
+      }}
       {...rest}
     >
       <canvas ref={canvasRef} aria-hidden="true" className="absolute inset-0 h-full w-full" />
