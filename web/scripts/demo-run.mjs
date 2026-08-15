@@ -21,6 +21,13 @@ let stepNo = 0;
 
 const fmt = (n) => Number(n).toLocaleString("en-IN");
 
+/** The Python engine returns snake_case; the older TypeScript one camelCase.
+ *  Read either, so this walkthrough works against both during the migration. */
+const pick = (obj, ...names) => {
+  for (const n of names) if (obj && obj[n] !== undefined) return obj[n];
+  return undefined;
+};
+
 function step(title) {
   stepNo++;
   console.log(`\n\x1b[1m${String(stepNo).padStart(2, "0")}  ${title}\x1b[0m`);
@@ -138,7 +145,9 @@ check(factors.length === 6, `Six factors scored: ${factors.join(", ")}`, `expect
 // ── 8 ───────────────────────────────────────────────────────────────────────
 step("Top-ranked site");
 ok(`#1 ${top.parcel_id} — ${top.final}/100`);
-ok(`   ${top.metrics.areaAcres} acres · ${top.metrics.ownership} · flood risk ${top.metrics.floodRisk} · ${top.metrics.roadKm.toFixed(2)} km to road`);
+ok(`   ${pick(top.metrics, "area_acres", "areaAcres")} acres · ${top.metrics.ownership}`
+   + ` · flood risk ${pick(top.metrics, "flood_risk", "floodRisk")}`
+   + ` · ${Number(pick(top.metrics, "road_km", "roadKm")).toFixed(2)} km to road`);
 ok(`   serves ~${fmt(top.pop)} residents within the service radius`);
 check(top.metrics.ownership === "government", "Site is government-owned — no acquisition needed", "top site is not government land despite the constraint");
 check(
