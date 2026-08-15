@@ -12,6 +12,13 @@ export interface CityConfig {
   code: string;
   /** [lng, lat] of the city centre used for radial growth/scoring. */
   center: [number, number];
+  /**
+   * Urban cores, when the area has more than one. The urban-intensity field
+   * takes the strongest value across cores, and distance-based attributes use
+   * the nearest — otherwise a twin-city region would peak in the empty corridor
+   * between its two cities instead of at either one. Defaults to [center].
+   */
+  cores?: [number, number][];
   /** Bounding box [minLng, minLat, maxLng, maxLat]. */
   bbox: [number, number, number, number];
   /** Approx city radius in km used to shape the urban footprint. */
@@ -20,7 +27,30 @@ export interface CityConfig {
   population: number;
   /** Default map zoom. */
   zoom: number;
+  /**
+   * Named directions of urban expansion, measured from the primary core.
+   * Defaults to Ahmedabad's when unset.
+   */
+  corridors?: CorridorConfig[];
 }
+
+export interface CorridorConfig {
+  name: string;
+  /** Compass bearing from the primary core, degrees (0 = N, 90 = E). */
+  bearing: number;
+  /** Angular half-width used for falloff. */
+  width: number;
+  /** How far built-up development extends along this direction, km. */
+  reachKm: number;
+  risk: "Very High" | "High" | "Moderate";
+}
+
+/** Ahmedabad's expansion corridors — the default for any city without its own. */
+export const DEFAULT_CORRIDORS: CorridorConfig[] = [
+  { name: "North-West Corridor", bearing: 320, width: 40, reachKm: 12.5, risk: "Very High" },
+  { name: "SP Ring Road South", bearing: 190, width: 38, reachKm: 11, risk: "High" },
+  { name: "Eastern Industrial Corridor", bearing: 95, width: 34, reachKm: 11, risk: "High" },
+];
 
 export const AHMEDABAD: CityConfig = {
   id: "ahmedabad",
@@ -50,9 +80,44 @@ export const GANDHINAGAR: CityConfig = {
   zoom: 11.4,
 };
 
+/**
+ * The Ahmedabad–Gandhinagar conurbation. The corridor between the two cities —
+ * GIFT City, Adalaj, the SG Highway spine — is where the metropolitan area is
+ * actually expanding, and neither municipality sees it when analysed alone.
+ *
+ * Composed from both municipal datasets by scripts/build-region.mjs. The two
+ * ward sets overlap by only 0.8 km² (0.1%), which is digitisation noise at the
+ * shared boundary rather than a real jurisdictional conflict.
+ */
+export const AHMEDABAD_GANDHINAGAR: CityConfig = {
+  id: "ahmedabad-gandhinagar",
+  name: "Ahmedabad–Gandhinagar",
+  state: "Gujarat",
+  code: "AGR",
+  center: [72.58, 23.11],
+  cores: [AHMEDABAD.center, GANDHINAGAR.center],
+  /** Extent of all 59 wards across both municipalities. */
+  bbox: [72.4493, 22.9139, 72.7015, 23.3113],
+  radiusKm: 26,
+  /** AMC 7.2M + GMC 350k, each projected to 2026 from its own Census 2011 base. */
+  population: 7_550_000,
+  zoom: 10.2,
+  /**
+   * Ahmedabad's corridors plus the one that only exists at regional scale: the
+   * northward spine to Gandhinagar through GIFT City and Adalaj, which is the
+   * conurbation's principal growth axis and is invisible to either municipality
+   * analysed on its own.
+   */
+  corridors: [
+    { name: "Gandhinagar Corridor", bearing: 8, width: 26, reachKm: 26, risk: "Very High" },
+    ...DEFAULT_CORRIDORS,
+  ],
+};
+
 export const CITIES: Record<string, CityConfig> = {
   ahmedabad: AHMEDABAD,
   gandhinagar: GANDHINAGAR,
+  "ahmedabad-gandhinagar": AHMEDABAD_GANDHINAGAR,
 };
 
 export const DEFAULT_CITY = AHMEDABAD;

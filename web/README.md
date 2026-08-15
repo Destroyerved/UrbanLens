@@ -3,9 +3,20 @@
 > GLIS tells planners *what land exists*. UrbanLens helps them understand *what is happening there, what is likely to happen next, and what should be built where.*
 
 UrbanLens turns land records, satellite-derived layers, population and infrastructure into an
-interactive, explainable urban-planning decision-support system. It ships with two Gujarat cities —
-**Ahmedabad** (48 AMC wards) and **Gandhinagar** (11 GMC wards) — switchable from the top bar, which
-is the practical proof that nothing is hard-coded to one city (add another in `lib/config.ts`).
+interactive, explainable urban-planning decision-support system. It ships with three study areas,
+switchable from the top bar — practical proof that nothing is hard-coded to one city (add another in
+`lib/config.ts`):
+
+| Area | Wards | Extent | Parcels |
+|---|---|---|---|
+| **Ahmedabad** | 48 AMC | 441 km² | 2,566 |
+| **Gandhinagar** | 11 GMC | 196 km² | 732 |
+| **Ahmedabad–Gandhinagar** | 59 combined | 637 km² | 3,297 |
+
+The combined region matters because the corridor between the two cities — GIFT City, Adalaj, the SG
+Highway spine — is where the conurbation is actually growing, and neither municipality sees it when
+analysed alone. It is composed from both municipal datasets by `scripts/build-region.mjs`, and
+declares a **Gandhinagar Corridor** growth axis that exists only at regional scale.
 
 **One convincing workflow, end to end:**
 `Detect Growth → Find Infrastructure Gap → Identify Land → Recommend Site → Simulate Impact → Explain Decision`
@@ -31,8 +42,14 @@ and OpenStreetMap layers are committed under `data/real/`.
 
 ```bash
 npm run data:wards        # refined/*.geojson  → data/real/<city>_wards.json
-npm run data:osm          # Overpass API       → data/real/<city>_{facilities,roads}.json
+npm run data:osm          # Overpass API       → data/real/<city>_{facilities,roads,land}.json
+npm run data:region       # merges both cities → data/real/ahmedabad-gandhinagar_*.json
 ```
+
+Run them in that order. `data:region` merges the two municipal datasets rather than re-querying
+Overpass for a bbox twice the size: the two fetch bboxes already overlap and every feature carries a
+stable OSM id, so de-duplicating on that id reconstructs the region exactly with no extra load on a
+public API.
 
 Run `build-wards.mjs` first: `fetch-osm.mjs` derives its query bbox from the real ward extent (plus
 ~3 km of padding). That padding matters — a bbox tighter than the municipal boundary leaves edge

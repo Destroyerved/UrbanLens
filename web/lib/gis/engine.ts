@@ -1,5 +1,6 @@
 import * as turf from "@turf/turf";
 import { getCityConfig } from "@/lib/data/store";
+import { DEFAULT_CORRIDORS } from "@/lib/config";
 import { populationWithinKm, densityAt } from "@/lib/gis/population";
 import {
   buildPointIndex,
@@ -817,12 +818,13 @@ export function growthSummary(dataset: CityDataset) {
 }
 
 function corridorSummary(dataset: CityDataset) {
-  const center = getCityConfig(dataset.cityId).center;
-  const defs = [
-    { name: "North-West Corridor", bearing: 320, risk: "Very High" },
-    { name: "SP Ring Road South", bearing: 190, risk: "High" },
-    { name: "Eastern Industrial Corridor", bearing: 95, risk: "High" },
-  ];
+  const config = getCityConfig(dataset.cityId);
+  // Corridors are declared per city, so a region can report an axis — the
+  // Ahmedabad–Gandhinagar spine — that neither municipality has on its own.
+  const defs = config.corridors ?? DEFAULT_CORRIDORS;
+  // Bearings are measured from the primary core, which for a multi-core region
+  // is the dominant city rather than the geometric centre of the bounding box.
+  const center = (config.cores?.length ? config.cores[0] : config.center) as [number, number];
   const bearing = (to: [number, number]) => {
     const [alng, alat] = center;
     const [blng, blat] = to;

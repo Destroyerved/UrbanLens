@@ -1,6 +1,6 @@
 import * as turf from "@turf/turf";
 import type { FeatureCollection, LineString, Point, Polygon } from "geojson";
-import { CityConfig, DATA_SEED } from "@/lib/config";
+import { CityConfig, DATA_SEED, DEFAULT_CORRIDORS } from "@/lib/config";
 import { loadRealData, loadRealWards, type RealLandProps } from "@/lib/data/real";
 import { makeWardLocator } from "@/lib/gis/population";
 import {
@@ -88,40 +88,67 @@ function rectPolygon(
 // Urban form: radial intensity field + anisotropic growth corridors
 // ---------------------------------------------------------------------------
 
-interface Corridor {
-  name: string;
-  bearing: number; // degrees
-  width: number; // angular half-width for falloff
-  reachKm: number; // how far built-up extends in this direction
-}
-
-const CORRIDORS: Corridor[] = [
-  { name: "North-West Corridor", bearing: 320, width: 40, reachKm: 12.5 },
-  { name: "SP Ring Road South", bearing: 190, width: 38, reachKm: 11 },
-  { name: "Eastern Industrial Corridor", bearing: 95, width: 34, reachKm: 11 },
-];
-
 const BASE_REACH_KM = 7.2;
 
-/** Returns { reach, corridorStrength } for a given bearing from centre. */
-function corridorField(bearing: number): { reachKm: number; strength: number } {
-  let reach = BASE_REACH_KM;
-  let strength = 0;
-  for (const c of CORRIDORS) {
-    const g = Math.exp(-((angularDiff(bearing, c.bearing) / c.width) ** 2));
-    reach += g * (c.reachKm - BASE_REACH_KM);
-    strength = Math.max(strength, g);
+/**
+ * Builds the corridor field for a city: given a bearing from its core, how far
+ * built-up development reaches and how strongly that direction is a growth
+ * corridor. Corridors come from the city config, so a region can declare axes
+ * that no single municipality has.
+ */
+function makeCorridorField(config: CityConfig) {
+  const corridors = config.corridors ?? DEFAULT_CORRIDORS;
+  return (bearing: number): { reachKm: number; strength: number } => {
+    let reach = BASE_REACH_KM;
+    let strength = 0;
+    for (const c of corridors) {
+      const g = Math.exp(-((angularDiff(bearing, c.bearing) / c.width) ** 2));
+      reach += g * (c.reachKm - BASE_REACH_KM);
+      strength = Math.max(strength, g);
+    }
+    return { reachKm: reach, strength };
+  };
+}
+
+/** Urban cores for a city — every entry in `cores`, or just `center`. */
+function coresOf(config: CityConfig): [number, number][] {
+  return config.cores?.length ? config.cores : [config.center];
+}
+
+/**
+ * Nearest urban core to a point, with its distance. Distance-based attributes
+ * must measure from the core a place actually belongs to; in a twin-city region
+ * the geometric centre of the bbox is open countryside.
+ */
+export function nearestCore(
+  config: CityConfig,
+  p: [number, number]
+): { core: [number, number]; km: number } {
+  let best = coresOf(config)[0];
+  let bestKm = Infinity;
+  for (const c of coresOf(config)) {
+    const d = haversineKm(c, p);
+    if (d < bestKm) {
+      bestKm = d;
+      best = c;
+    }
   }
-  return { reachKm: reach, strength };
+  return { core: best, km: bestKm };
 }
 
 function makeIntensityFn(config: CityConfig) {
-  const center = config.center;
+  const cores = coresOf(config);
+  const corridorField = makeCorridorField(config);
   return (lng: number, lat: number): number => {
     const p: [number, number] = [lng, lat];
-    const d = haversineKm(center, p);
-    const { reachKm } = corridorField(bearingDeg(center, p));
-    const v = 100 * Math.exp(-((d / reachKm) ** 1.7));
+    // Strongest core wins, so each city keeps its own peak instead of the two
+    // averaging into a bulge in the corridor between them.
+    let v = 0;
+    for (const c of cores) {
+      const d = haversineKm(c, p);
+      const { reachKm } = corridorField(bearingDeg(c, p));
+      v = Math.max(v, 100 * Math.exp(-((d / reachKm) ** 1.7)));
+    }
     return Math.max(0, Math.min(100, v));
   };
 }
@@ -407,6 +434,7 @@ function parcelsFromRealLand(
   river: [number, number][]
 ): FeatureCollection<Polygon, ParcelProps> {
   const locate = makeWardLocator(wards.features);
+  const corridorField = makeCorridorField(config);
   const features: FeatureCollection<Polygon, ParcelProps>["features"] = [];
 
   // Stable order → stable sequential ids across runs.
@@ -433,7 +461,8 @@ function parcelsFromRealLand(
     // land_use would index the bands as undefined and quietly turn every derived
     // score into NaN.
     const landUse: LandUse = BUILT_UP_BAND[lp.land_use] ? lp.land_use : "vacant";
-    const dKm = haversineKm(config.center, centroid);
+    // Measure from the core this land actually belongs to.
+    const { core, km: dKm } = nearestCore(config, centroid);
     const localIt = Math.max(0, Math.min(100, intensity(centroid[0], centroid[1]) + randRange(rng, -10, 10)));
 
     // Built-up sits inside the band implied by the real tag, positioned by local
@@ -461,7 +490,7 @@ function parcelsFromRealLand(
     const zoning = officialZoning(dKm, config.radiusKm, rng);
 
     // Built-up history: fringe and corridor land urbanised fastest.
-    const { strength } = corridorField(bearingDeg(config.center, centroid));
+    const { strength } = corridorField(bearingDeg(core, centroid));
     const fringe = Math.exp(-(((localIt - 45) / 26) ** 2));
     const totalGrowth = Math.round((fringe * 22 + strength * 11) * randRange(rng, 0.5, 1.15));
     const bu2026 = builtUp;
@@ -512,6 +541,7 @@ function generateParcels(
   intensity: (lng: number, lat: number) => number,
   river: [number, number][]
 ): FeatureCollection<Polygon, ParcelProps> {
+  const corridorField = makeCorridorField(config);
   const features: FeatureCollection<Polygon, ParcelProps>["features"] = [];
   let seq = 1;
 
@@ -590,7 +620,7 @@ function generateParcels(
       const zoning = officialZoning(dKm, config.radiusKm, rng);
 
       // Growth history: fringe + corridor parcels urbanised fastest.
-      const { strength } = corridorField(bearingDeg(config.center, c));
+      const { strength } = corridorField(bearingDeg(nearestCore(config, c).core, c));
       const fringe = Math.exp(-(((localIt - 45) / 26) ** 2)); // peak at mid intensity
       const totalGrowth = Math.round(
         (fringe * 22 + strength * 11) * randRange(rng, 0.5, 1.15)
@@ -746,6 +776,7 @@ function generatePrediction(
   // Cells are kept only where they fall inside a ward, so the prediction surface
   // follows the true municipal outline instead of a circle around the centre.
   const inCity = makeWardLocator(wards.features);
+  const corridorField = makeCorridorField(config);
   const step = 0.008; // ~0.85km cells
   const arterialVerts: [number, number][] = [];
   for (const r of roads.features) {
@@ -770,7 +801,7 @@ function generatePrediction(
       if (inCity(cx, cy) < 0) continue;
 
       const it = intensity(cx, cy);
-      const { strength } = corridorField(bearingDeg(config.center, [cx, cy]));
+      const { strength } = corridorField(bearingDeg(nearestCore(config, [cx, cy]).core, [cx, cy]));
       const fringe = Math.exp(-(((it - 42) / 18) ** 2)); // urban-fringe peak
       const roadKm = nearestRoadKm([cx, cy]);
       const roadProx = Math.exp(-roadKm / 1.1); // 0..1, near roads → 1

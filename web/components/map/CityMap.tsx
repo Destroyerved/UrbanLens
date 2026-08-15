@@ -65,7 +65,7 @@ function baseStyle(): StyleSpecification {
         ],
         tileSize: 256,
         attribution:
-          '© OpenStreetMap © CARTO · wards: municipal ward map · parcels: demo data',
+          '© OpenStreetMap © CARTO · wards: municipal ward map · ownership & zoning modelled',
       },
     },
     layers: [
