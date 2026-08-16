@@ -23,6 +23,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { SegmentedScoreBar } from "@/components/shared/ScoreBar";
 import { AnimatedNumber } from "@/components/shared/AnimatedNumber";
+import { GlowCard } from "@/components/ui/spotlight-card";
 import { useApp } from "@/lib/store";
 import { WARD_BY_ID } from "@/data/wards";
 import type { ProjectType, SuitabilityWeights } from "@/types";
@@ -79,9 +80,10 @@ export default function SiteSelectionPanel() {
           {PROJECTS.map((p) => (
             <button
               key={p.id}
+              type="button"
               onClick={() => setSiteProject(p.id)}
               className={cn(
-                "glass-card flex flex-col items-center gap-1 rounded-2xl px-1 py-2 text-center transition-all hover:scale-[1.02] active:scale-95",
+                "glass-card flex flex-col items-center gap-1 rounded-2xl px-1 py-2 text-center transition-all hover:scale-[1.02] active:scale-95 cursor-pointer",
                 siteProject === p.id
                   ? "border-accent/80 bg-accent/20 text-accent ring-1 ring-accent/50 font-semibold"
                   : "text-muted-foreground hover:border-accent/40 hover:text-foreground"
@@ -98,8 +100,9 @@ export default function SiteSelectionPanel() {
         label="2 · Constraints & Weights"
         right={
           <button
+            type="button"
             onClick={() => setConfigOpen((v) => !v)}
-            className="text-[10.5px] font-semibold text-accent hover:underline"
+            className="text-[10.5px] font-semibold text-accent hover:underline cursor-pointer"
           >
             {configOpen ? "Collapse" : "Expand"}
           </button>
@@ -193,7 +196,7 @@ export default function SiteSelectionPanel() {
       <button
         onClick={runAnalysis}
         disabled={analysisRunning}
-        className="group flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-accent text-[13px] font-bold text-accent-foreground shadow-md shadow-accent/25 ring-1 ring-accent/60 transition-all hover:scale-[1.01] hover:brightness-110 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+        className="group flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-accent text-[13px] font-bold text-accent-foreground shadow-md shadow-accent/25 ring-1 ring-accent/60 transition-all hover:scale-[1.01] hover:brightness-110 active:scale-95 disabled:opacity-50 cursor-pointer"
       >
         <Play size={14} className={cn("fill-current", analysisRunning && "animate-spin")} />
         {analysisRunning ? "Evaluating parcels…" : "Run Multi-Criteria Site Search"}
@@ -214,18 +217,17 @@ export default function SiteSelectionPanel() {
         <Section label={`Best Sites · ${candidates.length} candidates`}>
           <div className="space-y-2">
             {candidates.map((c) => (
-              <motion.div
+              <GlowCard
                 key={c.parcelId}
-                layout
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: c.rank * 0.05 }}
+                glowColor={c.rank === 1 ? "rgba(56, 189, 248, 0.06)" : "rgba(56, 189, 248, 0.03)"}
+                borderGlowColor={c.rank === 1 ? "rgba(56, 189, 248, 0.5)" : "rgba(56, 189, 248, 0.35)"}
                 className={cn(
-                  "glass-card rounded-2xl p-3.5 shadow-sm transition-all hover:scale-[1.01]",
+                  "p-3.5 shadow-sm",
                   c.rank === 1
                     ? "border-accent/80 bg-accent/15 ring-1 ring-accent/50"
                     : ""
                 )}
+                interactive={false}
               >
                 <div className="flex items-start justify-between">
                   <div>
@@ -277,29 +279,32 @@ export default function SiteSelectionPanel() {
 
                 <div className="mt-2.5 flex gap-1.5">
                   <button
+                    type="button"
                     onClick={() => flyTo(c.parcel.centroid, 13.8)}
-                    className="glass flex h-7 flex-1 items-center justify-center gap-1 rounded-xl text-[11px] font-semibold transition-transform hover:scale-[1.02] active:scale-95"
+                    className="glass flex h-7 flex-1 items-center justify-center gap-1 rounded-xl text-[11px] font-semibold transition-transform hover:scale-[1.02] active:scale-95 cursor-pointer"
                   >
                     <MapPin size={11} /> Show on map
                   </button>
                   <button
+                    type="button"
                     onClick={() => selectParcel(c.parcelId, true)}
-                    className="glass flex h-7 flex-1 items-center justify-center rounded-xl text-[11px] font-semibold transition-transform hover:scale-[1.02] active:scale-95"
+                    className="glass flex h-7 flex-1 items-center justify-center rounded-xl text-[11px] font-semibold transition-transform hover:scale-[1.02] active:scale-95 cursor-pointer"
                   >
                     Open parcel
                   </button>
                   <button
+                    type="button"
                     onClick={() => {
                       setSimProject(siteProject);
                       setSimTarget(c.parcelId);
                       setMode("simulator");
                     }}
-                    className="glass flex h-7 flex-1 items-center justify-center gap-1 rounded-xl bg-accent/20 text-[11px] font-bold text-accent ring-1 ring-accent/40 transition-transform hover:scale-[1.02] active:scale-95"
+                    className="glass flex h-7 flex-1 items-center justify-center gap-1 rounded-xl bg-accent/20 text-[11px] font-bold text-accent ring-1 ring-accent/40 transition-transform hover:scale-[1.02] active:scale-95 cursor-pointer"
                   >
                     <FlaskConical size={11} /> Simulate
                   </button>
                 </div>
-              </motion.div>
+              </GlowCard>
             ))}
           </div>
           {candidates[0] && (

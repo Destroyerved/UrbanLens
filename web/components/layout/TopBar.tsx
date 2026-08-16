@@ -5,6 +5,8 @@ import { ChevronDown, Search, Sparkles, ScanEye, Check } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { CITIES } from "@/config/city";
 import { useApp } from "@/lib/store";
+import { ExpandingSearchDock } from "@/components/search/ExpandingSearchDock";
+import { LiquidMetalButton } from "@/components/ui/LiquidMetalButton";
 import ThemeToggle from "./ThemeToggle";
 import { cn } from "@/lib/utils";
 
@@ -16,12 +18,18 @@ export default function TopBar() {
   const cityError = useApp((s) => s.cityError);
   const copilotOpen = useApp((s) => s.copilotOpen);
   const setCopilotOpen = useApp((s) => s.setCopilotOpen);
+  const searchFocused = useApp((s) => s.searchFocused);
   const [cityOpen, setCityOpen] = useState(false);
 
   return (
-    <div className="glass pointer-events-auto flex h-12 items-center gap-2.5 rounded-full pl-3.5 pr-2.5 shadow-elev-2">
-      {/* Brand */}
-      <div className="flex items-center gap-2.5 pr-2">
+    <div data-glow className="glass pointer-events-auto flex h-12 items-center gap-2.5 rounded-full pl-3.5 pr-2.5 shadow-elev-2 backdrop-blur-xl">
+      {/* Brand — blurs when search is focused */}
+      <div
+        className={cn(
+          "flex items-center gap-2.5 pr-2 transition-all duration-300 ease-out",
+          searchFocused && "blur-[6px] opacity-30 pointer-events-none scale-[0.97]"
+        )}
+      >
         <div className="grid h-7 w-7 place-items-center rounded-full bg-accent/20 ring-1 ring-accent/50 shadow-[0_0_12px_rgba(56,189,248,0.3)]">
           <ScanEye size={15} className="text-accent" />
         </div>
@@ -33,105 +41,102 @@ export default function TopBar() {
         </div>
       </div>
 
-      <div className="mx-1 h-5 w-px bg-white/25 dark:bg-white/15" />
+      <div
+        className={cn(
+          "mx-1 h-5 w-px bg-white/25 dark:bg-white/15 transition-all duration-300",
+          searchFocused && "opacity-20 blur-[2px]"
+        )}
+      />
 
-      {/* Global search.
-          The label is held on one line and truncated rather than allowed to
-          wrap: the pill is a fixed h-8, so a second line rendered outside the
-          rounded container instead of growing it. `shrink-0` keeps the icon and
-          the shortcut badge at full size so only the label gives way. */}
-      <button
-        onClick={() => setPaletteOpen(true)}
-        className="glass-card group flex h-8 w-[280px] items-center gap-2 rounded-full px-3 text-left transition-all hover:scale-[1.01]"
-      >
-        <Search size={13.5} className="shrink-0 text-muted-foreground transition-colors group-hover:text-accent" />
-        <span className="flex-1 truncate text-[12px] font-medium text-muted-foreground group-hover:text-foreground">
-          Search parcels, wards, actions…
-        </span>
-        <kbd className="num shrink-0 rounded-full border border-border/70 bg-white/20 dark:bg-white/10 px-1.5 py-0.5 text-[9.5px] font-semibold text-muted-foreground">
-          ⌘K
-        </kbd>
-      </button>
+      {/* Expanding Search Dock — Remains 100% focused & crystal clear */}
+      <div className="relative z-[70]">
+        <ExpandingSearchDock
+          onSearch={() => setPaletteOpen(true)}
+        />
+      </div>
 
       <div className="flex-1" />
 
-      {/* City selector */}
-      <div className="relative">
-        <button
-          onClick={() => setCityOpen((v) => !v)}
-          className="glass-card flex h-8 items-center gap-1.5 rounded-full px-3 text-[12px] font-semibold text-foreground transition-all hover:scale-[1.02]"
-        >
-          <span
-            className={cn(
-              "h-2 w-2 rounded-full",
-              cityLoading
-                ? "animate-pulse bg-warning"
-                : "bg-good shadow-[0_0_8px_rgba(34,197,94,0.6)]",
-            )}
-          />
-          <span>{city.name}</span>
-          <span className="text-muted-foreground font-normal">· {city.state}</span>
-          <ChevronDown
-            size={12}
-            className={cn("text-muted-foreground transition-transform", cityOpen && "rotate-180")}
-          />
-        </button>
-        <AnimatePresence>
-          {cityOpen && (
-            <motion.div
-              initial={{ opacity: 0, y: -4, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -4, scale: 0.95 }}
-              transition={{ duration: 0.16 }}
-              className="glass-strong absolute right-0 top-10 z-[50] w-52 rounded-2xl p-2 shadow-elev-3"
-              onMouseLeave={() => setCityOpen(false)}
-            >
-              {CITIES.map((c) => (
-                <button
-                  key={c.id}
-                  onClick={() => {
-                    setCityOpen(false);
-                    void setCity(c.id);
-                  }}
-                  disabled={cityLoading}
-                  className="flex w-full items-start justify-between gap-2 rounded-xl px-2.5 py-2 text-left text-[12px] font-semibold transition-colors hover:bg-white/20 disabled:opacity-50 dark:hover:bg-white/10"
-                >
-                  <span className="min-w-0">
-                    <span className="block truncate">{c.name}</span>
-                    <span className="block text-[10px] font-normal text-muted-foreground">
-                      {c.blurb}
-                    </span>
-                  </span>
-                  {c.id === city.id && (
-                    <Check size={13} className="mt-0.5 shrink-0 text-accent" />
-                  )}
-                </button>
-              ))}
-              {cityError && (
-                <div className="px-2.5 py-1.5 text-[10px] text-critical">{cityError}</div>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-
-      <div className="mx-0.5 h-5 w-px bg-white/25 dark:bg-white/15" />
-
-      {/* Copilot */}
-      <button
-        onClick={() => setCopilotOpen(!copilotOpen)}
+      {/* Right Tools (City, Copilot, Theme) — Blurs when search is focused */}
+      <div
         className={cn(
-          "flex h-8 items-center gap-1.5 rounded-full px-3 text-[12px] font-bold transition-all active:scale-[0.97]",
-          copilotOpen
-            ? "bg-accent text-accent-foreground shadow-md ring-1 ring-accent/50 shadow-accent/30"
-            : "glass text-accent ring-1 ring-accent/40 hover:bg-accent/20 hover:scale-[1.02]"
+          "flex items-center gap-2 transition-all duration-300 ease-out",
+          searchFocused && "blur-[6px] opacity-30 pointer-events-none scale-[0.97]"
         )}
       >
-        <Sparkles size={13} />
-        Copilot
-      </button>
+        {/* City selector */}
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setCityOpen((v) => !v)}
+            className="glass-card flex h-8 items-center gap-1.5 rounded-full px-3 text-[12px] font-semibold text-foreground transition-all hover:scale-[1.02] cursor-pointer"
+          >
+            <span
+              className={cn(
+                "h-2 w-2 rounded-full",
+                cityLoading
+                  ? "animate-pulse bg-warning"
+                  : "bg-good shadow-[0_0_8px_rgba(34,197,94,0.6)]"
+              )}
+            />
+            <span>{city.name}</span>
+            <span className="text-muted-foreground font-normal">· {city.state}</span>
+            <ChevronDown
+              size={12}
+              className={cn("text-muted-foreground transition-transform", cityOpen && "rotate-180")}
+            />
+          </button>
+          <AnimatePresence>
+            {cityOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: -4, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -4, scale: 0.95 }}
+                transition={{ duration: 0.16 }}
+                className="glass-strong absolute right-0 top-10 z-[50] w-52 rounded-2xl p-2 shadow-elev-3 backdrop-blur-xl"
+                onMouseLeave={() => setCityOpen(false)}
+              >
+                {CITIES.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => {
+                      setCityOpen(false);
+                      void setCity(c.id);
+                    }}
+                    disabled={cityLoading}
+                    className="flex w-full items-center justify-between rounded-xl px-2.5 py-2 text-left text-[12px] font-semibold hover:bg-white/20 dark:hover:bg-white/10 transition-colors disabled:opacity-50 cursor-pointer"
+                  >
+                    <span>
+                      {c.name}
+                      <span className="ml-1.5 text-muted-foreground font-normal">{c.state}</span>
+                    </span>
+                    {c.id === city.id && <Check size={13} className="text-accent" />}
+                  </button>
+                ))}
+                {cityError ? (
+                  <div className="px-2.5 py-1.5 text-[10px] text-critical">{cityError}</div>
+                ) : (
+                  <div className="px-2.5 py-1.5 text-[10px] text-muted-foreground">
+                    More cities onboardable via config.
+                  </div>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
 
-      <ThemeToggle />
+        <div className="mx-0.5 h-5 w-px bg-white/25 dark:bg-white/15" />
+
+        {/* Liquid Metal Copilot Button */}
+        <LiquidMetalButton
+          label="Copilot"
+          active={copilotOpen}
+          onClick={() => setCopilotOpen(!copilotOpen)}
+        />
+
+        <ThemeToggle />
+      </div>
     </div>
   );
 }

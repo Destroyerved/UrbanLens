@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import maplibregl, { Map as MLMap, Marker } from "maplibre-gl";
+import type { FeatureCollection } from "geojson";
 import { useTheme } from "next-themes";
-
+import { ACTIVE_CITY } from "@/config/city";
 import { useApp } from "@/lib/store";
 import { PARCEL_BY_ID } from "@/data/parcels";
 import {
@@ -26,7 +27,6 @@ import {
 import { circleRing } from "@/lib/geo";
 import { setMapInstance } from "@/lib/mapref";
 import type { Year } from "@/types";
-import type { FeatureCollection } from "geojson";
 
 const YEARS: Year[] = [2018, 2022, 2026];
 
@@ -135,19 +135,19 @@ export default function MapCanvas() {
             type: "background",
             paint: { "background-color": "#0b0e14" },
           },
-          { id: "basemap-dark", type: "raster", source: "carto-dark" },
+          { id: "basemap-dark", type: "raster", source: "carto-dark", layout: { visibility: "none" } },
           { id: "basemap-light", type: "raster", source: "carto-light", layout: { visibility: "none" } },
-          { id: "basemap-satellite", type: "raster", source: "esri-satellite", layout: { visibility: "none" } },
+          { id: "basemap-satellite", type: "raster", source: "esri-satellite" },
           { id: "basemap-terrain", type: "raster", source: "esri-topo", layout: { visibility: "none" } },
           { id: "basemap-streets", type: "raster", source: "carto-voyager", layout: { visibility: "none" } },
-          { id: "basemap-hybrid-labels", type: "raster", source: "esri-labels", layout: { visibility: "none" } },
+          { id: "basemap-hybrid-labels", type: "raster", source: "esri-labels" },
         ],
       },
-      center: city.center,
-      zoom: city.zoom,
+      center: ACTIVE_CITY.center,
+      zoom: ACTIVE_CITY.zoom,
       minZoom: 9.5,
       maxZoom: 17,
-      attributionControl: { compact: true },
+      attributionControl: false,
     });
     mapRef.current = map;
     setMapInstance(map);
@@ -695,11 +695,8 @@ export default function MapCanvas() {
     };
   }, []);
 
+  
   /* --------------------- study-area dataset swapping -------------------- */
-  // The layer modules are swapped wholesale when the study area changes, but a
-  // MapLibre source keeps whatever GeoJSON it was handed at load. Push the new
-  // collections in and move the camera, or the map keeps showing the old city
-  // under the new city's numbers.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready || datasetVersion === 0) return;

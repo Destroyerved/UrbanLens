@@ -92,6 +92,7 @@ export const CITIES: CityConfig[] = [
 
 /** The area the app opens on. The active one at runtime lives in the store. */
 export const DEFAULT_CITY = AHMEDABAD;
+export const ACTIVE_CITY = DEFAULT_CITY;
 
 export function cityById(id: string): CityConfig {
   return CITIES.find((c) => c.id === id) ?? DEFAULT_CITY;

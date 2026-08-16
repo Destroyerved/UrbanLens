@@ -63,6 +63,12 @@ interface AppState {
 
   mode: Mode;
   setMode: (m: Mode) => void;
+  panelOpen: boolean;
+  setPanelOpen: (v: boolean) => void;
+  togglePanel: () => void;
+
+  searchFocused: boolean;
+  setSearchFocused: (v: boolean) => void;
 
   basemap: BasemapType;
   setBasemap: (b: BasemapType) => void;
@@ -143,8 +149,27 @@ function layersFromPreset(mode: Mode): Record<string, boolean> {
   return on;
 }
 
+function getInitialBasemap(): BasemapType {
+  if (typeof window !== "undefined") {
+    try {
+      const saved = localStorage.getItem("urbanlens_basemap") as BasemapType | null;
+      if (saved && ["satellite", "hybrid", "streets", "terrain", "dark", "light"].includes(saved)) {
+        return saved;
+      }
+    } catch {}
+  }
+  return "hybrid";
+}
+
 export const useApp = create<AppState>((set, get) => ({
   mode: "overview",
+  panelOpen: true,
+  setPanelOpen: (panelOpen) => set({ panelOpen }),
+  togglePanel: () => set((s) => ({ panelOpen: !s.panelOpen })),
+
+  searchFocused: false,
+  setSearchFocused: (searchFocused) => set({ searchFocused }),
+
   setMode: (mode) => {
     const prev = get();
     const layers = layersFromPreset(mode);
@@ -152,11 +177,21 @@ export const useApp = create<AppState>((set, get) => ({
     if (mode === "growth" && prev.predictionOn) layers["prediction"] = true;
     if (prev.candidates && (mode === "sites" || mode === "simulator"))
       layers["candidates"] = true;
-    set({ mode, activeLayers: layers });
+    
+    // If clicking current active mode, toggle panel open/closed; if switching mode, ensure panel is open
+    const panelOpen = prev.mode === mode ? !prev.panelOpen : true;
+    set({ mode, activeLayers: layers, panelOpen });
   },
 
-  basemap: "dark",
-  setBasemap: (basemap) => set({ basemap }),
+  basemap: getInitialBasemap(),
+  setBasemap: (basemap) => {
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("urbanlens_basemap", basemap);
+      } catch {}
+    }
+    set({ basemap });
+  },
 
   activeLayers: layersFromPreset("overview"),
   toggleLayer: (id, on) =>
