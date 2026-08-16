@@ -12,3 +12,4 @@
 2026-08-16T10:09:31.383668+00:00 thermal: published LST 2026-06-07
 2026-08-16T10:26:04.658197+00:00 thermal: up to date (2026-06-07), skipping
 2026-08-16T10:56:11.651388+00:00 thermal: up to date (2026-06-07), skipping
+2026-08-16T12:40:34.003275+00:00 thermal: date lookup failed: No module named 'rasterio'
