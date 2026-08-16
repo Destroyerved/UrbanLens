@@ -25,6 +25,8 @@ import { setWards } from "@/data/wards";
 import { setRoads } from "@/data/roads";
 import { setFacilities } from "@/data/facilities";
 import { setGrid } from "@/data/grid";
+import { setVegetation } from "@/data/vegetation";
+import { setGreenspace } from "@/data/greenspace";
 import { fetchCityDataset } from "@/lib/dataset";
 import { setApiCity } from "@/lib/api";
 import { cityById, DEFAULT_CITY, type CityConfig } from "@/config/city";
@@ -228,6 +230,8 @@ export const useApp = create<AppState>((set, get) => ({
       setRoads(d.roads);
       setFacilities(d.facilities);
       setGrid(d.grid);
+      setVegetation(d.vegetation);
+      setGreenspace(d.greenspace);
       set((st) => ({ datasetVersion: st.datasetVersion + 1, cityLoading: false }));
     } catch (err) {
       set({

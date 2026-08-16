@@ -10,7 +10,12 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from app.core.config import CITIES, get_city
-from app.data.loader import FACILITY_TYPES, get_dataset
+from app.data.loader import (
+    FACILITY_TYPES,
+    get_dataset,
+    get_greenspace,
+    get_vegetation,
+)
 from app.gis import analysis
 from app.gis.parcels import get_parcels
 from app.gis.raster import population_within_km
@@ -165,6 +170,17 @@ def _sources(ds) -> dict:
             "label": "OpenStreetMap",
             "detail": f"{len(ds.roads):,} major road segments via the Overpass API.",
         },
+        "satellite": {
+            "source": "satellite",
+            "label": "Copernicus Sentinel-2 L2A",
+            "detail": "Cloud-masked NDVI (B8−B4)/(B8+B4) at 10 m, zonal mean per ward. "
+                      "Single acquisition, lowest-cloud day.",
+        },
+        "osm": {
+            "source": "osm",
+            "label": "OpenStreetMap + AMC",
+            "detail": "Green-space polygons from OSM landuse/greenspace and AMC park records.",
+        },
     }
 
 
@@ -195,6 +211,10 @@ def layers(city: str | None = Query(default=None)) -> dict:
          len(analysis.zoning_conflicts(ds.city.id)), "zoning"),
         ("roads", "Roads", "/api/roads", "line", len(ds.roads), "roads"),
         ("facilities", "Public facilities", "/api/facilities", "point", len(ds.facilities), "facilities"),
+        ("vegetation", "Vegetation & NDVI", "/api/vegetation", "polygon",
+         len(get_vegetation(ds.city.id).get("features", [])), "satellite"),
+        ("greenspace", "Green space", "/api/greenspace", "polygon",
+         len(get_greenspace(ds.city.id).get("features", [])), "osm"),
     ]
     return {
         "city": {"id": ds.city.id, "name": ds.city.name, "center": list(ds.city.center), "zoom": ds.city.zoom},
@@ -249,6 +269,48 @@ def boundary(city: str | None = Query(default=None)) -> dict:
 def roads(city: str | None = Query(default=None)) -> dict:
     ds = _dataset(city)
     return {"type": "FeatureCollection", "features": ds.roads}
+
+
+@router.get("/vegetation")
+def vegetation(city: str | None = Query(default=None)) -> dict:
+    """Per-ward vegetation choropleth (Sentinel-2 NDVI, 10 m)."""
+    try:
+        return get_vegetation(city)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.get("/greenspace")
+def greenspace(city: str | None = Query(default=None)) -> dict:
+    """Green-space polygons (parks + green landuse)."""
+    try:
+        return get_greenspace(city)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.get("/thermal/status")
+def thermal_status() -> dict:
+    """State of the committed LST raster (NASA GIBS MODIS, refreshed daily).
+
+    Reads only the atomically-published metadata, so it can never describe a
+    half-fetched image. ``ok: true`` means the raster is current; ``ok: false``
+    with a ``date`` means the last refresh failed and the dashboard should keep
+    showing that date flagged stale; no ``date`` at all means the first fetch
+    has not succeeded yet.
+    """
+    from app.thermal import read_meta
+
+    meta = read_meta()
+    if meta is None:
+        return {
+            "ok": False,
+            "date": None,
+            "updated_at": None,
+            "bounds": None,
+            "reason": "no thermal data published yet — the first refresh runs at startup",
+        }
+    return meta
 
 
 @router.get("/facilities")

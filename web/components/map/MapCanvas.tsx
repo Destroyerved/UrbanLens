@@ -17,14 +17,17 @@ import {
   gapFC,
   growthHeatFC,
   gapHeatFC,
-  ndviHeatFC,
-  thermalHeatFC,
+  vegetationFC,
+  greenspaceFC,
+  thermalRasterURL,
+  THERMAL_BOUNDS,
   landUseColorExpr,
   FACILITY_COLORS,
   FACILITY_LABELS,
 } from "@/lib/mapdata";
 import { circleRing } from "@/lib/geo";
 import { setMapInstance } from "@/lib/mapref";
+import { initThermalStatus, refreshThermalStatus, useThermalStatus } from "@/data/thermal";
 import type { Year } from "@/types";
 import type { FeatureCollection } from "geojson";
 
@@ -37,6 +40,17 @@ function rasterTiles(style: "dark_all" | "light_all"): string[] {
   return ["a", "b", "c", "d"].map(
     (s) => `https://${s}.basemaps.cartocdn.com/${style}/{z}/{x}/{y}@2x.png`
   );
+}
+
+/** MapLibre image-source corners for the LST raster: [top-left, top-right, bottom-right, bottom-left]. */
+function thermalCorners(): [[number, number], [number, number], [number, number], [number, number]] {
+  const [w, s, e, n] = THERMAL_BOUNDS;
+  return [
+    [w, n],
+    [e, n],
+    [e, s],
+    [w, s],
+  ];
 }
 
 interface TooltipState {
@@ -54,6 +68,7 @@ export default function MapCanvas() {
   const markersRef = useRef<Marker[]>([]);
   const simMarkerRef = useRef<Marker | null>(null);
   const rafRef = useRef<number>(0);
+  const thermalUrlRef = useRef<string | null>(null);
 
   const { resolvedTheme } = useTheme();
   const basemap = useApp((s) => s.basemap);
@@ -73,6 +88,32 @@ export default function MapCanvas() {
   const setMapClick = useApp((s) => s.setMapClick);
   const city = useApp((s) => s.city);
   const datasetVersion = useApp((s) => s.datasetVersion);
+  const thermal = useThermalStatus();
+
+  /* ------------------------- thermal status ------------------------- */
+  useEffect(() => {
+    initThermalStatus();
+  }, []);
+
+  // Refresh whenever the UHI layer is switched on, and re-point the raster at
+  // the committed file (cache-busted by updated_at) once we know the date.
+  useEffect(() => {
+    if (activeLayers["thermal-heat"]) refreshThermalStatus();
+    const map = mapRef.current;
+    if (!map || !ready || !thermal.date) return;
+    const src = map.getSource("thermal-raster") as maplibregl.ImageSource | undefined;
+    if (src) {
+      const url = thermalRasterURL(thermal.updated_at ?? undefined);
+      if (thermalUrlRef.current === url) return;
+      thermalUrlRef.current = url;
+      try {
+        src.updateImage({ url, coordinates: thermalCorners() });
+      } catch {
+        // updateImage aborts any in-flight image load; ignore if it throws
+        // during mount/teardown (e.g. WebGL context already lost).
+      }
+    }
+  }, [activeLayers, ready, thermal]);
 
   /* ------------------------------ init ------------------------------ */
   useEffect(() => {
@@ -168,8 +209,20 @@ export default function MapCanvas() {
       map.addSource("population", { type: "geojson", data: populationFC() });
       map.addSource("growth-heat", { type: "geojson", data: growthHeatFC() });
       map.addSource("gap-heat", { type: "geojson", data: gapHeatFC() });
-      map.addSource("ndvi-heat", { type: "geojson", data: ndviHeatFC() });
-      map.addSource("thermal-heat", { type: "geojson", data: thermalHeatFC() });
+      map.addSource("vegetation", { type: "geojson", data: vegetationFC(), promoteId: "id" });
+      map.addSource("greenspace", { type: "geojson", data: greenspaceFC() });
+      map.addSource("thermal-raster", {
+        type: "image",
+        url: thermalRasterURL(),
+        coordinates: thermalCorners(),
+      });
+      // Swallow maplibre's ErrorEvent logging: updateImage() aborts the
+      // initial load() on mount, which fires an 'error' event with no
+      // listeners and gets console.error'd by maplibre's Evented.
+      (map.getSource("thermal-raster") as maplibregl.ImageSource | undefined)?.on(
+        "error",
+        () => {}
+      );
       map.addSource("gap", { type: "geojson", data: gapFC() });
       map.addSource("sim-coverage", {
         type: "geojson",
@@ -364,87 +417,61 @@ export default function MapCanvas() {
         layout: { visibility: "none" },
       });
 
-      // 4. Vegetation / NDVI Canopy Heatmap
+      // 4. Vegetation / NDVI — per-ward choropleth from the real Sentinel-2 layer
       map.addLayer({
         id: "ndvi-heat",
-        type: "heatmap",
-        source: "ndvi-heat",
+        type: "fill",
+        source: "vegetation",
         paint: {
-          "heatmap-weight": [
+          "fill-color": [
             "interpolate",
             ["linear"],
-            ["get", "weight"],
-            0,
-            0,
-            1,
-            1,
+            ["get", "ndvi_mean"],
+            -0.1,
+            "#a16207",
+            0.15,
+            "#d9f99d",
+            0.35,
+            "#84cc16",
+            0.55,
+            "#22c55e",
+            0.75,
+            "#14532d",
           ] as never,
-          "heatmap-radius": [
-            "interpolate",
-            ["linear"],
-            ["zoom"],
-            10,
-            22,
-            14,
-            54,
-          ] as never,
-          "heatmap-intensity": 0.95,
-          "heatmap-color": [
-            "interpolate",
-            ["linear"],
-            ["heatmap-density"],
-            0,
-            "rgba(34,197,94,0)",
-            0.3,
-            "rgba(132,204,22,0.5)",
-            0.6,
-            "rgba(34,197,94,0.75)",
-            1,
-            "rgba(21,128,61,0.92)",
-          ] as never,
+          "fill-opacity": 0.75,
         },
         layout: { visibility: "none" },
       });
 
-      // 5. Urban Heat Island (UHI) Heatmap
+      // 5. Urban Heat Island (UHI) — MODIS LST raster (local file, auto-refreshed)
       map.addLayer({
         id: "thermal-heat",
-        type: "heatmap",
-        source: "thermal-heat",
+        type: "raster",
+        source: "thermal-raster",
         paint: {
-          "heatmap-weight": [
-            "interpolate",
-            ["linear"],
-            ["get", "weight"],
-            0,
-            0,
-            1,
-            1,
-          ] as never,
-          "heatmap-radius": [
-            "interpolate",
-            ["linear"],
-            ["zoom"],
-            10,
-            24,
-            14,
-            58,
-          ] as never,
-          "heatmap-intensity": 1,
-          "heatmap-color": [
-            "interpolate",
-            ["linear"],
-            ["heatmap-density"],
-            0,
-            "rgba(59,130,246,0)",
-            0.3,
-            "rgba(234,179,8,0.5)",
-            0.6,
-            "rgba(249,115,22,0.75)",
-            1,
-            "rgba(185,28,28,0.94)",
-          ] as never,
+          "raster-opacity": 0.7,
+          "raster-resampling": "linear",
+          "raster-fade-duration": 150,
         },
+        layout: { visibility: "none" },
+      });
+
+      // Greenspace — real green polygons (parks + green landuse)
+      map.addLayer({
+        id: "greenspace",
+        type: "fill",
+        source: "greenspace",
+        paint: {
+          "fill-color": "#16a34a",
+          "fill-opacity": 0.45,
+        },
+        layout: { visibility: "none" },
+      });
+      map.addLayer({
+        id: "greenspace-line",
+        type: "line",
+        source: "greenspace",
+        paint: { "line-color": "#15803d", "line-width": 1.2, "line-opacity": 0.7 },
         layout: { visibility: "none" },
       });
 
@@ -673,6 +700,40 @@ export default function MapCanvas() {
       });
       map.on("mouseleave", "facilities-circle", () => setTooltip(null));
 
+      map.on("mousemove", "greenspace", (e) => {
+        if (dragging || map.isMoving()) return;
+        const f = e.features?.[0];
+        if (!f) return;
+        map.getCanvas().style.cursor = "pointer";
+        const p = f.properties ?? {};
+        setTooltip({
+          x: e.point.x,
+          y: e.point.y,
+          title: (p.name as string) || "Green Space",
+          lines: [
+            p.category ? `Category · ${p.category}` : "",
+            p.area_sqm ? `Area · ${(p.area_sqm / 10000).toFixed(2)} ha` : "",
+          ].filter(Boolean),
+        });
+      });
+      map.on("mouseleave", "greenspace", () => setTooltip(null));
+
+      map.on("mousemove", "vegetation", (e) => {
+        if (dragging || map.isMoving()) return;
+        const f = e.features?.[0];
+        if (!f) return;
+        map.getCanvas().style.cursor = "pointer";
+        const p = f.properties ?? {};
+        const ndvi = typeof p.ndvi_mean === "number" ? p.ndvi_mean : null;
+        setTooltip({
+          x: e.point.x,
+          y: e.point.y,
+          title: (p.name as string) || "Ward",
+          lines: [ndvi !== null ? `NDVI · ${ndvi.toFixed(2)}` : ""].filter(Boolean),
+        });
+      });
+      map.on("mouseleave", "vegetation", () => setTooltip(null));
+
       map.on("click", (e) => {
         const feats = map.queryRenderedFeatures(e.point, {
           layers: ["parcels-fill"].filter((l) => !!map.getLayer(l)),
@@ -716,8 +777,8 @@ export default function MapCanvas() {
     push("population", populationFC());
     push("growth-heat", growthHeatFC());
     push("gap-heat", gapHeatFC());
-    push("ndvi-heat", ndviHeatFC());
-    push("thermal-heat", thermalHeatFC());
+    push("vegetation", vegetationFC());
+    push("greenspace", greenspaceFC());
     push("gap", gapFC());
     for (const y of YEARS) push(`builtup-${y}`, builtupFC(y));
     push("sim-coverage", { type: "FeatureCollection", features: [] });
@@ -789,7 +850,9 @@ export default function MapCanvas() {
     setV("growth-heat", !!L["growth-heat"]);
     setV("gap-heat", !!L["gap-heat"]);
     setV("ndvi-heat", !!L["ndvi-heat"]);
-    setV("thermal-heat", !!L["thermal-heat"]);
+    setV("thermal-heat", !!L["thermal-heat"] && !!thermal.date);
+    setV("greenspace", !!L["greenspace"]);
+    setV("greenspace-line", !!L["greenspace"]);
     setV("gap", !!L["gap"]);
     setV("prediction", !!L["prediction"]);
     for (const y of YEARS) setV(`builtup-${y}`, !!L["builtup"]);
@@ -824,10 +887,12 @@ export default function MapCanvas() {
     if (map.getLayer("gap-heat"))
       map.setPaintProperty("gap-heat", "heatmap-opacity", layerOpacity["gap-heat"] ?? 0.7);
     if (map.getLayer("ndvi-heat"))
-      map.setPaintProperty("ndvi-heat", "heatmap-opacity", layerOpacity["ndvi-heat"] ?? 0.7);
+      map.setPaintProperty("ndvi-heat", "fill-opacity", layerOpacity["ndvi-heat"] ?? 0.75);
     if (map.getLayer("thermal-heat"))
-      map.setPaintProperty("thermal-heat", "heatmap-opacity", layerOpacity["thermal-heat"] ?? 0.7);
-  }, [activeLayers, ready, layerOpacity]);
+      map.setPaintProperty("thermal-heat", "raster-opacity", layerOpacity["thermal-heat"] ?? 0.7);
+    if (map.getLayer("greenspace"))
+      map.setPaintProperty("greenspace", "fill-opacity", layerOpacity["greenspace"] ?? 0.45);
+  }, [activeLayers, ready, layerOpacity, thermal]);
 
   /* --------------------- year crossfade (builtup) ------------------- */
   useEffect(() => {

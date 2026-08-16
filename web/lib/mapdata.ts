@@ -5,6 +5,9 @@ import { WARDS } from "@/data/wards";
 import { ROADS } from "@/data/roads";
 import { FACILITIES } from "@/data/facilities";
 import { GRID, BUILTUP_RINGS, urbanPosition } from "@/data/grid";
+import { VEGETATION } from "@/data/vegetation";
+import { GREENSPACE } from "@/data/greenspace";
+import { API_BASE } from "@/lib/api";
 
 /**
  * GeoJSON adapters for the MapLibre layer stack.
@@ -151,35 +154,16 @@ const build_gapHeatFC = memo((src: typeof GRID): FeatureCollection => ({
 }));
 export const gapHeatFC = (): FeatureCollection => build_gapHeatFC(GRID);
 
-/** Vegetation & Ecological NDVI Canopy Heatmap source */
-const build_ndviHeatFC = memo((src: typeof GRID): FeatureCollection => ({
-  type: "FeatureCollection",
-  features: src.filter((c) => c.inCity).map((c) => {
-    const { rKm } = urbanPosition(c.center);
-    const ndvi = Math.max(0.1, Math.min(0.95, 0.2 + (rKm / 14) * 0.6 + (c.id.charCodeAt(5) % 10) * 0.02));
-    return {
-      type: "Feature",
-      properties: { weight: ndvi },
-      geometry: { type: "Point", coordinates: c.center },
-    };
-  }),
-}));
-export const ndviHeatFC = (): FeatureCollection => build_ndviHeatFC(GRID);
+/** Vegetation & NDVI — per-ward choropleth from the real Sentinel-2 layer. */
+export const vegetationFC = (): FeatureCollection => VEGETATION;
+export const greenspaceFC = (): FeatureCollection => GREENSPACE;
 
-/** Urban Heat Island (UHI) Thermal Stress Heatmap source */
-const build_thermalHeatFC = memo((src: typeof GRID): FeatureCollection => ({
-  type: "FeatureCollection",
-  features: src.filter((c) => c.inCity).map((c) => {
-    const { rKm } = urbanPosition(c.center);
-    const thermal = Math.max(0.08, 1.0 - (rKm / 12) * 0.72);
-    return {
-      type: "Feature",
-      properties: { weight: thermal },
-      geometry: { type: "Point", coordinates: c.center },
-    };
-  }),
-}));
-export const thermalHeatFC = (): FeatureCollection => build_thermalHeatFC(GRID);
+/** Metro extent the LST raster covers (matches backend BBOX). */
+export const THERMAL_BOUNDS: [number, number, number, number] = [72.0893, 22.7706, 72.8426, 23.4355];
+
+/** Raster URL for the committed LST layer; `updated_at` busts the browser cache. */
+export const thermalRasterURL = (updatedAt?: string): string =>
+  `${API_BASE}/static/thermal/latest.png${updatedAt ? `?v=${encodeURIComponent(updatedAt)}` : ""}`;
 
 export const LANDUSE_COLORS: Record<LandUse, string> = {
   agriculture: "#84cc16",
