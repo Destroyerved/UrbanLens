@@ -30,11 +30,11 @@ const ICONS: Record<LayerId, React.ReactNode> = {
   wards: <MapIcon size={14} />,
   roads: <Route size={14} />,
   facilities: <Hospital size={14} />,
+  greenspace: <Leaf size={14} />,
   population: <Users size={14} />,
   "growth-heat": <Flame size={14} />,
   "gap-heat": <Activity size={14} />,
   "ndvi-heat": <Leaf size={14} />,
-  greenspace: <Leaf size={14} />,
   "thermal-heat": <Flame size={14} />,
   builtup: <Building size={14} />,
   prediction: <TrendingUp size={14} />,
@@ -100,20 +100,13 @@ export default function LayerPanel({ open }: { open: boolean }) {
                       const on = !!activeLayers[l.id];
                       return (
                         <div key={l.id}>
-                          <div
-                            role="button"
-                            tabIndex={0}
+                          <button
+                            type="button"
                             onClick={() => toggleLayer(l.id, !on)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter" || e.key === " ") {
-                                e.preventDefault();
-                                toggleLayer(l.id, !on);
-                              }
-                            }}
                             className={cn(
                               "flex w-full items-center justify-between gap-2 rounded-xl px-2.5 py-2 text-left",
                               "hover:bg-white/10 dark:hover:bg-white/6 active:scale-[0.98]",
-                              "transition-transform duration-100 outline-none focus-visible:ring-2 focus-visible:ring-accent",
+                              "transition-transform duration-100",
                               on && "bg-accent/10"
                             )}
                           >
@@ -140,7 +133,7 @@ export default function LayerPanel({ open }: { open: boolean }) {
                               onCheckedChange={(v) => toggleLayer(l.id, v)}
                               onClick={(e) => e.stopPropagation()}
                             />
-                          </div>
+                          </button>
 
                           {/* Opacity slider (animated) */}
                           <AnimatePresence>

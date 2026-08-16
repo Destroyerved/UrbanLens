@@ -24,7 +24,7 @@ const listeners = new Set<() => void>();
 const POLL_MS = 60_000;
 
 function emit() {
-  for (const l of listeners) l();
+  listeners.forEach((l) => l());
 }
 
 function setStatus(next: ThermalStatus) {

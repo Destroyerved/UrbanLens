@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ChevronLeft } from "lucide-react";
 import { useApp } from "@/lib/store";
+import { MODE_META } from "@/config/layers";
 import { cn } from "@/lib/utils";
 import MapCanvas from "@/components/map/MapCanvas";
 import MapControls from "@/components/map/MapControls";
@@ -26,32 +27,24 @@ import { GlobalSpotlight } from "@/components/ui/spotlight-card";
 
 export default function AppShell() {
   const mode = useApp((s) => s.mode);
-  const setCity = useApp((s) => s.setCity);
-  const city = useApp((s) => s.city);
-  const cityLoading = useApp((s) => s.cityLoading);
-  const datasetVersion = useApp((s) => s.datasetVersion);
-  
   const panelOpen = useApp((s) => s.panelOpen);
   const setPanelOpen = useApp((s) => s.setPanelOpen);
   const copilotOpen = useApp((s) => s.copilotOpen);
   const searchFocused = useApp((s) => s.searchFocused);
   const setSearchFocused = useApp((s) => s.setSearchFocused);
+  const city = useApp((s) => s.city);
+  const setCity = useApp((s) => s.setCity);
+  const datasetVersion = useApp((s) => s.datasetVersion);
   const [layersOpen, setLayersOpen] = useState(false);
 
-  const hasActiveRightPanel = copilotOpen || panelOpen;
-
-  // The map layers ship empty and are fetched from the engine, so the study
-  // area has to be loaded before anything renders real geography. `?city=`
-  // makes an area linkable the same way `?mode=` makes a panel linkable.
+  // Load real dataset from backend on initial mount
   useEffect(() => {
-    const requested =
-      typeof window !== "undefined"
-        ? new URLSearchParams(window.location.search).get("city")
-        : null;
-    void setCity(requested ?? city.id);
-    // Runs once on mount; later changes come from the switcher.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    if (datasetVersion === 0) {
+      void setCity(city.id);
+    }
+  }, [datasetVersion, city.id, setCity]);
+
+  const hasActiveRightPanel = copilotOpen || panelOpen;
 
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-background">
@@ -70,17 +63,6 @@ export default function AppShell() {
       >
         {/* Base: the map never unmounts */}
         <MapCanvas />
-
-        {/* Switching study area reloads every layer; say so rather than showing
-            the previous city's geography under the new city's name. */}
-        {(cityLoading || datasetVersion === 0) && (
-          <div className="pointer-events-none absolute inset-x-0 top-[72px] z-[60] flex justify-center">
-            <div className="glass-strong flex items-center gap-2 rounded-full px-3.5 py-1.5 text-[11px] font-semibold shadow-elev-3">
-              <span className="h-2 w-2 animate-pulse rounded-full bg-warning" />
-              Loading {city.name}…
-            </div>
-          </div>
-        )}
 
         {/* Chrome ModeRail */}
         <div className="pointer-events-none absolute left-4 top-[76px] z-[35]">

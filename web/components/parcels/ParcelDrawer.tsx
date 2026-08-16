@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { FlaskConical, Landmark, User, X } from "lucide-react";
 import { Section } from "@/components/panels/PanelShell";
@@ -9,7 +9,7 @@ import { SegmentedScoreBar, FactorRows, MiniScore } from "@/components/shared/Sc
 import { useApp } from "@/lib/store";
 import { PARCEL_BY_ID } from "@/data/parcels";
 import { WARD_BY_ID } from "@/data/wards";
-import { fetchParcelIntel, type ParcelIntel } from "@/services/parcels";
+import { computeSuitability, computeAccessibility } from "@/lib/analysis";
 import { DEFAULT_WEIGHTS, type Parcel, type ProjectType } from "@/types";
 import { LANDUSE_COLORS } from "@/lib/mapdata";
 import { cn, formatCompact, formatKm, scoreTone, toneText } from "@/lib/utils";
@@ -23,6 +23,30 @@ function Attr({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
+function recommendUses(p: Parcel) {
+  const types: { type: ProjectType; label: string }[] = [
+    { type: "hospital", label: "Healthcare Facility" },
+    { type: "school", label: "Educational Institution" },
+    { type: "park", label: "Urban Park / Green Space" },
+    { type: "residential", label: "Residential Development" },
+    { type: "commercial", label: "Commercial Hub" },
+  ];
+  return types
+    .map((t) => ({ ...t, score: computeSuitability(p, t.type, DEFAULT_WEIGHTS).score }))
+    .sort((a, b) => b.score - a.score);
+}
+
+function getDevelopmentPotential(p: Parcel): number {
+  return Math.min(
+    98,
+    Math.round(
+      (p.ownership === "government" ? 28 : 14) +
+      p.infraReadiness * 0.4 +
+      (100 - p.builtUpPct) * 0.25 +
+      Math.min(10, p.areaHa * 1.5)
+    )
+  );
+}
 
 export default function ParcelDrawer() {
   const selectedParcelId = useApp((s) => s.selectedParcelId);
@@ -32,23 +56,14 @@ export default function ParcelDrawer() {
 
   const parcel = selectedParcelId ? PARCEL_BY_ID.get(selectedParcelId) : null;
 
-  // Scores, recommended uses and 15-minute access all come from the engine's
-  // parcel profile — one request rather than six client-side computations.
-  const [intel, setIntel] = useState<ParcelIntel | null>(null);
-  useEffect(() => {
-    if (!selectedParcelId) {
-      setIntel(null);
-      return;
-    }
-    let alive = true;
-    setIntel(null);
-    fetchParcelIntel(selectedParcelId)
-      .then((d) => alive && setIntel(d))
-      .catch(() => alive && setIntel(null));
-    return () => {
-      alive = false;
-    };
-  }, [selectedParcelId]);
+  const intel = useMemo(() => {
+    if (!parcel) return null;
+    const hospital = computeSuitability(parcel, "hospital", DEFAULT_WEIGHTS);
+    const recs = recommendUses(parcel);
+    const access = computeAccessibility(parcel.centroid);
+    const development = getDevelopmentPotential(parcel);
+    return { hospital, recs, access, development };
+  }, [parcel]);
 
   return (
     <AnimatePresence>
@@ -59,7 +74,7 @@ export default function ParcelDrawer() {
           animate={{ x: 0, opacity: 1 }}
           exit={{ x: 400, opacity: 0 }}
           transition={{ type: "spring", stiffness: 380, damping: 40 }}
-          className="glass-strong pointer-events-auto absolute bottom-3 right-3 top-[64px] z-[30] flex w-[356px] flex-col overflow-hidden rounded-2xl shadow-elev-3"
+          className="glass-strong pointer-events-auto absolute bottom-3 right-3 top-[64px] z-[40] flex w-[356px] flex-col overflow-hidden rounded-2xl shadow-elev-3 backdrop-blur-xl"
         >
           {/* Header */}
           <div className="border-b border-border/80 bg-surface-2/40 px-4 py-3 backdrop-blur-md">
@@ -72,8 +87,9 @@ export default function ParcelDrawer() {
                 </div>
               </div>
               <button
+                type="button"
                 onClick={() => selectParcel(null)}
-                className="grid h-7 w-7 place-items-center rounded-xl text-muted-foreground transition-all hover:bg-surface-3 hover:text-foreground active:scale-95"
+                className="grid h-7 w-7 place-items-center rounded-xl text-muted-foreground transition-all hover:bg-surface-3 hover:text-foreground active:scale-95 cursor-pointer"
                 aria-label="Close parcel drawer"
               >
                 <X size={15} />
@@ -178,7 +194,7 @@ export default function ParcelDrawer() {
             {/* Recommended uses */}
             <Section label="Recommended Uses">
               <div className="space-y-1.5">
-                {intel.recs.map((r: ParcelIntel["recs"][number], i: number) => (
+                {intel.recs.map((r, i) => (
                   <div
                     key={r.type}
                     className="glass-card flex items-center justify-between rounded-xl px-3 py-2"
@@ -199,6 +215,7 @@ export default function ParcelDrawer() {
           {/* Actions */}
           <div className="border-t border-border/80 bg-surface-2/40 p-3 backdrop-blur-md">
             <button
+              type="button"
               onClick={() => {
                 setSimTarget(parcel.id);
                 setMode("simulator");

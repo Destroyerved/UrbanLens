@@ -1,5 +1,5 @@
 {
-  "name": "urbanlens",
+  "name": "urbanlens-frontend",
   "version": "0.1.0",
   "private": true,
   "description": "UrbanLens — AI-Powered Urban Planning & Land Intelligence Platform (frontend). SIH 2026 · PS-SW-001.",
@@ -8,22 +8,13 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "data:wards": "node scripts/build-wards.mjs",
-    "data:osm": "node scripts/fetch-osm.mjs",
-    "data:region": "node scripts/build-region.mjs",
-    "data:talukas": "node scripts/fetch-talukas.mjs",
-    "data:metro": "node scripts/build-metro.mjs",
-    "demo": "node scripts/demo-run.mjs",
-    "verify:ui": "node scripts/verify-ui.mjs"
+    "sanity": "tsx scripts/sanity.ts"
   },
   "dependencies": {
-    "@next/swc-win32-x64-msvc": "^14.2.15",
     "@paper-design/shaders": "^0.0.80",
     "@radix-ui/react-slider": "^1.2.0",
     "@radix-ui/react-switch": "^1.1.0",
     "@radix-ui/react-tooltip": "^1.1.2",
-    "@react-three/fiber": "^8.17.10",
-    "@turf/turf": "^7.4.0",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "cmdk": "^1.0.0",
@@ -37,15 +28,12 @@
     "recharts": "^2.13.0",
     "sonner": "^1.5.0",
     "tailwind-merge": "^2.5.4",
-    "three": "^0.185.1",
     "zustand": "^4.5.5"
   },
   "devDependencies": {
-    "@types/geojson": "^7946.0.16",
     "@types/node": "^20.16.11",
     "@types/react": "^18.3.11",
     "@types/react-dom": "^18.3.1",
-    "@types/three": "^0.185.4",
     "autoprefixer": "^10.4.20",
     "eslint": "^8.57.1",
     "eslint-config-next": "14.2.15",
@@ -55,6 +43,5 @@
     "tailwindcss-animate": "^1.0.7",
     "tsx": "^4.19.1",
     "typescript": "^5.6.3"
-  },
-  "allowScripts": {}
+  }
 }

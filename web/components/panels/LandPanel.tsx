@@ -1,14 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Landmark, MoveRight, ShieldAlert } from "lucide-react";
 import { PanelShell, Section, EmptyBlock } from "./PanelShell";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { GlowCard } from "@/components/ui/spotlight-card";
 import { useApp } from "@/lib/store";
 import { PARCELS, PARCEL_BY_ID } from "@/data/parcels";
 import { WARD_BY_ID } from "@/data/wards";
-import { fetchZoningConflicts, type ZoningConflictRow } from "@/services/land";
+import { computeSuitability, detectZoningConflicts } from "@/lib/analysis";
+import { DEFAULT_WEIGHTS } from "@/types";
 import { cn, scoreTone, toneText } from "@/lib/utils";
 
 /**
@@ -30,29 +32,15 @@ export default function LandPanel() {
       if (p.landUse === "water") return false;
       return true;
     })
-      // The engine's development-potential score travels with each parcel, so
-      // ranking opportunities needs no per-parcel request and no second
-      // implementation of the scoring.
-      .map((p) => ({ parcel: p, score: p.developmentPotential ?? 0 }))
+      .map((p) => ({
+        parcel: p,
+        score: computeSuitability(p, "mixed", DEFAULT_WEIGHTS).score,
+      }))
       .sort((a, b) => b.score - a.score)
       .slice(0, 8);
   }, [govtOnly, lowRisk, developableOnly, datasetVersion]);
 
-  const [conflicts, setConflicts] = useState<ZoningConflictRow[]>([]);
-  useEffect(() => {
-    // Wait for the study area to be loaded. React runs child effects before the
-    // parent's, so on first mount this would otherwise fire before AppShell has
-    // pointed the API at the requested area — showing one city's figures under
-    // another city's name until the real data arrived.
-    if (datasetVersion === 0) return;
-    let alive = true;
-    fetchZoningConflicts()
-      .then((rows) => alive && setConflicts(rows.slice(0, 6)))
-      .catch(() => alive && setConflicts([]));
-    return () => {
-      alive = false;
-    };
-  }, [datasetVersion]);
+  const conflicts = useMemo(() => detectZoningConflicts().slice(0, 6), [datasetVersion]);
 
   return (
     <PanelShell
@@ -60,7 +48,11 @@ export default function LandPanel() {
       caption="GLIS registry · opportunities · zoning compliance"
     >
       <Section label="Opportunity Filters">
-        <div className="glass-card space-y-1.5 rounded-2xl p-3.5 shadow-sm">
+        <GlowCard
+          glowColor="purple"
+          className="space-y-1.5 p-3.5 shadow-sm"
+          interactive={false}
+        >
           {[
             { label: "Government-owned only", value: govtOnly, set: setGovtOnly },
             { label: "Low environmental risk", value: lowRisk, set: setLowRisk },
@@ -71,7 +63,7 @@ export default function LandPanel() {
               <Switch checked={f.value} onCheckedChange={f.set} />
             </div>
           ))}
-        </div>
+        </GlowCard>
       </Section>
 
       <Section
@@ -87,10 +79,11 @@ export default function LandPanel() {
         ) : (
           <div className="space-y-1.5">
             {opportunities.map(({ parcel, score }) => (
-              <button
+              <GlowCard
                 key={parcel.id}
                 onClick={() => selectParcel(parcel.id, true)}
-                className="glass-card flex w-full items-center gap-2.5 rounded-2xl px-3 py-2.5 text-left transition-all hover:scale-[1.01] hover:border-gov/60"
+                glowColor="purple"
+                className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left"
               >
                 <Landmark size={15} className="shrink-0 text-gov" />
                 <div className="min-w-0 flex-1">
@@ -108,7 +101,7 @@ export default function LandPanel() {
                     Opportunity
                   </div>
                 </div>
-              </button>
+              </GlowCard>
             ))}
           </div>
         )}
@@ -122,10 +115,11 @@ export default function LandPanel() {
           {conflicts.map((c) => {
             const p = PARCEL_BY_ID.get(c.parcelId);
             return (
-              <button
+              <GlowCard
                 key={c.parcelId}
                 onClick={() => selectParcel(c.parcelId, true)}
-                className="glass-card w-full rounded-2xl px-3 py-2.5 text-left transition-all hover:scale-[1.01] hover:border-critical/60"
+                glowColor={c.severity === "high" ? "red" : "orange"}
+                className="w-full px-3 py-2.5 text-left"
               >
                 <div className="flex items-center justify-between">
                   <span className="num text-[12px] font-bold">{c.parcelId}</span>
@@ -143,7 +137,7 @@ export default function LandPanel() {
                     Advisory flag — verify against the official land record.
                   </div>
                 )}
-              </button>
+              </GlowCard>
             );
           })}
         </div>

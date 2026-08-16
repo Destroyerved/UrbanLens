@@ -30,6 +30,8 @@ export default function GrowthPanel() {
   const setMode = useApp((s) => s.setMode);
   const highlightWards = useApp((s) => s.highlightWards);
   const flyTo = useApp((s) => s.flyTo);
+  const city = useApp((s) => s.city);
+  const datasetVersion = useApp((s) => s.datasetVersion);
 
   const [summary, setSummary] = useState<{ builtUpKm2: Record<Year, number>; growthPct: number } | null>(null);
   const [transitions, setTransitions] = useState<{ from: LandUse; to: LandUse; areaHa: number }[]>([]);
@@ -37,8 +39,8 @@ export default function GrowthPanel() {
 
   useEffect(() => {
     fetchGrowthSummary().then(setSummary);
-    fetchGrowthExplanation("w-gota").then(setWhy);
-  }, []);
+    fetchGrowthExplanation(city.id.includes("gandhinagar") ? "w-sec-1" : "w-gota").then(setWhy);
+  }, [city.id, datasetVersion]);
 
   useEffect(() => {
     const from: Year = year === 2018 ? 2018 : year === 2022 ? 2018 : 2022;
@@ -47,7 +49,7 @@ export default function GrowthPanel() {
     } else {
       fetchTransitions(from, year).then((t) => setTransitions(t.slice(0, 5)));
     }
-  }, [year]);
+  }, [year, city.id, datasetVersion]);
 
   const chartData = useMemo(
     () =>

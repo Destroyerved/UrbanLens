@@ -34,5 +34,3 @@ export function AnimatedNumber({
 
   return <span className={className}>{format(display)}</span>;
 }
-
-export default AnimatedNumber;

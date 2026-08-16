@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ChevronDown, Search, Sparkles, ScanEye, Check } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
-import { CITIES } from "@/config/city";
+import { CITIES, ACTIVE_CITY } from "@/config/city";
 import { useApp } from "@/lib/store";
 import { ExpandingSearchDock } from "@/components/search/ExpandingSearchDock";
 import { LiquidMetalButton } from "@/components/ui/LiquidMetalButton";
@@ -12,13 +12,12 @@ import { cn } from "@/lib/utils";
 
 export default function TopBar() {
   const setPaletteOpen = useApp((s) => s.setPaletteOpen);
-  const city = useApp((s) => s.city);
-  const setCity = useApp((s) => s.setCity);
-  const cityLoading = useApp((s) => s.cityLoading);
-  const cityError = useApp((s) => s.cityError);
   const copilotOpen = useApp((s) => s.copilotOpen);
   const setCopilotOpen = useApp((s) => s.setCopilotOpen);
   const searchFocused = useApp((s) => s.searchFocused);
+  const city = useApp((s) => s.city);
+  const setCity = useApp((s) => s.setCity);
+  const cityLoading = useApp((s) => s.cityLoading);
   const [cityOpen, setCityOpen] = useState(false);
 
   return (
@@ -75,7 +74,7 @@ export default function TopBar() {
               className={cn(
                 "h-2 w-2 rounded-full",
                 cityLoading
-                  ? "animate-pulse bg-warning"
+                  ? "bg-warning animate-pulse shadow-[0_0_8px_rgba(245,158,11,0.8)]"
                   : "bg-good shadow-[0_0_8px_rgba(34,197,94,0.6)]"
               )}
             />
@@ -93,34 +92,36 @@ export default function TopBar() {
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -4, scale: 0.95 }}
                 transition={{ duration: 0.16 }}
-                className="glass-strong absolute right-0 top-10 z-[50] w-52 rounded-2xl p-2 shadow-elev-3 backdrop-blur-xl"
+                className="glass-strong absolute right-0 top-10 z-[50] w-60 rounded-2xl p-2 shadow-elev-3 backdrop-blur-xl border border-white/20 dark:border-white/10"
                 onMouseLeave={() => setCityOpen(false)}
               >
-                {CITIES.map((c) => (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => {
-                      setCityOpen(false);
-                      void setCity(c.id);
-                    }}
-                    disabled={cityLoading}
-                    className="flex w-full items-center justify-between rounded-xl px-2.5 py-2 text-left text-[12px] font-semibold hover:bg-white/20 dark:hover:bg-white/10 transition-colors disabled:opacity-50 cursor-pointer"
-                  >
-                    <span>
-                      {c.name}
-                      <span className="ml-1.5 text-muted-foreground font-normal">{c.state}</span>
-                    </span>
-                    {c.id === city.id && <Check size={13} className="text-accent" />}
-                  </button>
-                ))}
-                {cityError ? (
-                  <div className="px-2.5 py-1.5 text-[10px] text-critical">{cityError}</div>
-                ) : (
-                  <div className="px-2.5 py-1.5 text-[10px] text-muted-foreground">
-                    More cities onboardable via config.
-                  </div>
-                )}
+                {CITIES.map((c) => {
+                  const active = city.id === c.id;
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => {
+                        void setCity(c.id);
+                        setCityOpen(false);
+                      }}
+                      className={cn(
+                        "flex w-full items-center justify-between rounded-xl px-2.5 py-2 text-left text-[12px] font-semibold transition-colors cursor-pointer",
+                        active
+                          ? "bg-accent/15 text-accent"
+                          : "hover:bg-white/20 dark:hover:bg-white/10 text-foreground"
+                      )}
+                    >
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <span>{c.name}</span>
+                        </div>
+                        <div className="text-[10px] text-muted-foreground font-normal">{c.blurb}</div>
+                      </div>
+                      {active && <Check size={13} className="text-accent shrink-0 ml-1.5" />}
+                    </button>
+                  );
+                })}
               </motion.div>
             )}
           </AnimatePresence>
