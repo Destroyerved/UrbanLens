@@ -10,50 +10,55 @@ const LandingPage = dynamic(
 );
 const AppShell = dynamic(
   () => import("@/components/layout/AppShell"),
-  { ssr: false }
+  { ssr: false, loading: () => <div style={{ background: '#05070C', width: '100vw', height: '100vh' }} /> }
 );
-
-type TransitionPhase = "idle" | "expanding" | "done";
 
 export default function Home() {
   const [mounted, setMounted] = useState(false);
   const [showApp, setShowApp] = useState(false);
-  const [phase, setPhase] = useState<TransitionPhase>("idle");
+  const [isZoomed, setIsZoomed] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const resetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
   // ── ANIMATION DRIVER ──────────────────────────────────────────────────────
-  // Lives here at the page level so the overlay is NEVER unmounted mid-animation.
-  // We keep the overlay elements permanently in the DOM and use visibility/opacity
-  // changes to trigger browser-side transitions reliably.
+  // Triggers the camera zoom plunge and schedules the WebGL context cleanup
+  // and AppShell loading after the camera enters the cloud layer (1200ms).
   const triggerEnter = () => {
-    if (phase !== "idle") return; // prevent double clicks
+    if (isZoomed) return; // prevent double clicks
     
-    console.log("[UrbanLens] Globe clicked — cloud-dive animation started");
-    setPhase("expanding");
+    console.log("[UrbanLens] Globe clicked — camera zoom-in transition started");
+    setIsZoomed(true);
 
-    // After 2.8s (when final black fade is fully opaque), swap to AppShell
+    // After 1200ms (camera completes zoom plunge), swap to AppShell immediately,
+    // then dispose WebGL on the *next* animation frame so React has already painted
+    // the dashboard before the canvas clears — preventing any black flash.
     timerRef.current = setTimeout(() => {
-      console.log("[UrbanLens] Animation complete — loading AppShell");
+      console.log("[UrbanLens] Transition complete — loading AppShell");
+      
+      // Mount AppShell first — React will paint it on the next frame
       setShowApp(true);
-      setPhase("done");
-
-      // After another 600ms (when black fade has finished fading out), reset phase to idle
-      resetTimerRef.current = setTimeout(() => {
-        setPhase("idle");
-        console.log("[UrbanLens] Transition overlay fully reset to idle");
-      }, 600);
-    }, 2800);
+      
+      // Dispose WebGL after React has had one frame to render AppShell
+      requestAnimationFrame(() => {
+        if (typeof window !== "undefined" && (window as any).__threeRenderer) {
+          try {
+            (window as any).__threeRenderer.forceContextLoss();
+            (window as any).__threeRenderer.dispose();
+            (window as any).__threeRenderer = null;
+          } catch (err) {
+            console.warn("[GlobeScene] WebGL renderer cleanup failed (non-fatal):", err);
+          }
+        }
+      });
+    }, 1200);
   };
 
   useEffect(() => {
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
-      if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
     };
   }, []);
 
@@ -82,86 +87,9 @@ export default function Home() {
       {showApp ? (
         <AppShell />
       ) : (
-        <LandingPage onEnterApp={triggerEnter} />
+        <LandingPage isZoomed={isZoomed} onEnterApp={triggerEnter} />
       )}
-
-      {/* ══════════════════════════════════════════════════════════════
-          FULLSCREEN CLOUD-DIVE OVERLAY (PERMANENTLY MOUNTED IN DOM)
-          Kept permanently in the DOM so that transitions can run smoothly
-          when changing state, avoiding React conditional rendering glitches.
-          Accurately timed over 2.8 seconds.
-      ══════════════════════════════════════════════════════════════ */}
-      {/* Layer 1 — deep space dark base, expands first and widest */}
-      <div
-        className="pointer-events-none fixed inset-0 z-[88]"
-        style={{
-          background:
-            "radial-gradient(circle at 72% 50%, #060f1e 0%, #020810 50%, #000510 100%)",
-          opacity: phase === "expanding" ? 1 : 0,
-          transform: phase === "expanding" ? "scale(5.5)" : "scale(0.04)",
-          transformOrigin: "72% 50%",
-          transition:
-            phase === "expanding"
-              ? "opacity 0.3s ease, transform 2.6s cubic-bezier(0.16, 1, 0.3, 1)"
-              : "opacity 0.4s ease, transform 0.4s ease",
-          borderRadius: phase === "expanding" ? "0%" : "50%",
-          visibility: phase === "idle" ? "hidden" : "visible",
-        }}
-      />
-
-      {/* Layer 2 — blue atmosphere bloom ring */}
-      <div
-        className="pointer-events-none fixed inset-0 z-[89]"
-        style={{
-          background:
-            "radial-gradient(circle at 72% 50%, transparent 18%, rgba(30,100,220,0.22) 36%, rgba(15,60,160,0.14) 58%, transparent 78%)",
-          opacity: phase === "expanding" ? 1 : 0,
-          transform: phase === "expanding" ? "scale(4.8)" : "scale(0.04)",
-          transformOrigin: "72% 50%",
-          transition:
-            phase === "expanding"
-              ? "opacity 0.4s ease 0.1s, transform 2.4s cubic-bezier(0.16, 1, 0.3, 1) 0.1s"
-              : "opacity 0.4s ease, transform 0.4s ease",
-          borderRadius: phase === "expanding" ? "0%" : "50%",
-          filter: "blur(10px)",
-          visibility: phase === "idle" ? "hidden" : "visible",
-        }}
-      />
-
-      {/* Layer 3 — bright white cloud core */}
-      <div
-        className="pointer-events-none fixed inset-0 z-[90]"
-        style={{
-          background:
-            "radial-gradient(circle at 72% 50%, rgba(210,235,255,0.98) 0%, rgba(140,195,255,0.75) 20%, rgba(60,135,225,0.4) 44%, rgba(10,30,90,0.18) 68%, transparent 85%)",
-          opacity: phase === "expanding" ? 1 : 0,
-          transform: phase === "expanding" ? "scale(4.2)" : "scale(0.0)",
-          transformOrigin: "72% 50%",
-          transition:
-            phase === "expanding"
-              ? "opacity 0.3s ease 0.2s, transform 2.2s cubic-bezier(0.16, 1, 0.3, 1) 0.2s"
-              : "opacity 0.4s ease, transform 0.4s ease",
-          borderRadius: phase === "expanding" ? "0%" : "50%",
-          filter: "blur(5px)",
-          visibility: phase === "idle" ? "hidden" : "visible",
-        }}
-      />
-
-      {/* Layer 4 — final black fade */}
-      <div
-        className="pointer-events-none fixed inset-0 z-[91]"
-        style={{
-          background: "linear-gradient(135deg, #000510 0%, #000210 100%)",
-          opacity: phase === "expanding" ? 1 : 0,
-          transition:
-            phase === "expanding"
-              ? "opacity 0.6s ease 2.2s"
-              : phase === "done"
-              ? "opacity 0.6s ease"
-              : "none",
-          visibility: phase === "idle" ? "hidden" : "visible",
-        }}
-      />
     </>
   );
 }
+

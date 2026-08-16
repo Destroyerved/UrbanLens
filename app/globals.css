@@ -423,3 +423,15 @@ button,
   z-index: var(--z-panel);
   transform: translate(-50%, calc(-100% - 14px));
 }
+
+/* Cinematic transitions for globe zoom-in */
+.hero-fade {
+  transition: opacity 0.8s ease, transform 0.8s ease;
+}
+
+.fade-hidden {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transform: translateY(-8px);
+}
+

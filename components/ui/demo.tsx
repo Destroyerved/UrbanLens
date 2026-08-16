@@ -1,17 +1,12 @@
-import Component from "@/components/ui/highlight-card";
-import { Rocket } from "lucide-react";
+import { LiquidMetalButton } from "@/components/ui/liquid-metal-button";
 
-export default function DemoOne() {
+export default function LiquidMetalButtonDemo() {
   return (
-    <Component
-      title="Space Explorer"
-      description={[
-        "Embark on interstellar adventures,",
-        "discover new planets and galaxies,",
-        "share your discoveries with friends,",
-        "and reach for the stars together."
-      ]}
-      icon={<Rocket className="w-8 h-8 text-white" />}
-    />
+    <div className="flex flex-col items-center justify-center gap-8 p-8">
+      <div className="flex items-center gap-8">
+        <LiquidMetalButton label="Get Started" />
+        <LiquidMetalButton viewMode="icon" />
+      </div>
+    </div>
   );
 }

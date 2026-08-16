@@ -15,6 +15,21 @@ const GlobeScene = dynamic(() => import("@/components/globe/GlobeScene"), {
   ),
 });
 
+// SparklesCore + SectionSparkles — canvas-heavy, no SSR
+const SparklesCore = dynamic(
+  () => import("@/components/ui/sparkles").then((m) => ({ default: m.SparklesCore })),
+  { ssr: false }
+);
+const SectionSparkles = dynamic(
+  () => import("@/components/ui/sparkles").then((m) => ({ default: m.SectionSparkles })),
+  { ssr: false }
+);
+
+const LiquidMetalButton = dynamic(
+  () => import("@/components/ui/liquid-metal-button").then((m) => m.LiquidMetalButton),
+  { ssr: false }
+);
+
 function useNarrow(query = "(max-width: 767px)") {
   const [narrow, setNarrow] = useState(false);
   useEffect(() => {
@@ -132,11 +147,17 @@ function CardHoverContainer({
     finalTransform = `${baseTransform} scale(${hoverScaleMultiplier}) rotate(-1deg)`;
   }
 
-  // Border brightening on hover
-  let borderColor = style?.borderColor || "rgba(255, 255, 255, 0.08)";
-  if (isHovered && !isTouch) {
-    borderColor = `rgba(${accentRgb}, 0.35)`;
-  }
+  // Border brightening on hover — always use the full border shorthand in
+  // style so React never has to reconcile a shorthand (border) with a
+  // longhand (borderColor) on the same element, which would cause the
+  // "Updating a style property during rerender" console warning.
+  const borderValue = (isHovered && !isTouch)
+    ? `1px solid rgba(${accentRgb}, 0.35)`
+    : `1px solid ${(style?.borderColor as string) || "rgba(255, 255, 255, 0.08)"}`;
+
+  // Strip borderColor from the forwarded style so it never co-exists with
+  // our shorthand border above.
+  const { borderColor: _stripped, ...restStyle } = (style || {}) as React.CSSProperties & { borderColor?: string };
 
   return (
     <div
@@ -147,9 +168,9 @@ function CardHoverContainer({
       onMouseLeave={handleMouseLeave}
       onTouchStart={handleTouchStart}
       style={{
-        ...style,
+        ...restStyle,
         transform: finalTransform,
-        borderColor,
+        border: borderValue,
       }}
     >
       {/* 1. Ambient Background Glow Blobs (Effect 1) */}
@@ -222,6 +243,128 @@ function CardHoverContainer({
       />
 
       {children}
+    </div>
+  );
+}
+
+/* ─── AI Copilot Chat Loop Component for Section 4 ─── */
+const COPILOT_CONVERSATIONS = [
+  {
+    turns: [
+      {
+        question: "Which ward has the worst healthcare gap?",
+        answer: "Ward 7 (Vatwa) has the lowest healthcare score — 1 clinic serving ~18,400 residents. Highlighting it on the map and switching to Infrastructure Gap mode."
+      },
+      {
+        question: "What's the best site for a new primary health centre?",
+        answer: "Top candidate: Parcel GJ-AHD-0847 in Vatwa. Score 87/100 — high accessibility, vacant land, within 500m of the underserved population centroid."
+      }
+    ]
+  },
+  {
+    turns: [
+      {
+        question: "Show me flood-risk zones near Nikol.",
+        answer: "Nikol Lake perimeter identified as high-risk zone (Zone A). Correlating with historical precipitation patterns and drainage capacity maps."
+      },
+      {
+        question: "Which areas are underserved for education?",
+        answer: "Eastern sector of Ward 12 (Lambha) lacks primary education facilities within standard 1.5km walking distance. 3,400+ school-age children affected."
+      }
+    ]
+  }
+];
+
+function CopilotChatPanel() {
+  const [index, setIndex] = useState(0);
+  const [step, setStep] = useState(0);
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
+
+    if (step === 0) {
+      timer = setTimeout(() => setStep(1), 400);
+    } else if (step === 1) {
+      timer = setTimeout(() => setStep(2), 600);
+    } else if (step === 2) {
+      timer = setTimeout(() => setStep(3), 850); // AI 1 thinking duration: 850ms
+    } else if (step === 3) {
+      timer = setTimeout(() => setStep(4), 1200); // Wait 1.2s before user asks Q2
+    } else if (step === 4) {
+      timer = setTimeout(() => setStep(5), 600);
+    } else if (step === 5) {
+      timer = setTimeout(() => setStep(6), 850); // AI 2 thinking duration: 850ms
+    } else if (step === 6) {
+      timer = setTimeout(() => {
+        setStep(0);
+        setIndex((prev) => (prev + 1) % COPILOT_CONVERSATIONS.length);
+      }, 4500); // Hold completed chat on screen for 4.5 seconds
+    }
+
+    return () => clearTimeout(timer);
+  }, [step]);
+
+  const current = COPILOT_CONVERSATIONS[index];
+
+  return (
+    <div className="space-y-3.5 min-h-[300px] flex flex-col justify-end">
+      {/* Turn 1: Q1 */}
+      {step >= 1 && (
+        <div className="flex justify-end transition-all duration-300 ease-out transform translate-y-0 opacity-100">
+          <div className="max-w-[85%] rounded-xl px-4 py-2.5 text-xs leading-relaxed bg-violet-600/20 text-violet-100">
+            {current.turns[0].question}
+          </div>
+        </div>
+      )}
+
+      {/* Turn 1: AI 1 Thinking */}
+      {step === 2 && (
+        <div className="flex justify-start">
+          <div className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-[9px] text-white/40 flex items-center gap-1">
+            <span className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+            <span className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+            <span className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+          </div>
+        </div>
+      )}
+
+      {/* Turn 1: AI 1 Answer */}
+      {step >= 3 && (
+        <div className="flex justify-start transition-all duration-300 ease-out transform translate-y-0 opacity-100">
+          <div className="max-w-[85%] rounded-xl px-4 py-2.5 text-xs leading-relaxed border border-white/8 bg-white/5 text-white/60">
+            {current.turns[0].answer}
+          </div>
+        </div>
+      )}
+
+      {/* Turn 2: Q2 */}
+      {step >= 4 && (
+        <div className="flex justify-end transition-all duration-300 ease-out transform translate-y-0 opacity-100">
+          <div className="max-w-[85%] rounded-xl px-4 py-2.5 text-xs leading-relaxed bg-violet-600/20 text-violet-100">
+            {current.turns[1].question}
+          </div>
+        </div>
+      )}
+
+      {/* Turn 2: AI 2 Thinking */}
+      {step === 5 && (
+        <div className="flex justify-start">
+          <div className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-[9px] text-white/40 flex items-center gap-1">
+            <span className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+            <span className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+            <span className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+          </div>
+        </div>
+      )}
+
+      {/* Turn 2: AI 2 Answer */}
+      {step >= 6 && (
+        <div className="flex justify-start transition-all duration-300 ease-out transform translate-y-0 opacity-100">
+          <div className="max-w-[85%] rounded-xl px-4 py-2.5 text-xs leading-relaxed border border-white/8 bg-white/5 text-white/60">
+            {current.turns[1].answer}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -384,10 +527,9 @@ interface LoginModalProps {
 }
 
 function LoginModal({ onClose, onEnterApp }: LoginModalProps) {
-  const [mode, setMode] = useState<"choose" | "signin" | "signup">("choose");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [visible, setVisible] = useState(false);
 
   // Entrance animation — tiny delay so the transition CSS actually fires
@@ -471,202 +613,92 @@ function LoginModal({ onClose, onEnterApp }: LoginModalProps) {
             </svg>
           </div>
           <h2 className="text-[1.1rem] font-semibold tracking-tight text-white">
-            {mode === "choose" ? "Welcome to UrbanLens" : mode === "signin" ? "Sign in" : "Create account"}
+            Welcome to UrbanLens
           </h2>
           <p className="mt-1 text-[12px] text-white/40">
-            {mode === "choose"
-              ? "AI-powered urban intelligence platform"
-              : mode === "signin"
-              ? "Good to have you back"
-              : "Start exploring your city"}
+            Sign in to your account
           </p>
         </div>
 
-        {/* ── CHOOSE MODE ── */}
-        {mode === "choose" && (
-          <div className="flex flex-col gap-2.5">
-            {/* Google */}
-            <button
-              onClick={onEnterApp}
-              className="group flex w-full items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-white/80 transition-all duration-200 hover:border-white/20 hover:bg-white/9 hover:text-white"
-              style={{ backdropFilter: "blur(4px)" }}
-            >
-              <svg viewBox="0 0 24 24" className="h-4 w-4 flex-shrink-0">
-                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-              </svg>
-              Continue with Google
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.5} className="ml-auto h-3.5 w-3.5 text-white/30 transition group-hover:translate-x-0.5 group-hover:text-white/60">
-                <path d="M3 8h10m-4-4 4 4-4 4" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </button>
-
-            {/* Divider */}
-            <div className="flex items-center gap-3 my-0.5">
-              <div className="h-px flex-1 bg-white/8" />
-              <span className="text-[11px] text-white/25">or continue with</span>
-              <div className="h-px flex-1 bg-white/8" />
-            </div>
-
-            {/* Email sign in */}
-            <button
-              onClick={() => setMode("signin")}
-              className="group flex w-full items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-white/80 transition-all duration-200 hover:border-white/20 hover:bg-white/9 hover:text-white"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-4 w-4 flex-shrink-0 text-white/40">
-                <rect x="2" y="4" width="20" height="16" rx="2"/>
-                <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" strokeLinecap="round"/>
-              </svg>
-              Sign in with email
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.5} className="ml-auto h-3.5 w-3.5 text-white/30 transition group-hover:translate-x-0.5 group-hover:text-white/60">
-                <path d="M3 8h10m-4-4 4 4-4 4" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </button>
-
-            {/* Create account */}
-            <button
-              onClick={() => setMode("signup")}
-              className="group flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-blue-300 transition-all duration-200 hover:text-blue-200"
-              style={{
-                background: "rgba(60,130,255,0.1)",
-                border: "1px solid rgba(80,150,255,0.25)",
-              }}
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-4 w-4 flex-shrink-0">
-                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" strokeLinecap="round"/>
-                <circle cx="9" cy="7" r="4"/>
-                <path d="M19 8v6m3-3h-6" strokeLinecap="round"/>
-              </svg>
-              Create a new account
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.5} className="ml-auto h-3.5 w-3.5 text-blue-400/50 transition group-hover:translate-x-0.5 group-hover:text-blue-300">
-                <path d="M3 8h10m-4-4 4 4-4 4" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </button>
-
-            {/* Guest */}
-            <div className="pt-1 text-center">
-              <button
-                onClick={onEnterApp}
-                className="text-[12px] text-white/30 underline underline-offset-2 transition hover:text-white/55"
-              >
-                Continue without an account (Guest)
-              </button>
-            </div>
-
-            {/* Terms */}
-            <p className="mt-1 text-center text-[11px] text-white/20 leading-relaxed">
-              By continuing, you agree to our{" "}
-              <span className="text-white/40 underline underline-offset-1 cursor-pointer hover:text-white/60">Terms</span>{" "}
-              and{" "}
-              <span className="text-white/40 underline underline-offset-1 cursor-pointer hover:text-white/60">Privacy Policy</span>
-            </p>
+        {/* Form Body */}
+        <div className="flex flex-col gap-4">
+          {/* Username/Email */}
+          <div>
+            <label className="mb-1.5 block text-[12px] font-medium text-white/50">Username or Email address</label>
+            <input
+              type="text"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              className={inputCls}
+            />
           </div>
-        )}
 
-        {/* ── SIGN IN FORM ── */}
-        {mode === "signin" && (
-          <div className="flex flex-col gap-4">
-            <div>
-              <label className="mb-1.5 block text-[12px] font-medium text-white/50">Email address</label>
+          {/* Password with show/hide toggle */}
+          <div>
+            <label className="mb-1.5 block text-[12px] font-medium text-white/50">Password</label>
+            <div className="relative">
               <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                className={inputCls}
-              />
-            </div>
-            <div>
-              <div className="mb-1.5 flex items-center justify-between">
-                <label className="text-[12px] font-medium text-white/50">Password</label>
-                <button className="text-[11px] text-blue-400/70 transition hover:text-blue-300">Forgot?</button>
-              </div>
-              <input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className={inputCls}
+                className={`${inputCls} pr-12`}
               />
-            </div>
-            <button
-              onClick={onEnterApp}
-              className="mt-1 w-full rounded-xl py-3 text-sm font-semibold text-white transition-all duration-200 hover:opacity-90"
-              style={{
-                background: "linear-gradient(135deg, #2563eb 0%, #0891b2 100%)",
-                boxShadow: "0 4px 20px rgba(37,99,235,0.25), 0 1px 0 rgba(255,255,255,0.08) inset",
-              }}
-            >
-              Sign In
-            </button>
-            <div className="text-center text-[12px] text-white/35">
-              Don&apos;t have an account?{" "}
-              <button onClick={() => setMode("signup")} className="text-blue-400 transition hover:text-blue-300">
-                Sign up
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/70 text-xs font-medium focus:outline-none transition-colors"
+              >
+                {showPassword ? "Hide" : "Show"}
               </button>
             </div>
-            <button onClick={() => setMode("choose")} className="text-center text-[11px] text-white/25 transition hover:text-white/50">
-              ← All sign-in options
-            </button>
           </div>
-        )}
 
-        {/* ── SIGN UP FORM ── */}
-        {mode === "signup" && (
-          <div className="flex flex-col gap-4">
-            <div>
-              <label className="mb-1.5 block text-[12px] font-medium text-white/50">Full name</label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Your name"
-                className={inputCls}
-              />
-            </div>
-            <div>
-              <label className="mb-1.5 block text-[12px] font-medium text-white/50">Email address</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                className={inputCls}
-              />
-            </div>
-            <div>
-              <label className="mb-1.5 block text-[12px] font-medium text-white/50">Password</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Min. 8 characters"
-                className={inputCls}
-              />
-            </div>
+          {/* Primary Login Button */}
+          <button
+            onClick={onEnterApp}
+            className="mt-1 w-full rounded-xl py-3 text-sm font-semibold text-white transition-all duration-200 hover:opacity-90"
+            style={{
+              background: "linear-gradient(135deg, #2563eb 0%, #0891b2 100%)",
+              boxShadow: "0 4px 20px rgba(37,99,235,0.25), 0 1px 0 rgba(255,255,255,0.08) inset",
+            }}
+          >
+            Sign In
+          </button>
+
+          {/* Divider */}
+          <div className="flex items-center gap-3 my-0.5">
+            <div className="h-px flex-1 bg-white/8" />
+            <span className="text-[11px] text-white/25">or</span>
+            <div className="h-px flex-1 bg-white/8" />
+          </div>
+
+          {/* Continue with Google */}
+          <button
+            onClick={onEnterApp}
+            className="group flex w-full items-center justify-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-white/80 transition-all duration-200 hover:border-white/20 hover:bg-white/9 hover:text-white"
+            style={{ backdropFilter: "blur(4px)" }}
+          >
+            <svg viewBox="0 0 24 24" className="h-4 w-4 flex-shrink-0">
+              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+            </svg>
+            Continue with Google
+          </button>
+
+          {/* Continue without account (Guest) */}
+          <div className="pt-1 text-center">
             <button
               onClick={onEnterApp}
-              className="mt-1 w-full rounded-xl py-3 text-sm font-semibold text-white transition-all duration-200 hover:opacity-90"
-              style={{
-                background: "linear-gradient(135deg, #2563eb 0%, #0891b2 100%)",
-                boxShadow: "0 4px 20px rgba(37,99,235,0.25), 0 1px 0 rgba(255,255,255,0.08) inset",
-              }}
+              className="text-[12px] text-white/30 underline underline-offset-2 transition hover:text-white/55"
             >
-              Create Account
-            </button>
-            <div className="text-center text-[12px] text-white/35">
-              Already have an account?{" "}
-              <button onClick={() => setMode("signin")} className="text-blue-400 transition hover:text-blue-300">
-                Sign in
-              </button>
-            </div>
-            <button onClick={() => setMode("choose")} className="text-center text-[11px] text-white/25 transition hover:text-white/50">
-              ← All sign-in options
+              Continue without an account (Guest)
             </button>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
@@ -676,15 +708,17 @@ function LoginModal({ onClose, onEnterApp }: LoginModalProps) {
    MAIN LANDING PAGE
 ══════════════════════════════════════════════════════════════ */
 interface LandingPageProps {
+  isZoomed: boolean;
   onEnterApp: () => void;
 }
 
-export default function LandingPage({ onEnterApp }: LandingPageProps) {
+export default function LandingPage({ isZoomed, onEnterApp }: LandingPageProps) {
   const narrow = useNarrow();
-  const [isZoomed, setIsZoomed] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const scroll2Ref = useRef<HTMLDivElement>(null);
   const scroll3Ref = useRef<HTMLDivElement>(null);
+  const insightsRef = useRef<HTMLDivElement>(null);
+  const conservationRef = useRef<HTMLDivElement>(null);
   const scroll4Ref = useRef<HTMLDivElement>(null);
   const domainsRef = useRef<HTMLDivElement>(null);
   const howItWorksRef = useRef<HTMLDivElement>(null);
@@ -736,6 +770,13 @@ export default function LandingPage({ onEnterApp }: LandingPageProps) {
   const [hoveredGap, setHoveredGap] = useState(false);
   const [hoveredTile, setHoveredTile] = useState<number | null>(null);
   const [hoveredStat, setHoveredStat] = useState<number | null>(null);
+
+  // Hover states for Insights and Conservation sections
+  const [hoveredInsightCard, setHoveredInsightCard] = useState<number | null>(null);
+  const [hoveredEquityGap, setHoveredEquityGap] = useState(false);
+  const [hoveredEquityTile, setHoveredEquityTile] = useState<number | null>(null);
+  const [hoveredConservationFeature, setHoveredConservationFeature] = useState<number | null>(null);
+  const [hoveredConservationStat, setHoveredConservationStat] = useState<number | null>(null);
 
   const startCapCycle = () => {
     if (capCycleRef.current) clearInterval(capCycleRef.current);
@@ -806,16 +847,10 @@ export default function LandingPage({ onEnterApp }: LandingPageProps) {
     }
   }, [activeCap]);
 
-  // Globe click → camera zoom + trigger parent's fullscreen overlay
+  // Globe click → trigger parent's zoom/transition handler
   const handleGlobeClick = () => {
     console.log("[LandingPage] Globe clicked");
-    setIsZoomed(true);
-    // Small RAF delay lets React paint the zoom state before handing off
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        onEnterApp(); // page.tsx owns the overlay; this just fires the signal
-      });
-    });
+    onEnterApp();
   };
 
   return (
@@ -851,16 +886,48 @@ export default function LandingPage({ onEnterApp }: LandingPageProps) {
           }}
         />
 
-        {/* Bottom transition gradient to Scroll 2 background */}
-        <div
-          className="pointer-events-none absolute bottom-0 left-0 right-0 h-44 z-10"
-          style={{
-            background: "linear-gradient(to top, #05070C 0%, rgba(5, 7, 12, 0.55) 55%, transparent 100%)",
-          }}
-        />
+
+
+        {/* Ambient sparkle dust — sits beneath the globe, above the starfield */}
+        {!narrow && (
+          <div
+            className="pointer-events-none absolute z-[2]"
+            style={{
+              // Align to the right half of the viewport where the globe lives.
+              // The globe wrapper is ml-16 xl:ml-24, and the globe is 640×640.
+              // We use right:0 and size the container to cover that area.
+              right: 0,
+              bottom: 0,
+              width: "55%",
+              height: "70%",
+            }}
+          >
+            <SparklesCore
+              id="globe-sparkles"
+              background="transparent"
+              minSize={0.4}
+              maxSize={0.9}
+              particleDensity={80}
+              speed={1.5}
+              particleColor="#38bdf8"
+              className="h-full w-full"
+            />
+            {/* Radial mask: fades the particle field at all edges organically */}
+            <div
+              className="pointer-events-none absolute inset-0"
+              style={{
+                background: "transparent",
+                maskImage:
+                  "radial-gradient(ellipse 70% 60% at 60% 80%, transparent 30%, white 100%)",
+                WebkitMaskImage:
+                  "radial-gradient(ellipse 70% 60% at 60% 80%, transparent 30%, white 100%)",
+              }}
+            />
+          </div>
+        )}
 
         {/* Top navbar */}
-        <nav className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between px-6 py-5 md:px-12">
+        <nav className={`absolute top-0 left-0 right-0 z-30 flex items-center justify-between px-6 py-5 md:px-12 hero-fade ${isZoomed ? "fade-hidden" : ""}`}>
           <div className="flex items-center gap-2.5">
             <div className="grid h-8 w-8 place-items-center rounded-lg bg-blue-500/20 ring-1 ring-blue-400/40">
               <svg viewBox="0 0 24 24" fill="none" stroke="#60c0ff" strokeWidth={1.5} className="h-4 w-4">
@@ -875,6 +942,8 @@ export default function LandingPage({ onEnterApp }: LandingPageProps) {
           <div className="hidden items-center gap-8 md:flex">
             <button onClick={() => scroll2Ref.current?.scrollIntoView({ behavior: "smooth" })} className="text-sm text-white/50 transition hover:text-white/90">Analytics</button>
             <button onClick={() => scroll3Ref.current?.scrollIntoView({ behavior: "smooth" })} className="text-sm text-white/50 transition hover:text-white/90">Simulator</button>
+            <button onClick={() => insightsRef.current?.scrollIntoView({ behavior: "smooth" })} className="text-sm text-white/50 transition hover:text-white/90">Insights</button>
+            <button onClick={() => conservationRef.current?.scrollIntoView({ behavior: "smooth" })} className="text-sm text-white/50 transition hover:text-white/90">Conservation</button>
             <button onClick={() => scroll4Ref.current?.scrollIntoView({ behavior: "smooth" })} className="text-sm text-white/50 transition hover:text-white/90">AI Copilot</button>
           </div>
 
@@ -891,7 +960,7 @@ export default function LandingPage({ onEnterApp }: LandingPageProps) {
           <div className={`flex w-full items-center ${narrow ? "flex-col justify-end pb-24 px-6" : "flex-row px-12 md:px-16 lg:px-24"}`}>
 
             {/* Left copy */}
-            <div className={`${narrow ? "text-center max-w-sm" : "max-w-lg flex-shrink-0"}`}>
+            <div className={`${narrow ? "text-center max-w-sm" : "max-w-lg flex-shrink-0"} hero-fade ${isZoomed ? "fade-hidden" : ""}`}>
               <h1 className="text-4xl font-light leading-[1.08] tracking-[-0.03em] text-white md:text-5xl lg:text-[3.5rem]">
                 See Your City
                 <br />
@@ -919,37 +988,41 @@ export default function LandingPage({ onEnterApp }: LandingPageProps) {
                 ))}
               </div>
 
-              <div className="mt-8 flex flex-wrap items-center gap-3">
-                <button
-                  onClick={() => setShowLogin(true)}
-                  className="rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 px-7 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 transition-all duration-300 hover:scale-105 hover:shadow-blue-500/40"
-                >
-                  Get Started
-                </button>
-                <button
+              <div className="mt-8 flex flex-wrap items-center gap-4">
+                <LiquidMetalButton
+                  label="Get Started"
+                  onClick={handleGlobeClick}
+                />
+                <LiquidMetalButton
+                  label="Explore Features ↓"
                   onClick={() => scroll2Ref.current?.scrollIntoView({ behavior: "smooth" })}
-                  className="rounded-full border border-white/15 px-7 py-3 text-sm text-white/70 backdrop-blur-sm transition hover:border-white/30 hover:text-white"
-                >
-                  Explore Features ↓
-                </button>
+                  width={160}
+                />
               </div>
             </div>
 
-            {/* 3D Globe */}
+            {/* 3D Globe — expands to full-viewport when zoomed for immersive cloud-dive */}
             {!narrow && (
-              <div className="relative ml-16 flex-shrink-0 xl:ml-24">
-                <div
-                  className={`absolute -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap text-center text-[11px] text-white/30 transition-all duration-500 ${isZoomed ? "opacity-0" : "opacity-100"}`}
-                >
-                  <span className="inline-flex items-center gap-1.5">
-                    <span className="animate-bounce">↑</span>
-                    Click the globe to enter
-                  </span>
-                </div>
+              <div className={`${
+                isZoomed
+                  ? "fixed inset-0 z-[50]"
+                  : "relative ml-16 flex-shrink-0 xl:ml-24"
+              }`}>
+                {/* "Click to enter" hint — only shown when not zoomed */}
+                {!isZoomed && (
+                  <div className="absolute -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap text-center text-[11px] text-white/30">
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="animate-bounce">↑</span>
+                      Click the globe to enter
+                    </span>
+                  </div>
+                )}
 
                 <div
-                  className={`relative h-[640px] w-[640px] transition-all duration-700 ${
-                    isZoomed ? "scale-[1.15] opacity-30" : "scale-100 opacity-100"
+                  className={`transition-all duration-700 ${
+                    isZoomed
+                      ? "absolute inset-0"
+                      : "relative h-[640px] w-[640px]"
                   }`}
                 >
                   <GlobeScene isZoomed={isZoomed} setIsZoomed={handleGlobeClick} />
@@ -966,7 +1039,7 @@ export default function LandingPage({ onEnterApp }: LandingPageProps) {
           </div>
         </div>
 
-        <div className="absolute bottom-8 left-1/2 z-30 -translate-x-1/2 flex flex-col items-center gap-1.5 text-white/30">
+        <div className={`absolute bottom-8 left-1/2 z-30 -translate-x-1/2 flex flex-col items-center gap-1.5 text-white/30 hero-fade ${isZoomed ? "fade-hidden" : ""}`}>
           <span className="text-[10px] tracking-widest uppercase">Scroll</span>
           <div className="h-8 w-px bg-gradient-to-b from-white/30 to-transparent" />
         </div>
@@ -981,6 +1054,8 @@ export default function LandingPage({ onEnterApp }: LandingPageProps) {
           <div className="absolute -left-40 top-20 h-[500px] w-[500px] rounded-full bg-blue-900/5 blur-[120px]" />
           <div className="absolute -right-40 bottom-20 h-[400px] w-[400px] rounded-full bg-teal-900/5 blur-[100px]" />
         </div>
+        {/* Ambient sparkles — desktop only; mobile domain cards are too tightly packed */}
+        {!narrow && <SectionSparkles id="sparkles-domains" particleDensity={65} />}
 
         <div className="relative mx-auto max-w-6xl w-full">
           {/* Section header */}
@@ -1104,6 +1179,7 @@ export default function LandingPage({ onEnterApp }: LandingPageProps) {
           <div className="absolute right-0 top-1/4 h-[500px] w-[500px] rounded-full bg-blue-900/5 blur-[120px]" />
           <div className="absolute left-0 bottom-1/4 h-[400px] w-[400px] rounded-full bg-teal-900/5 blur-[100px]" />
         </div>
+        <SectionSparkles id="sparkles-how" particleDensity={65} />
 
         <div className="relative mx-auto max-w-6xl w-full">
           {/* Section header */}
@@ -1467,12 +1543,10 @@ export default function LandingPage({ onEnterApp }: LandingPageProps) {
             <p className="text-xs text-white/55 max-w-lg leading-relaxed">
               Built for planners, policymakers, and citizens who want to see the city clearly.
             </p>
-            <button
-              onClick={() => setShowLogin(true)}
-              className="rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 px-8 py-3.5 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 transition-all duration-300 hover:shadow-blue-500/40 hover:scale-105"
-            >
-              Get Started
-            </button>
+            <LiquidMetalButton
+              label="Get Started"
+              onClick={handleGlobeClick}
+            />
           </div>
         </div>
       </section>
@@ -1485,6 +1559,7 @@ export default function LandingPage({ onEnterApp }: LandingPageProps) {
           <div className="absolute -left-40 top-20 h-[500px] w-[500px] rounded-full bg-blue-600/5 blur-[120px]" />
           <div className="absolute -right-40 bottom-20 h-[400px] w-[400px] rounded-full bg-violet-600/5 blur-[100px]" />
         </div>
+        <SectionSparkles id="sparkles-analytics" particleDensity={70} />
 
         <div className="relative mx-auto max-w-6xl">
           <div className="mb-16 text-center">
@@ -1602,6 +1677,7 @@ export default function LandingPage({ onEnterApp }: LandingPageProps) {
           <div className="absolute right-0 top-1/3 h-[600px] w-[600px] rounded-full bg-orange-600/4 blur-[140px]" />
           <div className="absolute -left-20 bottom-0 h-[400px] w-[400px] rounded-full bg-pink-600/4 blur-[100px]" />
         </div>
+        <SectionSparkles id="sparkles-simulators" particleDensity={65} />
 
         <div className="relative mx-auto max-w-6xl">
           <div className="mb-16 max-w-xl">
@@ -1745,6 +1821,341 @@ export default function LandingPage({ onEnterApp }: LandingPageProps) {
       </section>
 
       {/* ═══════════════════════════════════════════════════════════
+          INSIGHTS SECTION
+      ═══════════════════════════════════════════════════════════ */}
+      <section ref={insightsRef} id="insights" className="relative min-h-screen w-full overflow-hidden px-6 py-24 md:px-12 lg:px-20" style={{ background: '#05070C' }}>
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          <div className="absolute left-1/2 top-0 h-[1px] w-3/4 -translate-x-1/2 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+          <div className="absolute right-0 top-1/3 h-[600px] w-[600px] rounded-full bg-blue-900/4 blur-[140px]" />
+          <div className="absolute -left-20 bottom-0 h-[400px] w-[400px] rounded-full bg-indigo-900/4 blur-[100px]" />
+        </div>
+        <SectionSparkles id="sparkles-insights" particleDensity={70} />
+
+        <div className="relative mx-auto max-w-6xl">
+          <div className="mb-16 max-w-xl">
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3.5 py-1.5 text-xs text-white/50">
+              <span className="h-1 w-1 rounded-full bg-blue-400" />
+              GOVERNANCE & EQUITY
+            </div>
+            <h2 className="text-3xl font-light leading-tight tracking-tight text-white md:text-4xl lg:text-5xl">
+              See who the city serves —<br /><span className="text-white/40">and who it doesn&apos;t</span>
+            </h2>
+            <p className="mt-5 text-sm leading-relaxed text-white/45">
+              Correlate land, demographics, and economic indicators to uncover disparities and guide equitable, transparent land governance.
+            </p>
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-2">
+            {[
+              {
+                icon: (
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-7 w-7 text-blue-300">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                    <path d="m9 11 2 2 4-4" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} />
+                  </svg>
+                ),
+                title: "Transparent Land Records",
+                desc: "Track ownership history, flag encroachment risks, and monitor land-use conflicts across every registered parcel.",
+                color: "from-blue-500/20 to-cyan-500/5",
+                border: "border-blue-500/20",
+                stat: "Encroachment Detection",
+              },
+              {
+                icon: (
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-7 w-7 text-purple-400">
+                    <path d="M18 20V10M12 20V4M6 20v-6" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} />
+                    <circle cx="6" cy="11" r="2" />
+                    <circle cx="12" cy="1" r="2" />
+                    <circle cx="18" cy="7" r="2" />
+                  </svg>
+                ),
+                title: "Socio-Economic Correlation",
+                desc: "Cross-reference land characteristics with demographic and economic data to surface disparities and intervention opportunities.",
+                color: "from-purple-500/20 to-pink-500/5",
+                border: "border-purple-500/20",
+                stat: "Equity Scoring",
+              }
+            ].map((s, i) => {
+              const isHovered = hoveredInsightCard === i;
+              const accentRgb = i === 0 ? "59, 130, 246" : "168, 85, 247";
+
+              return (
+                <ScrollReveal key={s.title} delay={i * 150}>
+                  <div
+                    onMouseEnter={() => setHoveredInsightCard(i)}
+                    onMouseLeave={() => setHoveredInsightCard(null)}
+                    onTouchStart={() => setHoveredInsightCard(i)}
+                    onTouchEnd={() => setHoveredInsightCard(null)}
+                    className={`group relative overflow-hidden rounded-2xl border ${s.border} bg-gradient-to-b ${s.color} p-8 transition-all duration-500 hover:-translate-y-1 cursor-pointer`}
+                    style={{
+                      borderColor: isHovered ? `rgba(${accentRgb}, 0.35)` : undefined,
+                      boxShadow: isHovered
+                        ? `0 12px 30px rgba(0,0,0,0.7), 0 0 25px rgba(${accentRgb}, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.15)`
+                        : `0 4px 20px rgba(0,0,0,0.5), 0 0 10px rgba(${accentRgb}, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.05)`,
+                    }}
+                  >
+                    {/* Soft ambient glow blob behind the card */}
+                    <div
+                      className="absolute -bottom-16 -left-16 w-48 h-48 rounded-full blur-[64px] pointer-events-none transition-all duration-500"
+                      style={{
+                        background: `radial-gradient(circle, rgba(${accentRgb}, 0.4) 0%, transparent 70%)`,
+                        opacity: isHovered ? 0.8 : 0.25,
+                        transform: isHovered ? "scale(1.2)" : "scale(1)",
+                      }}
+                    />
+
+                    <div className="absolute right-0 top-0 h-40 w-40 rounded-bl-full bg-white/[0.02] transition-all duration-500 group-hover:bg-white/[0.04]" />
+                    <div className="relative z-10">
+                      <div className="mb-5 inline-flex items-center justify-center rounded-xl border border-white/10 bg-white/5 p-3 text-white/70">{s.icon}</div>
+                      <h3 className="mb-3 text-lg font-semibold text-white">{s.title}</h3>
+                      <p className="mb-5 text-sm leading-relaxed text-white/50">{s.desc}</p>
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-medium text-white/60">
+                        <span className="h-1 w-1 rounded-full bg-current" />{s.stat}
+                      </span>
+                    </div>
+                  </div>
+                </ScrollReveal>
+              );
+            })}
+          </div>
+
+          <ScrollReveal delay={300}>
+            <div
+              onMouseEnter={() => setHoveredEquityGap(true)}
+              onMouseLeave={() => setHoveredEquityGap(false)}
+              onTouchStart={() => setHoveredEquityGap(true)}
+              onTouchEnd={() => setHoveredEquityGap(false)}
+              className="mt-8 rounded-2xl border border-white/8 bg-white/[0.02] p-8 relative overflow-hidden transition-all duration-500 cursor-pointer"
+              style={{
+                borderColor: hoveredEquityGap ? "rgba(59, 130, 246, 0.35)" : undefined,
+                boxShadow: hoveredEquityGap
+                  ? "0 12px 30px rgba(0,0,0,0.7), 0 0 25px rgba(59, 130, 246, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.15)"
+                  : undefined,
+              }}
+            >
+              {/* Soft ambient glow blob behind the card */}
+              <div
+                className="absolute -bottom-20 -left-20 w-48 h-48 rounded-full blur-[64px] pointer-events-none transition-all duration-500"
+                style={{
+                  background: "radial-gradient(circle, rgba(59, 130, 246, 0.3) 0%, transparent 70%)",
+                  opacity: hoveredEquityGap ? 0.8 : 0.15,
+                  transform: hoveredEquityGap ? "scale(1.2)" : "scale(1)",
+                }}
+              />
+
+              <div className="grid gap-8 md:grid-cols-2 md:items-center relative z-10">
+                <div>
+                  <h3 className="mb-3 text-xl font-light text-white">Ward-Level Equity Index</h3>
+                  <p className="text-sm leading-relaxed text-white/50">
+                    Automatically scores all wards across income, land access, and public-service distribution to identify the most underserved communities.
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 gap-3 relative z-10">
+                  {["Income Distribution", "Land Access", "Service Coverage", "Registration Transparency"].map((cat, i) => {
+                    const isHovered = hoveredEquityTile === i;
+                    const accentRgb = "59, 130, 246"; // Blue theme
+
+                    return (
+                      <div
+                        key={cat}
+                        onMouseEnter={() => setHoveredEquityTile(i)}
+                        onMouseLeave={() => setHoveredEquityTile(null)}
+                        onTouchStart={() => setHoveredEquityTile(i)}
+                        onTouchEnd={() => setHoveredEquityTile(null)}
+                        className="rounded-lg border border-white/8 bg-white/[0.03] p-4 relative overflow-hidden transition-all duration-500 cursor-pointer"
+                        style={{
+                          borderColor: isHovered ? `rgba(${accentRgb}, 0.25)` : undefined,
+                          boxShadow: isHovered
+                            ? `0 0 12px rgba(${accentRgb}, 0.12), 0 2px 8px rgba(0,0,0,0.5)`
+                            : undefined,
+                        }}
+                      >
+                        {/* Faint ambient glow blob inside tile */}
+                        <div
+                          className="absolute -bottom-8 -left-8 w-16 h-16 rounded-full blur-[24px] pointer-events-none transition-all duration-500"
+                          style={{
+                            background: `radial-gradient(circle, rgba(${accentRgb}, 0.25) 0%, transparent 70%)`,
+                            opacity: isHovered ? 0.6 : 0.15,
+                          }}
+                        />
+                        <div className="relative z-10">
+                          <div className="mb-2 h-1 w-full rounded-full bg-white/5 relative">
+                            <div
+                              className="h-1 rounded-full bg-gradient-to-r from-blue-400 to-indigo-400 transition-all duration-500"
+                              style={{
+                                width: `${[64, 48, 76, 52][i]}%`,
+                                boxShadow: isHovered
+                                  ? "0 0 8px rgba(59, 130, 246, 0.8)"
+                                  : "none",
+                              }}
+                            />
+                          </div>
+                          <div className="text-[11px] text-white/40">{cat}</div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </ScrollReveal>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════
+          CONSERVATION SECTION
+      ═══════════════════════════════════════════════════════════ */}
+      <section ref={conservationRef} id="conservation" className="relative min-h-screen w-full overflow-hidden px-6 py-24 md:px-12 lg:px-20" style={{ background: '#05070C' }}>
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          <div className="absolute left-1/2 top-0 h-[1px] w-3/4 -translate-x-1/2 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+          <div className="absolute right-0 top-20 h-[500px] w-[500px] rounded-full bg-emerald-900/5 blur-[120px]" />
+          <div className="absolute -left-40 bottom-20 h-[400px] w-[400px] rounded-full bg-green-900/5 blur-[100px]" />
+        </div>
+        <SectionSparkles id="sparkles-conservation" particleDensity={65} />
+
+        <div className="relative mx-auto max-w-6xl">
+          <div className="mb-16 text-center">
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3.5 py-1.5 text-xs text-white/50">
+              <span className="h-1 w-1 rounded-full bg-emerald-400" />
+              ENVIRONMENTAL INTELLIGENCE
+            </div>
+            <h2 className="text-3xl font-light leading-tight tracking-tight text-white md:text-4xl lg:text-5xl">
+              Protect what shouldn&apos;t
+              <br />
+              <span className="text-white/40">be built on</span>
+            </h2>
+            <p className="mx-auto mt-5 max-w-xl text-sm leading-relaxed text-white/45">
+              Identify ecologically sensitive zones, monitor conservation priorities, and flag environmental risk before development begins.
+            </p>
+          </div>
+
+          <div className="grid gap-5 md:grid-cols-3">
+            {[
+              {
+                icon: (
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-7 w-7 text-emerald-400">
+                    <path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z" />
+                    <circle cx="12" cy="10" r="3" />
+                  </svg>
+                ),
+                title: "Ecological Sensitivity Mapping",
+                desc: "Overlay protected areas, wetlands, and green cover data to flag zones where development carries environmental risk.",
+                color: "from-emerald-500/20 to-green-500/5",
+                border: "border-emerald-500/20",
+              },
+              {
+                icon: (
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-7 w-7 text-emerald-400">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                    <line x1="12" y1="9" x2="12" y2="13" />
+                    <line x1="12" y1="17" x2="12.01" y2="17" />
+                  </svg>
+                ),
+                title: "Risk & Impact Scoring",
+                desc: "Score proposed sites against environmental impact factors before committing resources to development.",
+                color: "from-emerald-500/20 to-green-500/5",
+                border: "border-emerald-500/20",
+              },
+              {
+                icon: (
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-7 w-7 text-emerald-400">
+                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+                  </svg>
+                ),
+                title: "Conservation Priority Index",
+                desc: "Rank areas by ecological value to guide where conservation efforts and protections matter most.",
+                color: "from-emerald-500/20 to-green-500/5",
+                border: "border-emerald-500/20",
+              }
+            ].map((f, i) => {
+              const isHovered = hoveredConservationFeature === i;
+              const accentRgb = "16, 185, 129"; // Green theme
+
+              return (
+                <ScrollReveal key={f.title} delay={i * 150}>
+                  <div
+                    onMouseEnter={() => setHoveredConservationFeature(i)}
+                    onMouseLeave={() => setHoveredConservationFeature(null)}
+                    onTouchStart={() => setHoveredConservationFeature(i)}
+                    onTouchEnd={() => setHoveredConservationFeature(null)}
+                    className={`group relative overflow-hidden rounded-2xl border ${f.border} bg-gradient-to-b ${f.color} p-6 transition-all duration-500 hover:-translate-y-1 cursor-pointer`}
+                    style={{
+                      borderColor: isHovered ? `rgba(${accentRgb}, 0.35)` : undefined,
+                      boxShadow: isHovered
+                        ? `0 12px 30px rgba(0,0,0,0.7), 0 0 25px rgba(${accentRgb}, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.15)`
+                        : `0 4px 20px rgba(0,0,0,0.5), 0 0 10px rgba(${accentRgb}, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.05)`,
+                    }}
+                  >
+                    {/* Soft ambient glow blob behind the card */}
+                    <div
+                      className="absolute -bottom-16 -left-16 w-40 h-40 rounded-full blur-[60px] pointer-events-none transition-all duration-500"
+                      style={{
+                        background: `radial-gradient(circle, rgba(${accentRgb}, 0.4) 0%, transparent 70%)`,
+                        opacity: isHovered ? 0.8 : 0.25,
+                        transform: isHovered ? "scale(1.2)" : "scale(1)",
+                      }}
+                    />
+
+                    <div className="absolute right-4 top-4 h-16 w-16 rounded-full bg-white/5 blur-xl transition-all duration-500 group-hover:scale-150 group-hover:bg-white/10" />
+                    <div className="relative z-10">
+                      <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white/70">{f.icon}</div>
+                      <h3 className="mb-2 text-base font-semibold text-white">{f.title}</h3>
+                      <p className="text-sm leading-relaxed text-white/50">{f.desc}</p>
+                    </div>
+                  </div>
+                </ScrollReveal>
+              );
+            })}
+          </div>
+
+          <ScrollReveal delay={450}>
+            <div className="mt-10 grid gap-5 md:grid-cols-4">
+              {[
+                { val: "18", label: "Protected Zones", sub: "Forests & wetlands" },
+                { val: "32%", label: "Green Cover Mapped", sub: "High-res vegetation index" },
+                { val: "5", label: "Risk Categories", sub: "Flood, erosion, biodiversity" },
+                { val: "24/7", label: "Live Monitoring", sub: "Satellite alarm trigger" },
+              ].map((m, i) => {
+                const isHovered = hoveredConservationStat === i;
+                const accentRgb = "16, 185, 129"; // Green theme
+
+                return (
+                  <div
+                    key={m.label}
+                    onMouseEnter={() => setHoveredConservationStat(i)}
+                    onMouseLeave={() => setHoveredConservationStat(null)}
+                    onTouchStart={() => setHoveredConservationStat(i)}
+                    onTouchEnd={() => setHoveredConservationStat(null)}
+                    className="rounded-xl border border-white/8 bg-white/[0.03] p-5 backdrop-blur-sm relative overflow-hidden transition-all duration-500 cursor-pointer"
+                    style={{
+                      borderColor: isHovered ? `rgba(${accentRgb}, 0.25)` : undefined,
+                      boxShadow: isHovered
+                        ? `0 0 15px rgba(${accentRgb}, 0.15), 0 4px 12px rgba(0,0,0,0.5)`
+                        : undefined,
+                    }}
+                  >
+                    {/* Faint ambient glow blob */}
+                    <div
+                      className="absolute -bottom-8 -left-8 w-20 h-20 rounded-full blur-[30px] pointer-events-none transition-all duration-500"
+                      style={{
+                        background: `radial-gradient(circle, rgba(${accentRgb}, 0.3) 0%, transparent 70%)`,
+                        opacity: isHovered ? 0.6 : 0.15,
+                      }}
+                    />
+                    <div className="relative z-10">
+                      <div className="text-2xl font-light text-white">{m.val}</div>
+                      <div className="mt-1 text-xs font-medium text-white/60">{m.label}</div>
+                      <div className="mt-0.5 text-[11px] text-white/30">{m.sub}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </ScrollReveal>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════
           SCROLL 4 — AI COPILOT + FOOTER
       ═══════════════════════════════════════════════════════════ */}
       <section ref={scroll4Ref} className="relative w-full overflow-hidden px-6 pb-0 pt-24 md:px-12 lg:px-20" style={{ background: '#05070C' }}>
@@ -1780,36 +2191,18 @@ export default function LandingPage({ onEnterApp }: LandingPageProps) {
                   </li>
                 ))}
               </ul>
-              <button
-                onClick={() => setShowLogin(true)}
-                className="mt-8 group inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-violet-600 to-purple-600 px-7 py-3 text-sm font-semibold text-white shadow-lg shadow-violet-500/25 transition-all duration-300 hover:scale-105 hover:shadow-violet-500/40"
-              >
-                Try it now
-                <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 transition-transform group-hover:translate-x-1">
-                  <path fillRule="evenodd" d="M3 10a.75.75 0 0 1 .75-.75h10.638L10.23 5.29a.75.75 0 1 1 1.04-1.08l5.5 5.25a.75.75 0 0 1 0 1.08l-5.5 5.25a.75.75 0 1 1-1.04-1.08l4.158-3.96H3.75A.75.75 0 0 1 3 10Z" clipRule="evenodd"/>
-                </svg>
-              </button>
+              <LiquidMetalButton
+                label="Try it now"
+                onClick={handleGlobeClick}
+              />
             </div>
 
-            <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-6 backdrop-blur-sm">
+            <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-6 backdrop-blur-sm transition-all duration-300 ease-out hover:scale-[1.02] shadow-[0_0_40px_rgba(147,51,234,0.08)] hover:shadow-[0_0_45px_rgba(147,51,234,0.14)] hover:bg-white/[0.05] hover:border-violet-500/20">
               <div className="mb-4 flex items-center gap-2.5 border-b border-white/8 pb-4">
                 <div className="h-2.5 w-2.5 rounded-full bg-violet-400" />
                 <span className="text-xs font-medium text-white/60">UrbanLens AI Copilot</span>
               </div>
-              <div className="space-y-4">
-                {[
-                  { role: "user", msg: "Which ward has the worst healthcare gap?" },
-                  { role: "ai", msg: "Ward 7 (Vatwa) has the lowest healthcare score — 1 clinic serving ~18,400 residents. Highlighting it on the map and switching to Infrastructure Gap mode." },
-                  { role: "user", msg: "What's the best site for a new primary health centre?" },
-                  { role: "ai", msg: "Top candidate: Parcel GJ-AHD-0847 in Vatwa. Score 87/100 — high accessibility, vacant land, within 500m of the underserved population centroid." },
-                ].map((item, i) => (
-                  <div key={i} className={`flex ${item.role === "user" ? "justify-end" : "justify-start"}`}>
-                    <div className={`max-w-[85%] rounded-xl px-4 py-2.5 text-xs leading-relaxed ${item.role === "user" ? "bg-violet-600/20 text-violet-100" : "border border-white/8 bg-white/5 text-white/60"}`}>
-                      {item.msg}
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <CopilotChatPanel />
               <div className="mt-4 flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2">
                 <span className="flex-1 text-xs text-white/25">Ask about your city…</span>
                 <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 text-violet-400">

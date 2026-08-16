@@ -20,6 +20,7 @@ import LandPanel from "@/components/panels/LandPanel";
 import SiteSelectionPanel from "@/components/panels/SiteSelectionPanel";
 import SimulatorPanel from "@/components/panels/SimulatorPanel";
 import { GlassFilter } from "@/components/ui/GlassFilter";
+import AppDock from "./AppDock";
 
 export default function AppShell() {
   const mode = useApp((s) => s.mode);
@@ -73,6 +74,11 @@ export default function AppShell() {
         <div className="pointer-events-auto">
           <Legend />
         </div>
+      </div>
+
+      {/* Bottom-center: Apple-style magnifying dock */}
+      <div className="pointer-events-none absolute bottom-4 inset-x-0 z-[15] flex justify-center">
+        <AppDock />
       </div>
 
       {/* Overlays */}

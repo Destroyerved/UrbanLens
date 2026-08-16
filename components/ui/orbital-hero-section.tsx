@@ -955,9 +955,7 @@ export function OrbitalHeroSection({
       ref={hostRef}
       className={`relative isolate h-full w-full overflow-hidden ${className}`}
       style={{
-        backgroundImage: "linear-gradient(to bottom, rgba(5, 7, 12, 0.45), rgba(5, 7, 12, 0.75)), url('/textures/hero-bg.png')",
-        backgroundSize: "cover",
-        backgroundPosition: "center",
+        backgroundColor: "#05070C",
         ...style
       }}
       {...rest}
