@@ -26,6 +26,10 @@ export function PanelShell({
   return (
     <motion.div
       data-glow
+      // Stable hook for the UI harness (scripts/verify-ui.mjs), which reads the
+      // active panel by title. Class names are styling and change freely; this
+      // does not.
+      data-panel={title}
       initial={{ opacity: 0, x: 16 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: 16 }}

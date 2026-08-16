@@ -37,6 +37,11 @@ const IGNORED_CONSOLE = [
   // console copy too would double-report and, for third-party assets, fail the
   // run on something the network side deliberately excused.
   /^Failed to load resource: the server responded with a status of \d+/i,
+  // This harness navigates from the landing page to /?app=1 while the landing
+  // page's parcel-count request is still in flight, and the browser aborts it.
+  // That is the harness's own doing — a visitor never hard-navigates mid-fetch —
+  // so it is noise from the test, not a defect in the page.
+  /AbortError: The user aborted a request/i,
 ];
 
 const consoleErrors = [];
