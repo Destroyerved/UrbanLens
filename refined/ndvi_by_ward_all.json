@@ -1,0 +1,415 @@
+[
+ {
+  "ward_id": 1,
+  "ward_name": "GOTA",
+  "city": "ahmedabad",
+  "pixel_count": 338030,
+  "ndvi_mean": 0.1942
+ },
+ {
+  "ward_id": 2,
+  "ward_name": "CHANDLODIA",
+  "city": "ahmedabad",
+  "pixel_count": 137107,
+  "ndvi_mean": 0.166
+ },
+ {
+  "ward_id": 3,
+  "ward_name": "CHANDKHEDA",
+  "city": "ahmedabad",
+  "pixel_count": 119174,
+  "ndvi_mean": 0.1574
+ },
+ {
+  "ward_id": 4,
+  "ward_name": "SABARMATI",
+  "city": "ahmedabad",
+  "pixel_count": 97789,
+  "ndvi_mean": 0.1636
+ },
+ {
+  "ward_id": 5,
+  "ward_name": "RANIP",
+  "city": "ahmedabad",
+  "pixel_count": 75606,
+  "ndvi_mean": 0.1247
+ },
+ {
+  "ward_id": 6,
+  "ward_name": "NEW WADAJ",
+  "city": "ahmedabad",
+  "pixel_count": 31761,
+  "ndvi_mean": 0.1063
+ },
+ {
+  "ward_id": 7,
+  "ward_name": "GHATLODIA",
+  "city": "ahmedabad",
+  "pixel_count": 30050,
+  "ndvi_mean": 0.0924
+ },
+ {
+  "ward_id": 8,
+  "ward_name": "THALTEJ",
+  "city": "ahmedabad",
+  "pixel_count": 280113,
+  "ndvi_mean": 0.2042
+ },
+ {
+  "ward_id": 9,
+  "ward_name": "NARANPURA",
+  "city": "ahmedabad",
+  "pixel_count": 49137,
+  "ndvi_mean": 0.1342
+ },
+ {
+  "ward_id": 10,
+  "ward_name": "S.P.STADIUM",
+  "city": "ahmedabad",
+  "pixel_count": 51414,
+  "ndvi_mean": 0.13
+ },
+ {
+  "ward_id": 11,
+  "ward_name": "SARDARNAGAR",
+  "city": "ahmedabad",
+  "pixel_count": 87204,
+  "ndvi_mean": 0.1577
+ },
+ {
+  "ward_id": 12,
+  "ward_name": "NARODA",
+  "city": "ahmedabad",
+  "pixel_count": 138502,
+  "ndvi_mean": 0.1447
+ },
+ {
+  "ward_id": 13,
+  "ward_name": "SAIJPUR BOGHA",
+  "city": "ahmedabad",
+  "pixel_count": 30784,
+  "ndvi_mean": 0.0897
+ },
+ {
+  "ward_id": 14,
+  "ward_name": "KUBERNAGR",
+  "city": "ahmedabad",
+  "pixel_count": 22334,
+  "ndvi_mean": 0.089
+ },
+ {
+  "ward_id": 15,
+  "ward_name": "ASARWA",
+  "city": "ahmedabad",
+  "pixel_count": 24290,
+  "ndvi_mean": 0.121
+ },
+ {
+  "ward_id": 16,
+  "ward_name": "SHAHIBAG",
+  "city": "ahmedabad",
+  "pixel_count": 44257,
+  "ndvi_mean": 0.1567
+ },
+ {
+  "ward_id": 17,
+  "ward_name": "SHAHPUR",
+  "city": "ahmedabad",
+  "pixel_count": 37381,
+  "ndvi_mean": 0.1468
+ },
+ {
+  "ward_id": 18,
+  "ward_name": "NAVRANGPURA",
+  "city": "ahmedabad",
+  "pixel_count": 119101,
+  "ndvi_mean": 0.1882
+ },
+ {
+  "ward_id": 19,
+  "ward_name": "BODAKDEV",
+  "city": "ahmedabad",
+  "pixel_count": 129540,
+  "ndvi_mean": 0.1873
+ },
+ {
+  "ward_id": 20,
+  "ward_name": "JODHPUR",
+  "city": "ahmedabad",
+  "pixel_count": 98709,
+  "ndvi_mean": 0.1974
+ },
+ {
+  "ward_id": 21,
+  "ward_name": "DARIYAPUR",
+  "city": "ahmedabad",
+  "pixel_count": 16205,
+  "ndvi_mean": 0.0899
+ },
+ {
+  "ward_id": 22,
+  "ward_name": "INDIA COLONY",
+  "city": "ahmedabad",
+  "pixel_count": 45192,
+  "ndvi_mean": 0.1199
+ },
+ {
+  "ward_id": 23,
+  "ward_name": "THAKKARBAPANAGAR",
+  "city": "ahmedabad",
+  "pixel_count": 30849,
+  "ndvi_mean": 0.0849
+ },
+ {
+  "ward_id": 24,
+  "ward_name": "NIKOL",
+  "city": "ahmedabad",
+  "pixel_count": 114707,
+  "ndvi_mean": 0.1099
+ },
+ {
+  "ward_id": 25,
+  "ward_name": "VIRATNAGAR",
+  "city": "ahmedabad",
+  "pixel_count": 36796,
+  "ndvi_mean": 0.091
+ },
+ {
+  "ward_id": 26,
+  "ward_name": "BAPUNAGAR",
+  "city": "ahmedabad",
+  "pixel_count": 26535,
+  "ndvi_mean": 0.1114
+ },
+ {
+  "ward_id": 27,
+  "ward_name": "SARASPUR-RAKHIYAL",
+  "city": "ahmedabad",
+  "pixel_count": 30633,
+  "ndvi_mean": 0.1281
+ },
+ {
+  "ward_id": 28,
+  "ward_name": "KHADIA",
+  "city": "ahmedabad",
+  "pixel_count": 32553,
+  "ndvi_mean": 0.0885
+ },
+ {
+  "ward_id": 29,
+  "ward_name": "JAMALPUR",
+  "city": "ahmedabad",
+  "pixel_count": 27372,
+  "ndvi_mean": 0.1338
+ },
+ {
+  "ward_id": 30,
+  "ward_name": "PALDI",
+  "city": "ahmedabad",
+  "pixel_count": 55245,
+  "ndvi_mean": 0.1288
+ },
+ {
+  "ward_id": 31,
+  "ward_name": "VASNA",
+  "city": "ahmedabad",
+  "pixel_count": 55454,
+  "ndvi_mean": 0.1427
+ },
+ {
+  "ward_id": 32,
+  "ward_name": "VEJALPUR",
+  "city": "ahmedabad",
+  "pixel_count": 29030,
+  "ndvi_mean": 0.1134
+ },
+ {
+  "ward_id": 33,
+  "ward_name": "SARKHEJ",
+  "city": "ahmedabad",
+  "pixel_count": 236206,
+  "ndvi_mean": 0.1888
+ },
+ {
+  "ward_id": 34,
+  "ward_name": "MAKTAMPURA",
+  "city": "ahmedabad",
+  "pixel_count": 251702,
+  "ndvi_mean": 0.1915
+ },
+ {
+  "ward_id": 35,
+  "ward_name": "BAHERAMPURA",
+  "city": "ahmedabad",
+  "pixel_count": 101977,
+  "ndvi_mean": 0.1425
+ },
+ {
+  "ward_id": 36,
+  "ward_name": "DANILIMDA",
+  "city": "ahmedabad",
+  "pixel_count": 35492,
+  "ndvi_mean": 0.1321
+ },
+ {
+  "ward_id": 37,
+  "ward_name": "MANINAGAR",
+  "city": "ahmedabad",
+  "pixel_count": 45396,
+  "ndvi_mean": 0.1189
+ },
+ {
+  "ward_id": 38,
+  "ward_name": "GOMTIPUR",
+  "city": "ahmedabad",
+  "pixel_count": 32400,
+  "ndvi_mean": 0.1245
+ },
+ {
+  "ward_id": 39,
+  "ward_name": "AMRAIWADI",
+  "city": "ahmedabad",
+  "pixel_count": 31369,
+  "ndvi_mean": 0.117
+ },
+ {
+  "ward_id": 40,
+  "ward_name": "ODHAV",
+  "city": "ahmedabad",
+  "pixel_count": 54542,
+  "ndvi_mean": 0.0987
+ },
+ {
+  "ward_id": 41,
+  "ward_name": "VASTRAL",
+  "city": "ahmedabad",
+  "pixel_count": 134634,
+  "ndvi_mean": 0.1522
+ },
+ {
+  "ward_id": 42,
+  "ward_name": "INDRAPURI",
+  "city": "ahmedabad",
+  "pixel_count": 32904,
+  "ndvi_mean": 0.0813
+ },
+ {
+  "ward_id": 43,
+  "ward_name": "BHAIPURA HATKESHWAR",
+  "city": "ahmedabad",
+  "pixel_count": 19379,
+  "ndvi_mean": 0.0719
+ },
+ {
+  "ward_id": 44,
+  "ward_name": "KHOKHRA",
+  "city": "ahmedabad",
+  "pixel_count": 35852,
+  "ndvi_mean": 0.1183
+ },
+ {
+  "ward_id": 45,
+  "ward_name": "ISANPUR",
+  "city": "ahmedabad",
+  "pixel_count": 40917,
+  "ndvi_mean": 0.0802
+ },
+ {
+  "ward_id": 46,
+  "ward_name": "LAMBHA",
+  "city": "ahmedabad",
+  "pixel_count": 480959,
+  "ndvi_mean": 0.1845
+ },
+ {
+  "ward_id": 47,
+  "ward_name": "VATVA",
+  "city": "ahmedabad",
+  "pixel_count": 111588,
+  "ndvi_mean": 0.1717
+ },
+ {
+  "ward_id": 48,
+  "ward_name": "RAMOL HATHIJAN",
+  "city": "ahmedabad",
+  "pixel_count": 307874,
+  "ndvi_mean": 0.1742
+ },
+ {
+  "ward_id": 1,
+  "ward_name": "Ward No - 1",
+  "city": "gandhinagar",
+  "pixel_count": 217922,
+  "ndvi_mean": 0.2382
+ },
+ {
+  "ward_id": 2,
+  "ward_name": "Ward No - 2",
+  "city": "gandhinagar",
+  "pixel_count": 230703,
+  "ndvi_mean": 0.245
+ },
+ {
+  "ward_id": 3,
+  "ward_name": "Ward No - 3",
+  "city": "gandhinagar",
+  "pixel_count": 25500,
+  "ndvi_mean": 0.1971
+ },
+ {
+  "ward_id": 4,
+  "ward_name": "Ward No - 4",
+  "city": "gandhinagar",
+  "pixel_count": 242557,
+  "ndvi_mean": 0.2203
+ },
+ {
+  "ward_id": 5,
+  "ward_name": "Ward No - 5",
+  "city": "gandhinagar",
+  "pixel_count": 86858,
+  "ndvi_mean": 0.2407
+ },
+ {
+  "ward_id": 6,
+  "ward_name": "Ward No - 6",
+  "city": "gandhinagar",
+  "pixel_count": 76123,
+  "ndvi_mean": 0.2149
+ },
+ {
+  "ward_id": 7,
+  "ward_name": "Ward No - 7",
+  "city": "gandhinagar",
+  "pixel_count": 239564,
+  "ndvi_mean": 0.2216
+ },
+ {
+  "ward_id": 8,
+  "ward_name": "Ward No - 8",
+  "city": "gandhinagar",
+  "pixel_count": 195982,
+  "ndvi_mean": 0.2059
+ },
+ {
+  "ward_id": 9,
+  "ward_name": "Ward No - 9",
+  "city": "gandhinagar",
+  "pixel_count": 98105,
+  "ndvi_mean": 0.2248
+ },
+ {
+  "ward_id": 10,
+  "ward_name": "Ward No - 10",
+  "city": "gandhinagar",
+  "pixel_count": 202731,
+  "ndvi_mean": 0.1903
+ },
+ {
+  "ward_id": 11,
+  "ward_name": "Ward No - 11",
+  "city": "gandhinagar",
+  "pixel_count": 340385,
+  "ndvi_mean": 0.1991
+ }
+]
