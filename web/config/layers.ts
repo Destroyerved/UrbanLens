@@ -12,6 +12,7 @@ export type LayerId =
   | "gap-heat"
   | "ndvi-heat"
   | "thermal-heat"
+  | "greenspace"
   | "builtup"
   | "prediction"
   | "gap"
@@ -99,6 +100,7 @@ export const LAYERS: LayerDef[] = [
   { id: "growth-heat", label: "2030 Growth Pressure Heatmap", category: "Heatmaps", description: "Predicted urban expansion hotspots", hasOpacity: true },
   { id: "gap-heat", label: "Healthcare Gap Heatmap", category: "Heatmaps", description: "Underserved population deficit intensity", hasOpacity: true },
   { id: "ndvi-heat", label: "Vegetation & NDVI Canopy", category: "Heatmaps", description: "Green cover & ecological corridors", hasOpacity: true },
+  { id: "greenspace", label: "Green Space", category: "Heatmaps", description: "Parks & green land parcels", hasOpacity: true },
   { id: "thermal-heat", label: "Urban Heat Island (UHI)", category: "Heatmaps", description: "Surface thermal stress intensity", hasOpacity: true },
   { id: "builtup", label: "Built-Up Extent", category: "Intelligence", description: "Historical urban footprint by year", hasOpacity: true },
   { id: "prediction", label: "2030 Growth Probability", category: "Intelligence", description: "Predicted urbanization pressure grid", hasOpacity: true },

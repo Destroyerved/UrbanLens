@@ -13,6 +13,14 @@ logs/
 # Python
 .venv/
 
+# Secrets — never commit credentials
+*.cdse_token
+.sat-credentials
+.env
+.env.*
+*.token
+credentials.json
+
 # backend/models/ is deliberately NOT ignored. The trained development model is
 # what makes the 2030 growth layer an actual classifier (PRD §44) rather than
 # the proximity heuristic it silently falls back to; ignoring it meant every

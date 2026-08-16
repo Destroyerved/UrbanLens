@@ -39,6 +39,30 @@ def _read(city_id: str, name: str) -> dict[str, Any] | None:
         return json.load(fh)
 
 
+@lru_cache(maxsize=8)
+def get_vegetation(city_id: str | None = None) -> dict:
+    """Per-ward NDVI choropleth: the engine JSON is already a FeatureCollection."""
+    city = get_city(city_id)
+    doc = _read(city.id, "vegetation")
+    if doc is None:
+        raise FileNotFoundError(
+            f"No vegetation layer for '{city.id}'. Run web/scripts/fetch-satellite.py first."
+        )
+    return doc
+
+
+@lru_cache(maxsize=8)
+def get_greenspace(city_id: str | None = None) -> dict:
+    """Green-space polygons (parks + green landuse), clipped to the city."""
+    city = get_city(city_id)
+    doc = _read(city.id, "greenspace")
+    if doc is None:
+        raise FileNotFoundError(
+            f"No greenspace layer for '{city.id}'. Run web/scripts/build-greenspace.py first."
+        )
+    return doc
+
+
 @dataclass
 class Dataset:
     city: City

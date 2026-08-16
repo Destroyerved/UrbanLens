@@ -1,5 +1,6 @@
 import type { Facility, GridCell, LandUse, LngLat, Parcel, Road, Ward, Year } from "@/types";
-import { apiGet } from "@/lib/api";
+import type { FeatureCollection } from "geojson";
+import { apiGet, ApiError } from "@/lib/api";
 
 /**
  * The active study area's map layers.
@@ -58,6 +59,8 @@ export interface CityDataset {
   roads: Road[];
   facilities: Facility[];
   grid: GridCell[];
+  vegetation: FeatureCollection;
+  greenspace: FeatureCollection;
 }
 
 const round = (n: number, d = 2) => Number(Number(n).toFixed(d));
@@ -172,13 +175,15 @@ interface RoadProps {
 
 export async function fetchCityDataset(cityId: string): Promise<CityDataset> {
   const q = { city: cityId };
-  const [wardsFC, parcelsFC, facFC, roadsFC, popFC, predFC] = await Promise.all([
+  const [wardsFC, parcelsFC, facFC, roadsFC, popFC, predFC, vegFC, greenFC] = await Promise.all([
     apiGet<FC<WardProps>>("/api/wards", q),
     apiGet<FC<ParcelProps>>("/api/parcels", { ...q, detail: "full" }),
     apiGet<FC<FacilityProps>>("/api/facilities", q),
     apiGet<FC<RoadProps>>("/api/roads", q),
     apiGet<FC<{ population: number }>>("/api/population", { ...q, step: POP_STEP }),
     apiGet<FC<{ growth_probability: number }>>("/api/growth/prediction", q),
+    fetchOptional<FC<unknown>>("/api/vegetation", q),
+    fetchOptional<FC<unknown>>("/api/greenspace", q),
   ]);
 
   const wards: Ward[] = wardsFC.features.map((f) => {
@@ -302,5 +307,32 @@ export async function fetchCityDataset(cityId: string): Promise<CityDataset> {
     } as GridCell;
   });
 
-  return { cityId, parcels, wards, roads, facilities, grid };
+  return {
+    cityId,
+    parcels,
+    wards,
+    roads,
+    facilities,
+    grid,
+    vegetation: (vegFC as FeatureCollection | null) ?? { type: "FeatureCollection", features: [] },
+    greenspace: (greenFC as FeatureCollection | null) ?? { type: "FeatureCollection", features: [] },
+  };
+}
+
+/**
+ * Like apiGet but tolerates 404 — composite study areas (`ahmedabad-gandhinagar`,
+ * `ahmedabad-metro`) have no vegetation/greenspace engine file, so those fetches
+ * legitimately 404 and the caller should get `null` rather than an error that
+ * blanks the whole dashboard.
+ */
+async function fetchOptional<T>(
+  path: string,
+  params?: Record<string, string>,
+): Promise<T | null> {
+  try {
+    return await apiGet<T>(path, params);
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) return null;
+    throw err;
+  }
 }
