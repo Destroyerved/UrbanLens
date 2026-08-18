@@ -341,7 +341,7 @@ export function ExpandingSearchDock({
             onSubmit={handleSubmit}
             className="relative z-[70]"
           >
-            <div className="glass-strong relative flex h-8 items-center gap-2 overflow-hidden rounded-full border border-accent/60 bg-white/20 dark:bg-white/10 shadow-[0_0_20px_rgba(56,189,248,0.3),inset_0_1px_1px_rgba(255,255,255,0.3)] backdrop-blur-2xl px-2.5 ring-2 ring-accent/30">
+            <div className="glass-strong relative flex h-8 items-center gap-2 overflow-hidden rounded-full border border-accent/60 shadow-[0_0_20px_rgba(56,189,248,0.3),inset_0_1px_1px_rgba(255,255,255,0.3)] backdrop-blur-2xl px-2.5 ring-2 ring-accent/30">
               <input
                 ref={inputRef}
                 type="text"
@@ -407,7 +407,7 @@ export function ExpandingSearchDock({
             initial="hidden"
             animate="show"
             exit="exit"
-            className="glass-strong absolute left-0 top-[42px] z-[80] w-[360px] overflow-hidden rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.35),0_0_25px_rgba(56,189,248,0.15)] backdrop-blur-3xl border border-white/30 dark:border-white/20 p-1.5 ring-1 ring-white/20 bg-white/25 dark:bg-black/35"
+            className="glass-strong absolute left-0 top-[42px] z-[80] w-[360px] overflow-hidden rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.35),0_0_25px_rgba(56,189,248,0.15)] backdrop-blur-3xl border border-white/30 dark:border-white/20 p-1.5 ring-1 ring-white/20"
           >
             <motion.ul className="space-y-0.5 max-h-[300px] overflow-y-auto panel-scroll">
               {result.actions.map((action) => (

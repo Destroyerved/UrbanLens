@@ -28,8 +28,6 @@ export default function InfrastructurePanel() {
   const flyTo = useApp((s) => s.flyTo);
   const setMode = useApp((s) => s.setMode);
   const mapClick = useApp((s) => s.mapClick);
-  const city = useApp((s) => s.city);
-  const datasetVersion = useApp((s) => s.datasetVersion);
 
   const [gaps, setGaps] = useState<WardGap[] | null>(null);
   const [access, setAccess] = useState<AccessibilityReport | null>(null);
@@ -37,7 +35,7 @@ export default function InfrastructurePanel() {
 
   useEffect(() => {
     fetchWardGaps().then(setGaps);
-  }, [city.id, datasetVersion]);
+  }, []);
 
   useEffect(() => {
     if (!mapClick) return;

@@ -1,0 +1,374 @@
+/* ==========================================================================
+   UrbanLens — cinematic landing page
+   Scoped to `.ulc` so the dashboard's design system is untouched.
+   ========================================================================== */
+
+.ulc {
+  --void: #000206;
+  --navy: #030712;
+  --navy-2: #071124;
+  --earth: #82bfff;
+  --cold: #e2f0ff;
+  --cyan: #16d9f5;
+  --gov: #559cff;
+  --good: #2dd58b;
+  --warn: #ff9500;
+  --crit: #ff4f5d;
+
+  background: var(--void);
+  color: #ffffff;
+  font-family: var(--font-sans);
+  overscroll-behavior-y: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+.ulc ::selection {
+  background: rgba(22, 217, 245, 0.3);
+  color: #ffffff;
+}
+
+/* ─────────────────────────── typography ─────────────────────────── */
+
+.ulc-display {
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: -0.022em;
+  line-height: 0.94;
+  color: #ffffff;
+}
+
+.ulc-d1 {
+  font-size: clamp(2.4rem, 6.6vw, 6.1rem);
+}
+.ulc-d2 {
+  font-size: clamp(1.9rem, 4.6vw, 4.1rem);
+}
+.ulc-d3 {
+  font-size: clamp(1.5rem, 3vw, 2.6rem);
+}
+
+.ulc-tech {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: rgba(226, 240, 255, 0.72);
+}
+
+.ulc-tech-sm {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: rgba(226, 240, 255, 0.52);
+}
+
+.ulc-copy {
+  font-size: clamp(0.88rem, 1.1vw, 1rem);
+  line-height: 1.68;
+  color: rgba(226, 240, 255, 0.82);
+  max-width: 36ch;
+}
+
+.ulc-num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+  font-weight: 600;
+}
+
+.ulc-metric {
+  font-size: clamp(2.6rem, 6vw, 5.4rem);
+  line-height: 0.9;
+  color: #ffffff;
+}
+
+.ulc-rule {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    rgba(22, 217, 245, 0.5),
+    rgba(226, 240, 255, 0.08)
+  );
+}
+
+/* ───────────────────────── scene machinery ─────────────────────── */
+
+.ulc-scene {
+  will-change: opacity, transform;
+}
+
+.ulc-drift {
+  transform: translate3d(0, calc((0.5 - var(--p, 0)) * -26px), 0);
+}
+
+/* line-by-line typographic reveal (mask up) */
+.ulc-line {
+  display: block;
+  overflow: hidden;
+}
+.ulc-line > span {
+  display: inline-flex;
+}
+.ulc-in .ulc-line .ulc-char {
+  transform: translate3d(0, 0, 0) rotateX(0deg) rotateY(0deg) !important;
+  opacity: 1 !important;
+}
+
+.ulc-fade {
+  opacity: 0;
+  transform: translateY(12px);
+  transition:
+    opacity 0.95s ease,
+    transform 1.1s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.ulc-in .ulc-fade {
+  opacity: 1;
+  transform: none;
+}
+
+/* ─────────────────────────── chrome ────────────────────────────── */
+
+.ulc-nav {
+  position: fixed;
+  inset: 0 0 auto 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px clamp(20px, 3.8vw, 48px);
+  background: linear-gradient(
+    180deg,
+    rgba(0, 2, 6, 0.85) 0%,
+    rgba(0, 2, 6, 0.45) 55%,
+    transparent 100%
+  );
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition:
+    transform 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.4s ease;
+  mix-blend-mode: normal;
+}
+
+.ulc-navlink {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: rgba(226, 240, 255, 0.6);
+  transition: color 0.3s ease;
+}
+.ulc-navlink:hover {
+  color: #ffffff;
+}
+
+.ulc-footer {
+  position: relative;
+  z-index: 10;
+  border-top: 1px solid rgba(226, 240, 255, 0.14);
+  background: linear-gradient(
+    0deg,
+    rgba(0, 2, 6, 0.92) 0%,
+    rgba(0, 2, 6, 0.65) 60%,
+    rgba(0, 2, 6, 0.25) 100%
+  );
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 -1px 0 rgba(255, 255, 255, 0.08), 0 -12px 36px rgba(0, 0, 0, 0.5);
+}
+
+.ulc-cta {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 28px;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #01141c;
+  background: linear-gradient(180deg, #b6f4ff 0%, #16d9f5 48%, #089eb4 100%);
+  box-shadow:
+    0 0 1px 1px rgba(255, 255, 255, 0.6) inset,
+    0 2px 4px rgba(255, 255, 255, 0.75) inset,
+    0 -2px 6px rgba(0, 0, 0, 0.35) inset,
+    0 8px 30px -4px rgba(22, 217, 245, 0.8),
+    0 0 20px rgba(22, 217, 245, 0.35);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition:
+    transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.35s ease,
+    filter 0.3s ease;
+  overflow: hidden;
+}
+.ulc-cta:hover {
+  transform: translateY(-2px) scale(1.02);
+  filter: brightness(1.08);
+  box-shadow:
+    0 0 1px 1px rgba(255, 255, 255, 0.8) inset,
+    0 3px 6px rgba(255, 255, 255, 0.9) inset,
+    0 -2px 6px rgba(0, 0, 0, 0.3) inset,
+    0 12px 38px -4px rgba(22, 217, 245, 0.95),
+    0 0 28px rgba(22, 217, 245, 0.5);
+}
+
+.ulc-cta-ghost {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 28px;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.92);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(226, 240, 255, 0.28);
+  box-shadow:
+    0 1px 1px rgba(255, 255, 255, 0.35) inset,
+    0 -1px 2px rgba(0, 0, 0, 0.4) inset,
+    0 4px 20px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition:
+    border-color 0.3s ease,
+    background 0.3s ease,
+    transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.3s ease;
+}
+.ulc-cta-ghost:hover {
+  transform: translateY(-2px) scale(1.02);
+  border-color: rgba(22, 217, 245, 0.65);
+  background: rgba(22, 217, 245, 0.1);
+  box-shadow:
+    0 1px 2px rgba(255, 255, 255, 0.5) inset,
+    0 0 20px rgba(22, 217, 245, 0.3);
+}
+
+/* ───────────────────────── atmosphere ──────────────────────────── */
+
+.ulc-vignette {
+  background:
+    radial-gradient(130% 90% at 50% 45%, transparent 42%, rgba(2, 4, 10, 0.72) 82%,
+      rgba(2, 4, 10, 0.96) 100%);
+}
+
+.ulc-map-veil,
+.ul-map-veil {
+  background:
+    radial-gradient(120% 85% at 50% 50%, transparent 40%, rgba(2, 4, 10, 0.62) 84%,
+      rgba(2, 4, 10, 0.92) 100%);
+}
+
+.ulc-scrim-l {
+  background: linear-gradient(
+    90deg,
+    rgba(2, 4, 10, 0.9) 0%,
+    rgba(2, 4, 10, 0.6) 28%,
+    rgba(2, 4, 10, 0) 58%
+  );
+}
+.ulc-scrim-r {
+  background: linear-gradient(
+    270deg,
+    rgba(2, 4, 10, 0.9) 0%,
+    rgba(2, 4, 10, 0.6) 28%,
+    rgba(2, 4, 10, 0) 58%
+  );
+}
+.ulc-scrim-c {
+  background: radial-gradient(
+    60% 52% at 50% 50%,
+    rgba(2, 4, 10, 0.82) 0%,
+    rgba(2, 4, 10, 0.45) 46%,
+    rgba(2, 4, 10, 0) 78%
+  );
+}
+
+@keyframes ulc-ping {
+  0% {
+    transform: scale(0.55);
+    opacity: 0.9;
+  }
+  70% {
+    opacity: 0;
+  }
+  100% {
+    transform: scale(2.3);
+    opacity: 0;
+  }
+}
+.ulc-ping {
+  animation: ulc-ping 2.8s cubic-bezier(0.22, 0.61, 0.36, 1) infinite;
+}
+
+@keyframes ulc-scroll {
+  0% {
+    transform: translateY(-110%);
+  }
+  50% {
+    transform: translateY(110%);
+  }
+  100% {
+    transform: translateY(110%);
+  }
+}
+
+@keyframes ulc-shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.ulc-opening-veil {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 2, 6, 0.72);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  opacity: 1;
+  pointer-events: auto;
+  transition:
+    opacity 0.85s ease,
+    backdrop-filter 0.95s cubic-bezier(0.16, 1, 0.3, 1),
+    -webkit-backdrop-filter 0.95s cubic-bezier(0.16, 1, 0.3, 1),
+    visibility 0.85s;
+}
+.ulc-opening-veil.ulc-veil-open {
+  opacity: 0;
+  backdrop-filter: blur(0px);
+  -webkit-backdrop-filter: blur(0px);
+  pointer-events: none;
+  visibility: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ulc-line > span,
+  .ulc-fade {
+    transform: none !important;
+    opacity: 1 !important;
+    transition: none !important;
+  }
+  .ulc-ping {
+    animation: none;
+  }
+}

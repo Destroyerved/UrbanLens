@@ -1,7 +1,8 @@
 "use client";
 
 import { useApp } from "@/lib/store";
-import { LANDUSE_COLORS, FACILITY_COLORS, FACILITY_LABELS, FLOOD_COLORS } from "@/lib/mapdata";
+import { LANDUSE_COLORS, FACILITY_COLORS, FACILITY_LABELS } from "@/lib/mapdata";
+import { THERMAL_STATUS, useThermalStatus } from "@/data/thermal";
 
 function Row({ color, label }: { color: string; label: string }) {
   return (
@@ -49,6 +50,7 @@ const PREDICTION_STEPS = [
 export default function Legend() {
   const activeLayers = useApp((s) => s.activeLayers);
   const mode = useApp((s) => s.mode);
+  const thermal = useThermalStatus();
 
   const showPrediction = !!activeLayers["prediction"];
   const showFacilities = !!activeLayers["facilities"] && mode === "infrastructure";
@@ -58,9 +60,8 @@ export default function Legend() {
   const showGrowthHeat = !!activeLayers["growth-heat"];
   const showGapHeat = !!activeLayers["gap-heat"];
   const showNdviHeat = !!activeLayers["ndvi-heat"];
+  const showGreenspace = !!activeLayers["greenspace"];
   const showThermalHeat = !!activeLayers["thermal-heat"];
-  const showWater = !!activeLayers["water"];
-  const showFlood = !!activeLayers["flood-risk"];
 
   if (
     !showPrediction &&
@@ -71,9 +72,8 @@ export default function Legend() {
     !showGrowthHeat &&
     !showGapHeat &&
     !showNdviHeat &&
-    !showThermalHeat &&
-    !showWater &&
-    !showFlood
+    !showGreenspace &&
+    !showThermalHeat
   )
     return null;
 
@@ -108,20 +108,36 @@ export default function Legend() {
 
       {showNdviHeat && (
         <HeatmapLegendBar
-          title="Vegetation & NDVI Canopy"
-          minLabel="Sparse"
-          maxLabel="Dense Canopy"
-          gradient="linear-gradient(90deg, #d9f99d, #84cc16, #22c55e, #14532d)"
+          title="Vegetation & NDVI (Sentinel-2)"
+          minLabel="Sparse (low NDVI)"
+          maxLabel="Dense Canopy (high NDVI)"
+          gradient="linear-gradient(90deg, #a16207, #d9f99d, #84cc16, #22c55e, #14532d)"
         />
       )}
 
+      {showGreenspace && (
+        <div className="mb-2.5">
+          <div className="label-caps mb-1 font-bold">Green Space</div>
+          <Row color="#16a34a" label="Parks & green land parcels" />
+        </div>
+      )}
+
       {showThermalHeat && (
-        <HeatmapLegendBar
-          title="Urban Heat Island (UHI)"
-          minLabel="Cool Buffer"
-          maxLabel="Extreme Thermal Stress"
-          gradient="linear-gradient(90deg, #3b82f6, #eab308, #f97316, #b91c1c)"
-        />
+        thermal.date ? (
+          <HeatmapLegendBar
+            title={`Urban Heat Island — LST ${thermal.ok ? "" : `(stale since ${thermal.date})`}`}
+            minLabel="Relative low"
+            maxLabel="Relative high"
+            gradient="linear-gradient(90deg, #3b82f6, #eab308, #f97316, #b91c1c)"
+          />
+        ) : (
+          <div className="mb-2.5">
+            <div className="label-caps mb-1 font-bold">Urban Heat Island</div>
+            <span className="text-[10.5px] font-semibold text-foreground/70">
+              Not yet available — raster not published
+            </span>
+          </div>
+        )
       )}
 
       {showPrediction && (
@@ -147,21 +163,6 @@ export default function Legend() {
         <div className="mb-2.5">
           <div className="label-caps mb-1 font-bold">Infrastructure Gap Grid</div>
           <Row color="#ef4444" label="Pop >3.5km from hospital" />
-        </div>
-      )}
-
-      {showFlood && (
-        <div className="mb-2.5">
-          <div className="label-caps mb-1.5 font-bold">Flood Risk</div>
-          <Row color={FLOOD_COLORS["high"]} label="High (water ±150 m)" />
-          <Row color={FLOOD_COLORS["medium"]} label="Medium (150–400 m)" />
-        </div>
-      )}
-
-      {showWater && (
-        <div className="mb-2.5">
-          <div className="label-caps mb-1.5 font-bold">Water Bodies</div>
-          <Row color="#38bdf8" label="Lakes, reservoirs, rivers" />
         </div>
       )}
 

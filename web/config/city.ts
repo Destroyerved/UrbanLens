@@ -75,7 +75,11 @@ export const HOT_PICKS: string[] = [
   "surat",
   "vadodara",
   "rajkot",
+  "bhavnagar",
   "gandhinagar",
+  "jamnagar",
+  "junagadh",
+  "kutch",
 ];
 
 /** The area the app opens on. The active one at runtime lives in the store. */

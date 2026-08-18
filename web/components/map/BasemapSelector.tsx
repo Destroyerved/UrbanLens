@@ -54,6 +54,7 @@ export default function BasemapSelector() {
           width: isOpen ? 340 : 180,
           height: isOpen ? 280 : 42,
           borderRadius: isOpen ? 24 : 21,
+          x: isOpen ? 80 : 0,
         }}
         transition={{ type: "spring", damping: 28, stiffness: 420, mass: 0.6 }}
         data-glow

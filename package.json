@@ -1,16 +1,18 @@
 {
-  "name": "urbanlens",
-  "private": true,
+  "name": "urbanlens-root",
   "version": "0.1.0",
-  "description": "AI-powered urban planning and land intelligence — Python spatial engine + Next.js app.",
+  "private": true,
+  "description": "UrbanLens — AI-Powered Urban Planning & Land Intelligence Platform",
   "type": "module",
   "scripts": {
     "dev": "node scripts/dev.mjs",
+    "setup": "npm install --prefix web && python -m pip install -r backend/requirements.txt",
     "engine": "python -m uvicorn app.main:app --port 8000 --app-dir backend",
     "web": "npm run dev --prefix web",
     "build": "npm run build --prefix web",
-    "demo": "npm run demo --prefix web",
-    "setup": "npm install --prefix web && python -m pip install -r backend/requirements.txt",
-    "verify:ui": "npm run verify:ui --prefix web"
+    "start": "npm run start --prefix web",
+    "lint": "npm run lint --prefix web",
+    "demo": "node web/scripts/demo-run.mjs",
+    "verify:ui": "node web/scripts/verify-ui.mjs"
   }
 }

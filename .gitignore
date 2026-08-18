@@ -1,6 +1,22 @@
+# Dependencies
+node_modules/
+web/node_modules/
+landing-page/node_modules/
+
+# Next.js build output
+.next/
+web/.next/
+landing-page/.next/
+out/
+web/out/
+build/
+web/build/
+
 # Python caches
 __pycache__/
 *.pyc
+.venv/
+backend/.venv/
 
 # Fetch logs / error dumps
 raw/osm/*.log
@@ -9,14 +25,12 @@ raw/osm/*_log.txt
 
 # Run logs
 logs/
-
-# Python
-.venv/
+*.log
+backend/err.log
+backend/out.log
 
 # Runtime artifacts (regenerable, never commit)
 backend/urbanlens.db
-backend/err.log
-backend/out.log
 
 # Secrets — never commit credentials
 *.cdse_token
@@ -25,9 +39,8 @@ backend/out.log
 .env.*
 *.token
 credentials.json
+.DS_Store
 
-# backend/models/ is deliberately NOT ignored. The trained development model is
-# what makes the 2030 growth layer an actual classifier (PRD §44) rather than
-# the proximity heuristic it silently falls back to; ignoring it meant every
-# clone served the fallback while the UI described a model. ~2.8 MB of JSON,
-# regenerated with: python -m app.ml.train <city>
+# Temporary / test folders
+landing-delivery/
+landing-page/

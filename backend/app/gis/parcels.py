@@ -489,6 +489,17 @@ def enrich(ds, parcels: list[Parcel]) -> None:
 @lru_cache(maxsize=48)
 def get_parcels(city_id: str) -> list[Parcel]:
     from app.data.loader import get_dataset
+    from app.core.config import get_city
+
+    city = get_city(city_id)
+    if city.composite_of:
+        # Merge pre-computed & enriched parcels from member districts
+        # For huge composites (e.g. state-level Gujarat), limit to avoid browser memory overload
+        members = city.composite_of if len(city.composite_of) <= 4 else city.composite_of[:4]
+        out: list[Parcel] = []
+        for m in members:
+            out.extend(get_parcels(m))
+        return out
 
     ds = get_dataset(city_id)
     ps = build_parcels(ds)

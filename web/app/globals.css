@@ -70,21 +70,17 @@
   --critical: 0 85% 62%;
   --gov: 214 95% 65%;
 
-  /* Liquid Glass — Ultra Translucent Dark */
-  --glass-bg: rgba(10, 15, 26, 0.35);
-  --glass-bg-strong: rgba(8, 12, 22, 0.45);
-  --glass-card-bg: rgba(255, 255, 255, 0.08);
-  --glass-border: rgba(255, 255, 255, 0.30);
-  --glass-border-subtle: rgba(255, 255, 255, 0.18);
-  --glass-inset-1: inset 1.5px 1.5px 1px 0 rgba(255, 255, 255, 0.55);
-  --glass-inset-2: inset -1px -1px 1px 1px rgba(255, 255, 255, 0.18);
-  --glass-shadow: 0 10px 36px 0 rgba(0, 0, 0, 0.50), 0 0 24px rgba(0, 0, 0, 0.25);
-  --glass-shadow-strong: 0 20px 56px 0 rgba(0, 0, 0, 0.65), 0 0 36px rgba(0, 0, 0, 0.35);
+  /* Liquid Glass — Ultra Translucent Dark Glassmorphism */
+  --glass-bg: rgba(10, 15, 28, 0.42);
+  --glass-bg-strong: rgba(8, 12, 24, 0.52);
+  --glass-card-bg: rgba(255, 255, 255, 0.06);
+  --glass-border: rgba(255, 255, 255, 0.22);
+  --glass-border-subtle: rgba(255, 255, 255, 0.12);
+  --glass-inset-1: inset 1.5px 1.5px 1px 0 rgba(255, 255, 255, 0.45);
+  --glass-inset-2: inset -1px -1px 1px 1px rgba(255, 255, 255, 0.12);
+  --glass-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.35), 0 0 20px rgba(56, 189, 248, 0.08);
+  --glass-shadow-strong: 0 20px 50px 0 rgba(0, 0, 0, 0.45), 0 0 30px rgba(56, 189, 248, 0.12);
   --glass-ease: cubic-bezier(0.175, 0.885, 0.32, 1.2);
-
-  --shadow-1: 0 2px 8px rgba(0, 0, 0, 0.45);
-  --shadow-2: 0 8px 30px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.35);
-  --shadow-3: 0 18px 50px rgba(0, 0, 0, 0.68), 0 4px 16px rgba(0, 0, 0, 0.45);
 }
 
 .dim {
@@ -105,20 +101,16 @@
   --gov: 260 95% 68%;
 
   /* Liquid Glass — Ultra Translucent Dim */
-  --glass-bg: rgba(18, 12, 30, 0.38);
-  --glass-bg-strong: rgba(15, 10, 26, 0.48);
-  --glass-card-bg: rgba(255, 255, 255, 0.09);
-  --glass-border: rgba(192, 132, 252, 0.35);
-  --glass-border-subtle: rgba(192, 132, 252, 0.20);
-  --glass-inset-1: inset 1.5px 1.5px 1px 0 rgba(255, 255, 255, 0.55);
-  --glass-inset-2: inset -1px -1px 1px 1px rgba(168, 85, 247, 0.25);
-  --glass-shadow: 0 10px 36px 0 rgba(0, 0, 0, 0.55), 0 0 24px rgba(147, 51, 234, 0.15);
-  --glass-shadow-strong: 0 20px 56px 0 rgba(0, 0, 0, 0.70), 0 0 36px rgba(147, 51, 234, 0.25);
+  --glass-bg: rgba(18, 12, 30, 0.42);
+  --glass-bg-strong: rgba(15, 10, 26, 0.52);
+  --glass-card-bg: rgba(255, 255, 255, 0.07);
+  --glass-border: rgba(192, 132, 252, 0.30);
+  --glass-border-subtle: rgba(192, 132, 252, 0.16);
+  --glass-inset-1: inset 1.5px 1.5px 1px 0 rgba(255, 255, 255, 0.45);
+  --glass-inset-2: inset -1px -1px 1px 1px rgba(168, 85, 247, 0.18);
+  --glass-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.40), 0 0 24px rgba(147, 51, 234, 0.12);
+  --glass-shadow-strong: 0 20px 50px 0 rgba(0, 0, 0, 0.50), 0 0 36px rgba(147, 51, 234, 0.18);
   --glass-ease: cubic-bezier(0.175, 0.885, 0.32, 1.2);
-
-  --shadow-1: 0 2px 8px rgba(0, 0, 0, 0.45);
-  --shadow-2: 0 8px 30px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.35);
-  --shadow-3: 0 18px 50px rgba(0, 0, 0, 0.68), 0 4px 16px rgba(0, 0, 0, 0.45);
 }
 
 .dim .glass,
@@ -145,32 +137,93 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* =========================== Glass Scrollbar System =========================== */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.22) transparent;
+}
+
+.light * {
+  scrollbar-color: rgba(0, 0, 0, 0.22) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.22);
+  border-radius: 9999px;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: background-color 0.2s ease;
+}
+
+.light ::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.45);
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.5);
+}
+
+.light ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.45);
+}
+
+::-webkit-scrollbar-button {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 
 /* ============================== Liquid Glass System ============================== */
 
 .glass {
   background: var(--glass-bg);
-  -webkit-backdrop-filter: blur(16px) saturate(200%);
-  backdrop-filter: blur(16px) saturate(200%);
+  -webkit-backdrop-filter: blur(24px) saturate(190%);
+  backdrop-filter: blur(24px) saturate(190%);
   border: 1px solid var(--glass-border);
   box-shadow: var(--glass-shadow), var(--glass-inset-1), var(--glass-inset-2);
 }
 
 .glass-strong {
   background: var(--glass-bg-strong);
-  -webkit-backdrop-filter: blur(20px) saturate(210%);
-  backdrop-filter: blur(20px) saturate(210%);
+  -webkit-backdrop-filter: blur(28px) saturate(200%);
+  backdrop-filter: blur(28px) saturate(200%);
   border: 1px solid var(--glass-border);
   box-shadow: var(--glass-shadow-strong), var(--glass-inset-1), var(--glass-inset-2);
 }
 
 .glass-card {
   background: var(--glass-card-bg);
-  -webkit-backdrop-filter: blur(12px) saturate(180%);
-  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  backdrop-filter: blur(16px) saturate(180%);
   border: 1px solid var(--glass-border-subtle);
   box-shadow: var(--shadow-1), var(--glass-inset-1), var(--glass-inset-2);
   transition: transform 150ms ease;
+}
+
+.glass-glow-card {
+  background: var(--glass-card-bg);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid var(--glass-border-subtle);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15), var(--glass-inset-1);
 }
 
 .glass-card:hover {
@@ -492,4 +545,17 @@ button,
     transparent 100%
   );
   opacity: 1;
+}
+
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

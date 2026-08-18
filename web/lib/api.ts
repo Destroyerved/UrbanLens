@@ -77,7 +77,6 @@ export function apiPost<T>(path: string, body: unknown) {
   return request<T>(path, { method: "POST", body: JSON.stringify(body) });
 }
 
-/** POST that returns a binary body (PDF, etc.) as a Blob instead of JSON. */
 export async function apiPostPdf(path: string, body: unknown): Promise<Blob> {
   let res: Response;
   try {
@@ -97,7 +96,7 @@ export async function apiPostPdf(path: string, body: unknown): Promise<Blob> {
     const text = await res.text().catch(() => "");
     throw new ApiError(text || res.statusText, res.status, path);
   }
-  return await res.blob();
+  return res.blob();
 }
 
 /** Is the engine up? Used to show an actionable message rather than a blank panel. */

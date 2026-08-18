@@ -1,13 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { FileDown, FlaskConical, Landmark, User, X } from "lucide-react";
+import { FlaskConical, Landmark, User, X } from "lucide-react";
 import { Section } from "@/components/panels/PanelShell";
 import { Badge } from "@/components/ui/badge";
 import { SegmentedScoreBar, FactorRows, MiniScore } from "@/components/shared/ScoreBar";
 import { useApp } from "@/lib/store";
-import { downloadRecommendationPdf } from "@/lib/export";
 import { PARCEL_BY_ID } from "@/data/parcels";
 import { WARD_BY_ID } from "@/data/wards";
 import { fetchParcelIntel, type ParcelIntel } from "@/services/parcels";
@@ -24,13 +23,12 @@ function Attr({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
+
 export default function ParcelDrawer() {
   const selectedParcelId = useApp((s) => s.selectedParcelId);
   const selectParcel = useApp((s) => s.selectParcel);
   const setSimTarget = useApp((s) => s.setSimTarget);
   const setMode = useApp((s) => s.setMode);
-  const [exporting, setExporting] = useState(false);
-  const [exportError, setExportError] = useState<string | null>(null);
 
   const parcel = selectedParcelId ? PARCEL_BY_ID.get(selectedParcelId) : null;
 
@@ -52,19 +50,6 @@ export default function ParcelDrawer() {
     };
   }, [selectedParcelId]);
 
-  const exportPdf = async () => {
-    if (!parcel) return;
-    setExporting(true);
-    setExportError(null);
-    try {
-      await downloadRecommendationPdf(parcel.id, intel?.recs[0]?.type);
-    } catch {
-      setExportError("Export failed — engine unreachable.");
-    } finally {
-      setExporting(false);
-    }
-  };
-
   return (
     <AnimatePresence>
       {parcel && intel && (
@@ -74,7 +59,7 @@ export default function ParcelDrawer() {
           animate={{ x: 0, opacity: 1 }}
           exit={{ x: 400, opacity: 0 }}
           transition={{ type: "spring", stiffness: 380, damping: 40 }}
-          className="glass-strong pointer-events-auto absolute bottom-3 right-3 top-[64px] z-[40] flex w-[356px] flex-col overflow-hidden rounded-2xl shadow-elev-3 backdrop-blur-xl"
+          className="glass-strong pointer-events-auto absolute bottom-3 right-3 top-[64px] z-[30] flex w-[356px] flex-col overflow-hidden rounded-2xl shadow-elev-3"
         >
           {/* Header */}
           <div className="border-b border-border/80 bg-surface-2/40 px-4 py-3 backdrop-blur-md">
@@ -87,9 +72,8 @@ export default function ParcelDrawer() {
                 </div>
               </div>
               <button
-                type="button"
                 onClick={() => selectParcel(null)}
-                className="grid h-7 w-7 place-items-center rounded-xl text-muted-foreground transition-all hover:bg-surface-3 hover:text-foreground active:scale-95 cursor-pointer"
+                className="grid h-7 w-7 place-items-center rounded-xl text-muted-foreground transition-all hover:bg-surface-3 hover:text-foreground active:scale-95"
                 aria-label="Close parcel drawer"
               >
                 <X size={15} />
@@ -215,24 +199,11 @@ export default function ParcelDrawer() {
           {/* Actions */}
           <div className="border-t border-border/80 bg-surface-2/40 p-3 backdrop-blur-md">
             <button
-              type="button"
-              onClick={exportPdf}
-              disabled={exporting}
-              className="flex h-10 w-full items-center justify-center gap-2 rounded-2xl border border-border bg-surface-3/70 text-[12.5px] font-bold text-foreground shadow-sm transition-all hover:scale-[1.01] hover:bg-surface-3 active:scale-95 disabled:opacity-50 cursor-pointer"
-            >
-              <FileDown size={15} />
-              <span>{exporting ? "Generating…" : "Export recommendation (PDF)"}</span>
-            </button>
-            {exportError && (
-              <div className="mt-1.5 text-center text-[11px] font-medium text-critical">{exportError}</div>
-            )}
-            <button
-              type="button"
               onClick={() => {
                 setSimTarget(parcel.id);
                 setMode("simulator");
               }}
-              className="mt-2 flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-accent text-[13px] font-bold text-accent-foreground shadow-md shadow-accent/25 ring-1 ring-accent/60 transition-all hover:scale-[1.01] hover:brightness-110 active:scale-95 cursor-pointer"
+              className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-accent text-[13px] font-bold text-accent-foreground shadow-md shadow-accent/25 ring-1 ring-accent/60 transition-all hover:scale-[1.01] hover:brightness-110 active:scale-95 cursor-pointer"
             >
               <FlaskConical size={16} />
               <span>Simulate intervention here</span>

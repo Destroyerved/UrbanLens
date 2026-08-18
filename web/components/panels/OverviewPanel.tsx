@@ -1,14 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AlertTriangle, ArrowRight, Landmark, TrendingUp } from "lucide-react";
+import { TrendingUp, AlertTriangle, Landmark, ArrowRight } from "lucide-react";
 import { PanelShell, Section, LoadingBlock } from "./PanelShell";
 import { AnimatedNumber } from "@/components/shared/AnimatedNumber";
 import { GlowCard } from "@/components/ui/spotlight-card";
 import { fetchCityKpis } from "@/services/infrastructure";
 import { useApp } from "@/lib/store";
-import { formatCompact } from "@/lib/utils";
-import { ACTIVE_CITY } from "@/config/city";
+import { formatCompact, formatNumber } from "@/lib/utils";
 
 type Kpis = Awaited<ReturnType<typeof fetchCityKpis>>;
 
@@ -74,21 +73,19 @@ function Kpi({
 }
 
 export default function OverviewPanel() {
-  const city = useApp((s) => s.city);
-  const datasetVersion = useApp((s) => s.datasetVersion);
   const [kpis, setKpis] = useState<Kpis | null>(null);
   const [error, setError] = useState(false);
   const setMode = useApp((s) => s.setMode);
+  const datasetVersion = useApp((s) => s.datasetVersion);
+  const city = useApp((s) => s.city);
   const setCopilotOpen = useApp((s) => s.setCopilotOpen);
 
   useEffect(() => {
+    if (datasetVersion === 0 && !city?.id) return;
     fetchCityKpis()
-      .then((k) => {
-        setKpis(k);
-        setError(false);
-      })
+      .then(setKpis)
       .catch(() => setError(true));
-  }, [city.id, datasetVersion]);
+  }, [datasetVersion, city?.id]);
 
   return (
     <PanelShell
@@ -122,7 +119,11 @@ export default function OverviewPanel() {
                 format={formatCompact}
                 accent="critical"
               />
-              <Kpi label="GLIS parcels tracked" value={kpis.totalParcels} />
+              <Kpi
+                label="GLIS parcels tracked"
+                value={kpis.totalParcels}
+                format={(n) => formatNumber(n)}
+              />
               <Kpi
                 label="Vacant government land"
                 value={kpis.vacantGovtHa}
@@ -139,16 +140,21 @@ export default function OverviewPanel() {
                 glowColor="rgba(56, 189, 248, 0.04)"
                 borderGlowColor="rgba(56, 189, 248, 0.4)"
                 className="group flex w-full items-center gap-2.5 p-3"
+                interactive={true}
               >
                 <TrendingUp size={16} className="shrink-0 text-accent" />
                 <div className="flex-1">
                   <div className="text-[12px] font-semibold text-foreground">
-                    {kpis.topCorridor ? `${kpis.topCorridor.name} expanding` : "Growth corridor active"}
+                    {kpis.topCorridor
+                      ? `${kpis.topCorridor.name} under the strongest growth pressure`
+                      : "NW corridor expanding rapidly"}
                   </div>
                   <div className="text-[10.5px] text-muted-foreground">
                     {kpis.topCorridor
-                      ? `Predicted +${kpis.topCorridor.growthPct}% expansion · ${formatCompact(kpis.topCorridor.population)} residents`
-                      : "Growth pressure detected across primary corridors"}
+                      ? `${kpis.topCorridor.growthPct}% modelled development pressure · ${formatCompact(
+                          kpis.topCorridor.population,
+                        )} residents`
+                      : "Gota & Chandkheda population up ~2.5× since 2018"}
                   </div>
                 </div>
                 <ArrowRight size={13} className="text-muted-foreground transition-transform group-hover:translate-x-0.5" />
@@ -158,6 +164,7 @@ export default function OverviewPanel() {
                 glowColor="rgba(245, 158, 11, 0.04)"
                 borderGlowColor="rgba(245, 158, 11, 0.4)"
                 className="group flex w-full items-center gap-2.5 p-3"
+                interactive={true}
               >
                 <AlertTriangle size={16} className="shrink-0 text-warning" />
                 <div className="flex-1">
@@ -175,6 +182,7 @@ export default function OverviewPanel() {
                 glowColor="rgba(168, 85, 247, 0.04)"
                 borderGlowColor="rgba(168, 85, 247, 0.4)"
                 className="group flex w-full items-center gap-2.5 p-3"
+                interactive={true}
               >
                 <Landmark size={16} className="shrink-0 text-gov" />
                 <div className="flex-1">

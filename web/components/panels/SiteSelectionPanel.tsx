@@ -7,13 +7,14 @@ import {
   Building,
   Check,
   Factory,
-  FileDown,
+  FileText,
   FlaskConical,
   Home,
   Hospital,
   Landmark,
   MapPin,
   Play,
+  Scale,
   School,
   Store,
   Trees,
@@ -26,8 +27,8 @@ import { SegmentedScoreBar } from "@/components/shared/ScoreBar";
 import { AnimatedNumber } from "@/components/shared/AnimatedNumber";
 import { GlowCard } from "@/components/ui/spotlight-card";
 import { useApp } from "@/lib/store";
-import { downloadRecommendationPdf } from "@/lib/export";
 import { WARD_BY_ID } from "@/data/wards";
+import { downloadRecommendationPdf } from "@/lib/export";
 import type { ProjectType, SuitabilityWeights } from "@/types";
 import { cn, scoreTone, toneText } from "@/lib/utils";
 
@@ -60,6 +61,8 @@ export default function SiteSelectionPanel() {
   const weights = useApp((s) => s.siteWeights);
   const setWeights = useApp((s) => s.setSiteWeights);
   const candidates = useApp((s) => s.candidates);
+  const compareOpen = useApp((s) => s.compareOpen);
+  const setCompareOpen = useApp((s) => s.setCompareOpen);
   const analysisRunning = useApp((s) => s.analysisRunning);
   const analysisError = useApp((s) => s.analysisError);
   const runAnalysis = useApp((s) => s.runAnalysis);
@@ -69,20 +72,6 @@ export default function SiteSelectionPanel() {
   const setMode = useApp((s) => s.setMode);
   const flyTo = useApp((s) => s.flyTo);
   const [configOpen, setConfigOpen] = useState(true);
-  const [exportingId, setExportingId] = useState<string | null>(null);
-  const [exportError, setExportError] = useState<string | null>(null);
-
-  const exportCandidate = async (parcelId: string) => {
-    setExportingId(parcelId);
-    setExportError(null);
-    try {
-      await downloadRecommendationPdf(parcelId, siteProject);
-    } catch {
-      setExportError(`Export failed for ${parcelId}.`);
-    } finally {
-      setExportingId(null);
-    }
-  };
 
   const totalWeight = Object.values(weights).reduce((s, v) => s + v, 0);
 
@@ -118,101 +107,89 @@ export default function SiteSelectionPanel() {
           <button
             type="button"
             onClick={() => setConfigOpen((v) => !v)}
-            className="text-[10.5px] font-semibold text-accent hover:underline cursor-pointer"
+            className="text-[11px] font-semibold text-accent hover:underline cursor-pointer"
           >
             {configOpen ? "Collapse" : "Expand"}
           </button>
         }
       >
-        <AnimatePresence initial={false}>
-          {configOpen && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-              className="overflow-hidden"
-            >
-              <div className="glass-card space-y-3 rounded-2xl p-3.5 shadow-sm">
-                <div>
-                  <div className="mb-1 flex justify-between text-[11px]">
-                    <span className="font-medium text-muted-foreground">Minimum land area</span>
-                    <span className="num font-semibold">{constraints.minAreaHa} ha</span>
-                  </div>
-                  <Slider
-                    value={[constraints.minAreaHa]}
-                    min={0.5}
-                    max={15}
-                    step={0.5}
-                    onValueChange={([v]) => setConstraints({ minAreaHa: v })}
-                  />
-                </div>
-
-                <div>
-                  <div className="mb-1 flex justify-between text-[11px]">
-                    <span className="font-medium text-muted-foreground">Max existing built-up</span>
-                    <span className="num font-semibold">{constraints.maxBuiltUpPct ?? 40}%</span>
-                  </div>
-                  <Slider
-                    value={[constraints.maxBuiltUpPct ?? 40]}
-                    min={0}
-                    max={80}
-                    step={5}
-                    onValueChange={([v]) => setConstraints({ maxBuiltUpPct: v })}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between pt-1">
-                  <span className="text-[11.5px] font-medium text-foreground">Exclude flood hazard zones</span>
-                  <Switch
-                    checked={constraints.excludeFloodHazard ?? false}
-                    onCheckedChange={(v) => setConstraints({ excludeFloodHazard: v })}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <span className="text-[11.5px] font-medium text-foreground">Government-owned only</span>
-                  <Switch
-                    checked={constraints.governmentOnly}
-                    onCheckedChange={(v) => setConstraints({ governmentOnly: v })}
-                  />
-                </div>
-
-                <div className="border-t border-border/70 pt-2.5">
-                  <div className="mb-2 flex items-center justify-between">
-                    <span className="label-caps font-bold">Scoring Weights</span>
-                    <span className="num text-[10px] text-muted-foreground">
-                      Total: {totalWeight}%
-                    </span>
-                  </div>
-                  <div className="space-y-2">
-                    {WEIGHT_LABELS.map(({ key, label }) => (
-                      <div key={key}>
-                        <div className="mb-1 flex justify-between text-[10.5px]">
-                          <span className="font-medium text-muted-foreground">{label}</span>
-                          <span className="num font-semibold">{weights[key]}%</span>
-                        </div>
-                        <Slider
-                          value={[weights[key]]}
-                          min={0}
-                          max={50}
-                          step={5}
-                          onValueChange={([v]) => setWeights({ [key]: v })}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
+        {configOpen && (
+          <div className="space-y-3.5">
+            <div className="space-y-2">
+              <div className="label-caps">Hard Constraints</div>
+              <div className="flex items-center justify-between">
+                <span className="text-[11.5px]">Govt Land Only</span>
+                <Switch
+                  checked={constraints.governmentOnly}
+                  onCheckedChange={(governmentOnly) => setConstraints({ governmentOnly })}
+                />
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+              <div className="flex items-center justify-between">
+                <span className="text-[11.5px]">Exclude High Flood</span>
+                <Switch
+                  checked={constraints.lowFloodOnly}
+                  onCheckedChange={(lowFloodOnly) => setConstraints({ lowFloodOnly })}
+                />
+              </div>
+              <div>
+                <div className="flex justify-between text-[11.5px]">
+                  <span>Min Parcel Size</span>
+                  <span className="num font-semibold text-accent">{constraints.minAreaHa} ha</span>
+                </div>
+                <Slider
+                  min={0.1}
+                  max={5}
+                  step={0.1}
+                  value={[constraints.minAreaHa]}
+                  onValueChange={([minAreaHa]) => setConstraints({ minAreaHa })}
+                  className="mt-1.5"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2.5 border-t border-border pt-3">
+              <div className="flex items-center justify-between">
+                <span className="label-caps">Scoring Weights</span>
+                <span
+                  className={cn(
+                    "num text-[10px] font-semibold",
+                    totalWeight === 100 ? "text-good" : "text-warning"
+                  )}
+                >
+                  {totalWeight}% total
+                </span>
+              </div>
+              {WEIGHT_LABELS.map(({ key, label }) => (
+                <div key={key}>
+                  <div className="flex justify-between text-[11px]">
+                    <span className="text-muted-foreground">{label}</span>
+                    <span className="num font-semibold">{weights[key]}%</span>
+                  </div>
+                  <Slider
+                    min={0}
+                    max={50}
+                    step={5}
+                    value={[weights[key]]}
+                    onValueChange={([v]) => setWeights({ [key]: v })}
+                    className="mt-1"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </Section>
 
       <button
-        onClick={runAnalysis}
+        type="button"
         disabled={analysisRunning}
-        className="group flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-accent text-[13px] font-bold text-accent-foreground shadow-md shadow-accent/25 ring-1 ring-accent/60 transition-all hover:scale-[1.01] hover:brightness-110 active:scale-95 disabled:opacity-50 cursor-pointer"
+        onClick={runAnalysis}
+        className={cn(
+          "flex h-9 w-full items-center justify-center gap-1.5 rounded-2xl text-[12px] font-bold shadow-elev-2 transition-all active:scale-95 cursor-pointer",
+          analysisRunning
+            ? "bg-accent/40 text-accent-foreground cursor-wait"
+            : "bg-accent text-accent-foreground hover:opacity-90"
+        )}
       >
         <Play size={14} className={cn("fill-current", analysisRunning && "animate-spin")} />
         {analysisRunning ? "Evaluating parcels…" : "Run Multi-Criteria Site Search"}
@@ -230,15 +207,35 @@ export default function SiteSelectionPanel() {
           hint="Constraints are too strict — lower the minimum area or allow private land."
         />
       ) : candidates ? (
-        <Section label={`Best Sites · ${candidates.length} candidates`}>
-          <div className="space-y-2">
+        <Section
+          label={`Best Sites · ${candidates.length} candidates`}
+          className="mt-4"
+          right={
+            candidates.length >= 2 ? (
+              <button
+                type="button"
+                onClick={() => setCompareOpen(!compareOpen)}
+                className={cn(
+                  "px-2.5 py-1 text-[11px] font-bold rounded-full border transition-all flex items-center gap-1.5 shadow-sm cursor-pointer",
+                  compareOpen
+                    ? "bg-accent text-accent-foreground border-accent shadow-[0_0_12px_rgba(56,189,248,0.4)]"
+                    : "glass hover:bg-accent/15 border-white/20 dark:border-white/10 text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <Scale size={13} />
+                <span>Compare</span>
+              </button>
+            ) : undefined
+          }
+        >
+          <div className="space-y-3">
             {candidates.map((c) => (
               <GlowCard
                 key={c.parcelId}
-                glowColor={c.rank === 1 ? "rgba(56, 189, 248, 0.06)" : "rgba(56, 189, 248, 0.03)"}
-                borderGlowColor={c.rank === 1 ? "rgba(56, 189, 248, 0.5)" : "rgba(56, 189, 248, 0.35)"}
+                glowColor={c.rank === 1 ? "rgba(56, 189, 248, 0.08)" : "rgba(56, 189, 248, 0.04)"}
+                borderGlowColor={c.rank === 1 ? "rgba(56, 189, 248, 0.6)" : "rgba(56, 189, 248, 0.4)"}
                 className={cn(
-                  "p-3.5 shadow-sm",
+                  "p-4 shadow-md rounded-2xl",
                   c.rank === 1
                     ? "border-accent/80 bg-accent/15 ring-1 ring-accent/50"
                     : ""
@@ -293,30 +290,8 @@ export default function SiteSelectionPanel() {
                   </div>
                 )}
 
-                <div className="mt-2.5 flex gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => flyTo(c.parcel.centroid, 13.8)}
-                    className="glass flex h-7 flex-1 items-center justify-center gap-1 rounded-xl text-[11px] font-semibold transition-transform hover:scale-[1.02] active:scale-95 cursor-pointer"
-                  >
-                    <MapPin size={11} /> Show on map
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => selectParcel(c.parcelId, true)}
-                    className="glass flex h-7 flex-1 items-center justify-center rounded-xl text-[11px] font-semibold transition-transform hover:scale-[1.02] active:scale-95 cursor-pointer"
-                  >
-                    Open parcel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => exportCandidate(c.parcelId)}
-                    disabled={exportingId === c.parcelId}
-                    className="glass flex h-7 flex-1 items-center justify-center gap-1 rounded-xl text-[11px] font-semibold transition-transform hover:scale-[1.02] active:scale-95 disabled:opacity-50 cursor-pointer"
-                  >
-                    <FileDown size={11} />
-                    {exportingId === c.parcelId ? "Exporting…" : "Export PDF"}
-                  </button>
+                {/* Candidate Action Buttons */}
+                <div className="mt-3 flex flex-col gap-1.5">
                   <button
                     type="button"
                     onClick={() => {
@@ -324,10 +299,35 @@ export default function SiteSelectionPanel() {
                       setSimTarget(c.parcelId);
                       setMode("simulator");
                     }}
-                    className="glass flex h-7 flex-1 items-center justify-center gap-1 rounded-xl bg-accent/20 text-[11px] font-bold text-accent ring-1 ring-accent/40 transition-transform hover:scale-[1.02] active:scale-95 cursor-pointer"
+                    className="flex h-9 w-full items-center justify-center gap-1.5 rounded-xl bg-accent text-accent-foreground text-[12px] font-bold shadow-[0_0_14px_rgba(56,189,248,0.3)] transition-all hover:scale-[1.01] active:scale-95 cursor-pointer"
                   >
-                    <FlaskConical size={11} /> Simulate
+                    <FlaskConical size={13} />
+                    <span>🧪 Simulate on this Site</span>
                   </button>
+
+                  <div className="grid grid-cols-3 gap-1">
+                    <button
+                      type="button"
+                      onClick={() => flyTo(c.parcel.centroid, 13.8)}
+                      className="glass flex h-7 items-center justify-center gap-1 rounded-lg text-[10.5px] font-semibold text-muted-foreground hover:text-foreground transition-all hover:scale-[1.02] active:scale-95 cursor-pointer"
+                    >
+                      <MapPin size={10} /> Locate
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => selectParcel(c.parcelId, true)}
+                      className="glass flex h-7 items-center justify-center rounded-lg text-[10.5px] font-semibold text-muted-foreground hover:text-foreground transition-all hover:scale-[1.02] active:scale-95 cursor-pointer"
+                    >
+                      Parcel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => downloadRecommendationPdf(c.parcelId, siteProject)}
+                      className="glass flex h-7 items-center justify-center gap-1 rounded-lg text-[10.5px] font-semibold text-muted-foreground hover:text-foreground transition-all hover:scale-[1.02] active:scale-95 cursor-pointer"
+                    >
+                      <FileText size={10} /> PDF
+                    </button>
+                  </div>
                 </div>
               </GlowCard>
             ))}

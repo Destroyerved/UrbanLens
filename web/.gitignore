@@ -32,3 +32,6 @@ next-env.d.ts
 
 # vercel
 .vercel
+
+# Real data synced from the spatial engine is committed on purpose so a fresh
+# clone runs on real boundaries; only the local build output is ignored.

@@ -67,7 +67,7 @@ export async function fetchTransitions(
     const k = `${a}>${b}`;
     tally.set(k, (tally.get(k) ?? 0) + p.areaHa);
   }
-  return Array.from(tally.entries())
+  return [...tally.entries()]
     .map(([k, areaHa]) => {
       const [f, t] = k.split(">") as [LandUse, LandUse];
       return { from: f, to: t, areaHa: Math.round(areaHa * 10) / 10 };

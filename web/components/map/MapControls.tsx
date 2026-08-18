@@ -40,14 +40,16 @@ export default function MapControls({
       id: "reset-view",
       label: "Reset View",
       icon: <Locate size={17} />,
-      onClick: () =>
+      onClick: () => {
+        const c = useApp.getState().city;
         getMapInstance()?.flyTo({
-          center: ACTIVE_CITY.center,
-          zoom: ACTIVE_CITY.zoom,
+          center: c.growthCenter ?? c.center,
+          zoom: 12.4,
           bearing: 0,
           pitch: 0,
           duration: 900,
-        }),
+        });
+      },
       active: false,
     },
     {

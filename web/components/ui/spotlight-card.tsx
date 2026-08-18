@@ -98,19 +98,13 @@ export const GlowCard: React.FC<GlowCardProps> = ({
   height,
   customSize = true,
   interactive = true,
-  borderGlowColor,
-  glowSize,
   onClick,
   style,
   ...props
 }) => {
   const cardRef = useRef<HTMLDivElement>(null);
 
-  // Both of these must be pulled out of `props` rather than spread onto the
-  // div: React has no `borderGlowColor` DOM attribute and warns about it. They
-  // reach the styling layer as custom properties the stylesheet already reads,
-  // so the declared API does what its names say instead of being decorative.
-  const { base, spread } = colorNameOrCodeToBase(borderGlowColor ?? glowColor);
+  const { base, spread } = colorNameOrCodeToBase(glowColor);
 
   const getSizeClasses = () => {
     if (customSize) return "";
@@ -123,7 +117,7 @@ export const GlowCard: React.FC<GlowCardProps> = ({
       "--spread": spread,
       "--radius": 16,
       "--border": 1.5,
-      "--spotlight-size": glowSize !== undefined ? `${glowSize}px` : "320px",
+      "--spotlight-size": "320px",
       "--hue": "calc(var(--base) + (var(--xp, 0.5) * var(--spread, 0)))",
       position: "relative",
     };

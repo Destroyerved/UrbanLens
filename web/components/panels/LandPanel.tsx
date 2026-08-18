@@ -5,7 +5,6 @@ import { Landmark, MoveRight, ShieldAlert } from "lucide-react";
 import { PanelShell, Section, EmptyBlock } from "./PanelShell";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { GlowCard } from "@/components/ui/spotlight-card";
 import { useApp } from "@/lib/store";
 import { PARCELS, PARCEL_BY_ID } from "@/data/parcels";
 import { WARD_BY_ID } from "@/data/wards";
@@ -18,7 +17,6 @@ import { cn, scoreTone, toneText } from "@/lib/utils";
  */
 export default function LandPanel() {
   const selectParcel = useApp((s) => s.selectParcel);
-  const city = useApp((s) => s.city);
   const datasetVersion = useApp((s) => s.datasetVersion);
   const [govtOnly, setGovtOnly] = useState(true);
   const [lowRisk, setLowRisk] = useState(true);
@@ -62,11 +60,7 @@ export default function LandPanel() {
       caption="GLIS registry · opportunities · zoning compliance"
     >
       <Section label="Opportunity Filters">
-        <GlowCard
-          glowColor="purple"
-          className="space-y-1.5 p-3.5 shadow-sm"
-          interactive={false}
-        >
+        <div className="glass-card space-y-1.5 rounded-2xl p-3.5 shadow-sm">
           {[
             { label: "Government-owned only", value: govtOnly, set: setGovtOnly },
             { label: "Low environmental risk", value: lowRisk, set: setLowRisk },
@@ -77,7 +71,7 @@ export default function LandPanel() {
               <Switch checked={f.value} onCheckedChange={f.set} />
             </div>
           ))}
-        </GlowCard>
+        </div>
       </Section>
 
       <Section
@@ -93,11 +87,10 @@ export default function LandPanel() {
         ) : (
           <div className="space-y-1.5">
             {opportunities.map(({ parcel, score }) => (
-              <GlowCard
+              <button
                 key={parcel.id}
                 onClick={() => selectParcel(parcel.id, true)}
-                glowColor="purple"
-                className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left"
+                className="glass-card flex w-full items-center gap-2.5 rounded-2xl px-3 py-2.5 text-left transition-all hover:scale-[1.01] hover:border-gov/60"
               >
                 <Landmark size={15} className="shrink-0 text-gov" />
                 <div className="min-w-0 flex-1">
@@ -115,7 +108,7 @@ export default function LandPanel() {
                     Opportunity
                   </div>
                 </div>
-              </GlowCard>
+              </button>
             ))}
           </div>
         )}
@@ -129,11 +122,10 @@ export default function LandPanel() {
           {conflicts.map((c) => {
             const p = PARCEL_BY_ID.get(c.parcelId);
             return (
-              <GlowCard
+              <button
                 key={c.parcelId}
                 onClick={() => selectParcel(c.parcelId, true)}
-                glowColor={c.severity === "high" ? "red" : "orange"}
-                className="w-full px-3 py-2.5 text-left"
+                className="glass-card w-full rounded-2xl px-3 py-2.5 text-left transition-all hover:scale-[1.01] hover:border-critical/60"
               >
                 <div className="flex items-center justify-between">
                   <span className="num text-[12px] font-bold">{c.parcelId}</span>
@@ -151,7 +143,7 @@ export default function LandPanel() {
                     Advisory flag — verify against the official land record.
                   </div>
                 )}
-              </GlowCard>
+              </button>
             );
           })}
         </div>

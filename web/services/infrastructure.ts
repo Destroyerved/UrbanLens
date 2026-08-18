@@ -29,9 +29,12 @@ export interface CoverageNote {
   note: string;
 }
 
+let gapsCache: { wards: WardGap[]; coverage: CoverageNote[] } | null = null;
+
 export async function fetchGapsWithCoverage(): Promise<{ wards: WardGap[]; coverage: CoverageNote[] }> {
+  if (gapsCache) return gapsCache;
   const res = await apiGet<{ wards: ApiWardGap[]; coverage: CoverageNote[] }>("/api/infrastructure/gaps");
-  return {
+  gapsCache = {
     wards: res.wards.map((w) => ({
       wardId: w.ward_code,
       wardName: w.name,
@@ -43,6 +46,7 @@ export async function fetchGapsWithCoverage(): Promise<{ wards: WardGap[]; cover
     })),
     coverage: res.coverage,
   };
+  return gapsCache;
 }
 
 export async function fetchWardGaps(): Promise<WardGap[]> {

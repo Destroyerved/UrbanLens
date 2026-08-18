@@ -8,7 +8,6 @@ import type {
   LngLat,
   MapAction,
   Mode,
-  Parcel,
   ProjectType,
   SimulationResult,
   SiteCandidate,
@@ -16,7 +15,6 @@ import type {
   SuitabilityWeights,
   Year,
 } from "@/types";
-import type { FeatureCollection } from "geojson";
 import { DEFAULT_WEIGHTS } from "@/types";
 import { MODE_PRESETS, type LayerId, type BasemapType } from "@/config/layers";
 import { runSiteSearch, reRankSites } from "@/services/suitability";
@@ -29,9 +27,7 @@ import { setFacilities } from "@/data/facilities";
 import { setGrid } from "@/data/grid";
 import { setVegetation } from "@/data/vegetation";
 import { setGreenspace } from "@/data/greenspace";
-import { setWater } from "@/data/water";
-import { setFlood } from "@/data/flood";
-import { fetchBaseDataset, fetchParcels, fetchVegetation, fetchGreenspace, fetchWater, fetchFlood, type LazyLayer } from "@/lib/dataset";
+import { fetchCityDataset } from "@/lib/dataset";
 import { setApiCity } from "@/lib/api";
 import { cityById, DEFAULT_CITY, type CityConfig } from "@/config/city";
 
@@ -65,15 +61,6 @@ interface AppState {
   datasetVersion: number;
   cityLoading: boolean;
   cityError: string | null;
-  /**
-   * Which lazy layers (parcels, vegetation, greenspace) are loaded for the
-   * current study area. Empty on every city switch; `ensureLayer` fills it on
-   * demand, so heavy layers cost nothing until something asks for them.
-   */
-  lazyLoaded: Partial<Record<LazyLayer, boolean>>;
-  lazyLoading: Partial<Record<LazyLayer, boolean>>;
-  lazyError: string | null;
-  ensureLayer: (layer: LazyLayer) => Promise<void>;
   setCity: (id: string) => Promise<void>;
 
   mode: Mode;
@@ -118,6 +105,8 @@ interface AppState {
   siteWeights: SuitabilityWeights;
   setSiteWeights: (w: Partial<SuitabilityWeights>) => void;
   candidates: SiteCandidate[] | null;
+  compareOpen: boolean;
+  setCompareOpen: (v: boolean) => void;
   analysisRunning: boolean;
   analysisError: string | null;
   runAnalysis: () => Promise<void>;
@@ -173,7 +162,7 @@ function getInitialBasemap(): BasemapType {
       }
     } catch {}
   }
-  return "hybrid";
+  return "terrain";
 }
 
 export const useApp = create<AppState>((set, get) => ({
@@ -196,8 +185,6 @@ export const useApp = create<AppState>((set, get) => ({
     // If clicking current active mode, toggle panel open/closed; if switching mode, ensure panel is open
     const panelOpen = prev.mode === mode ? !prev.panelOpen : true;
     set({ mode, activeLayers: layers, panelOpen });
-    // Parcels-first modes need the heavy parcel layer loaded to be useful.
-    if (layers["parcels"]) void get().ensureLayer("parcels");
   },
 
   basemap: getInitialBasemap(),
@@ -211,23 +198,14 @@ export const useApp = create<AppState>((set, get) => ({
   },
 
   activeLayers: layersFromPreset("overview"),
-  toggleLayer: (id, on) => {
-    const next = on !== undefined ? on : !get().activeLayers[id];
+  toggleLayer: (id, on) =>
     set((s) => ({
       activeLayers: {
         ...s.activeLayers,
-        [id]: next,
+        [id]: on !== undefined ? on : !s.activeLayers[id],
       },
       ...(id === "prediction" && on !== undefined ? { predictionOn: on } : {}),
-    }));
-    if (next) {
-      if (id === "parcels") void get().ensureLayer("parcels");
-      else if (id === "ndvi-heat") void get().ensureLayer("vegetation");
-      else if (id === "greenspace") void get().ensureLayer("greenspace");
-      else if (id === "water") void get().ensureLayer("water");
-      else if (id === "flood-risk") void get().ensureLayer("flood");
-    }
-  },
+    })),
   layerOpacity: {
     population: 0.7,
     "growth-heat": 0.75,
@@ -267,9 +245,6 @@ export const useApp = create<AppState>((set, get) => ({
   datasetVersion: 0,
   cityLoading: false,
   cityError: null,
-  lazyLoaded: {},
-  lazyLoading: {},
-  lazyError: null,
   setCity: async (id) => {
     const city = cityById(id);
     if (get().city.id === city.id && get().datasetVersion > 0) return;
@@ -279,28 +254,21 @@ export const useApp = create<AppState>((set, get) => ({
       city,
       cityLoading: true,
       cityError: null,
-      lazyLoaded: {},
-      lazyLoading: {},
-      lazyError: null,
       candidates: null,
       simResult: null,
       selectedParcelId: null,
       highlightedWardIds: [],
     });
     try {
-      const d = await fetchBaseDataset(city.id);
+      const d = await fetchCityDataset(city.id);
       // Wards first: facilities resolve their ward against them.
       setWards(d.wards);
+      setParcels(d.parcels);
       setRoads(d.roads);
       setFacilities(d.facilities);
       setGrid(d.grid);
-      // Lazy layers reset to empty — the previous city's parcels/vegetation are
-      // gone until ensureLayer refetches them for this one.
-      setParcels([]);
-      setVegetation({ type: "FeatureCollection", features: [] });
-      setGreenspace({ type: "FeatureCollection", features: [] });
-      setWater({ type: "FeatureCollection", features: [] });
-      setFlood({ type: "FeatureCollection", features: [] });
+      setVegetation(d.vegetation);
+      setGreenspace(d.greenspace);
       set((st) => ({ datasetVersion: st.datasetVersion + 1, cityLoading: false }));
     } catch (err) {
       set({
@@ -308,41 +276,6 @@ export const useApp = create<AppState>((set, get) => ({
         cityError:
           err instanceof Error ? err.message : `Could not load ${city.name}.`,
       });
-    }
-  },
-  ensureLayer: async (layer) => {
-    const { city, lazyLoaded, lazyLoading } = get();
-    if (lazyLoaded[layer] || lazyLoading[layer]) return;
-    set((s) => ({ lazyLoading: { ...s.lazyLoading, [layer]: true }, lazyError: null }));
-    try {
-      const data =
-        layer === "parcels"
-          ? await fetchParcels(city.id)
-          : layer === "vegetation"
-            ? await fetchVegetation(city.id)
-            : layer === "greenspace"
-              ? await fetchGreenspace(city.id)
-              : layer === "water"
-                ? await fetchWater(city.id)
-                : await fetchFlood(city.id);
-      // The study area may have changed while this was in flight.
-      if (get().city.id !== city.id) return;
-      if (layer === "parcels") setParcels(data as Parcel[]);
-      else if (layer === "vegetation") setVegetation(data as FeatureCollection);
-      else if (layer === "greenspace") setGreenspace(data as FeatureCollection);
-      else if (layer === "water") setWater(data as FeatureCollection);
-      else setFlood(data as FeatureCollection);
-      set((s) => ({
-        lazyLoading: { ...s.lazyLoading, [layer]: false },
-        lazyLoaded: { ...s.lazyLoaded, [layer]: true },
-        datasetVersion: s.datasetVersion + 1,
-      }));
-    } catch (err) {
-      if (get().city.id !== city.id) return;
-      set((s) => ({
-        lazyLoading: { ...s.lazyLoading, [layer]: false },
-        lazyError: err instanceof Error ? err.message : `Could not load ${layer}.`,
-      }));
     }
   },
 
@@ -371,13 +304,13 @@ export const useApp = create<AppState>((set, get) => ({
     }
   },
   candidates: null,
+  compareOpen: false,
+  setCompareOpen: (compareOpen) => set({ compareOpen }),
   analysisRunning: false,
   analysisError: null,
   runAnalysis: async () => {
     const { siteProject, siteConstraints, siteWeights } = get();
     set({ analysisRunning: true, analysisError: null, candidates: null });
-    // The candidate search works over parcels — make sure they're loaded.
-    await get().ensureLayer("parcels");
     try {
       const candidates = await runSiteSearch(siteProject, siteConstraints, siteWeights);
       set((s) => ({
@@ -401,8 +334,6 @@ export const useApp = create<AppState>((set, get) => ({
   runSim: async () => {
     const { simTargetId, simProject } = get();
     if (!simTargetId) return;
-    // Simulation runs on parcels — make sure they're loaded.
-    await get().ensureLayer("parcels");
     set({ simPhase: "running", simStep: 0, simResult: null });
     for (let i = 0; i < SIM_STEPS.length; i++) {
       set({ simStep: i });
@@ -475,8 +406,6 @@ export const useApp = create<AppState>((set, get) => ({
         s.flyTo(a.center, a.zoom);
         break;
       case "selectParcel":
-        // Ensure parcels are loaded so PARCEL_BY_ID can resolve the target.
-        void get().ensureLayer("parcels");
         s.selectParcel(a.parcelId, true);
         break;
       case "setMode":

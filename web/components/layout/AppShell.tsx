@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ChevronLeft } from "lucide-react";
 import { useApp } from "@/lib/store";
-import { MODE_META } from "@/config/layers";
 import { cn } from "@/lib/utils";
 import MapCanvas from "@/components/map/MapCanvas";
 import MapControls from "@/components/map/MapControls";
@@ -22,29 +21,38 @@ import InfrastructurePanel from "@/components/panels/InfrastructurePanel";
 import LandPanel from "@/components/panels/LandPanel";
 import SiteSelectionPanel from "@/components/panels/SiteSelectionPanel";
 import SimulatorPanel from "@/components/panels/SimulatorPanel";
+import CompareCandidatesPanel from "@/components/panels/CompareCandidatesPanel";
+import CityLoadingOverlay from "@/components/shared/CityLoadingOverlay";
 import { GlassFilter } from "@/components/ui/GlassFilter";
 import { GlobalSpotlight } from "@/components/ui/spotlight-card";
 
 export default function AppShell() {
   const mode = useApp((s) => s.mode);
+  const setCity = useApp((s) => s.setCity);
+  const city = useApp((s) => s.city);
+  const cityLoading = useApp((s) => s.cityLoading);
+  const datasetVersion = useApp((s) => s.datasetVersion);
+  
   const panelOpen = useApp((s) => s.panelOpen);
   const setPanelOpen = useApp((s) => s.setPanelOpen);
   const copilotOpen = useApp((s) => s.copilotOpen);
-  const searchFocused = useApp((s) => s.searchFocused);
-  const setSearchFocused = useApp((s) => s.setSearchFocused);
-  const city = useApp((s) => s.city);
-  const setCity = useApp((s) => s.setCity);
-  const datasetVersion = useApp((s) => s.datasetVersion);
+  const compareOpen = useApp((s) => s.compareOpen);
   const [layersOpen, setLayersOpen] = useState(false);
 
-  // Load real dataset from backend on initial mount
-  useEffect(() => {
-    if (datasetVersion === 0) {
-      void setCity(city.id);
-    }
-  }, [datasetVersion, city.id, setCity]);
-
   const hasActiveRightPanel = copilotOpen || panelOpen;
+
+  // The map layers ship empty and are fetched from the engine, so the study
+  // area has to be loaded before anything renders real geography. `?city=`
+  // makes an area linkable the same way `?mode=` makes a panel linkable.
+  useEffect(() => {
+    const requested =
+      typeof window !== "undefined"
+        ? new URLSearchParams(window.location.search).get("city")
+        : null;
+    void setCity(requested ?? city.id);
+    // Runs once on mount; later changes come from the switcher.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-background">
@@ -54,11 +62,12 @@ export default function AppShell() {
       {/* SVG liquid glass distortion filter definition */}
       <GlassFilter />
 
-      {/* Main website content layer — applies aesthetic optical blur, depth scale and saturation when search is focused */}
+      {/* Main website content layer — applies aesthetic optical blur, depth scale and saturation when city is loading */}
       <div
         className={cn(
-          "absolute inset-0 transition-all duration-400 ease-out",
-          searchFocused && "blur-[8px] scale-[0.99] brightness-[0.92] saturate-[1.25] pointer-events-none select-none"
+          "absolute inset-0 transition-all duration-500 ease-out",
+          (cityLoading || datasetVersion === 0) &&
+            "blur-[10px] scale-[0.99] brightness-[0.90] saturate-[1.2] pointer-events-none select-none"
         )}
       >
         {/* Base: the map never unmounts */}
@@ -68,6 +77,13 @@ export default function AppShell() {
         <div className="pointer-events-none absolute left-4 top-[76px] z-[35]">
           <ModeRail />
         </div>
+
+        {/* Side-by-side Candidate Sites Comparison Panel (Left of right panel) */}
+        <AnimatePresence>
+          {compareOpen && mode === "sites" && (
+            <CompareCandidatesPanel key="compare-candidates-panel" />
+          )}
+        </AnimatePresence>
 
         {/* Contextual intelligence panel on the right OR AI Copilot seamlessly replacing it */}
         <AnimatePresence>
@@ -80,7 +96,7 @@ export default function AppShell() {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 30 }}
               transition={{ duration: 0.18, ease: "easeOut" }}
-              className="pointer-events-auto absolute bottom-5 right-4 top-[76px] z-[30] flex w-[336px] flex-col max-h-[calc(100vh-96px)]"
+              className="pointer-events-auto absolute bottom-5 right-4 top-[76px] z-[30] flex w-[360px] flex-col max-h-[calc(100vh-96px)]"
             >
               <AnimatePresence mode="wait">
                 {mode === "overview" && <OverviewPanel key="overview" />}
@@ -117,11 +133,15 @@ export default function AppShell() {
           )}
         </AnimatePresence>
 
-        {/* Floating map controls on the right, dynamically positioned beside the active panel */}
+        {/* Floating map controls on the right, dynamically positioned beside the active panel or comparison */}
         <div
           className={cn(
             "pointer-events-auto absolute bottom-5 z-[25] flex items-end gap-3 transition-all duration-300 ease-out",
-            hasActiveRightPanel ? "right-[356px]" : "right-4"
+            compareOpen && mode === "sites"
+              ? "right-[910px]"
+              : hasActiveRightPanel
+                ? "right-[380px]"
+                : "right-4"
           )}
         >
           <LayerPanel open={layersOpen} />
@@ -140,24 +160,7 @@ export default function AppShell() {
         </div>
       </div>
 
-      {/* Ethereal Frosted Glow Overlay when search is active */}
-      <AnimatePresence>
-        {searchFocused && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.25 }}
-            onClick={() => setSearchFocused(false)}
-            className="fixed inset-0 z-[40] bg-black/10 dark:bg-black/25 backdrop-blur-sm cursor-pointer"
-          >
-            {/* Ambient Celestial Spotlight directly behind search bar */}
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_75%_40%_at_50%_0%,rgba(56,189,248,0.18),transparent_70%)]" />
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Chrome TopBar sits ABOVE blur layer so search dock remains in sharp crystal focus */}
+      {/* Chrome TopBar sits in fixed sharp position */}
       <div className="pointer-events-none absolute inset-x-4 top-4 z-[50]">
         <TopBar />
       </div>
@@ -165,6 +168,7 @@ export default function AppShell() {
       {/* Top-level Interactive Overlays */}
       <ParcelDrawer />
       <CommandPalette />
+      <CityLoadingOverlay />
     </div>
   );
 }
