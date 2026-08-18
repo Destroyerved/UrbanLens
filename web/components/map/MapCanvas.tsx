@@ -20,11 +20,14 @@ import {
   gapHeatFC,
   vegetationFC,
   greenspaceFC,
+  waterFC,
+  floodFC,
   thermalRasterURL,
   THERMAL_BOUNDS,
   landUseColorExpr,
   FACILITY_COLORS,
   FACILITY_LABELS,
+  FLOOD_COLORS,
 } from "@/lib/mapdata";
 import { circleRing } from "@/lib/geo";
 import { setMapInstance } from "@/lib/mapref";
@@ -211,6 +214,8 @@ export default function MapCanvas() {
       map.addSource("gap-heat", { type: "geojson", data: gapHeatFC() });
       map.addSource("vegetation", { type: "geojson", data: vegetationFC(), promoteId: "id" });
       map.addSource("greenspace", { type: "geojson", data: greenspaceFC() });
+      map.addSource("water", { type: "geojson", data: waterFC(), promoteId: "id" });
+      map.addSource("flood", { type: "geojson", data: floodFC() });
       map.addSource("thermal-raster", {
         type: "image",
         url: thermalRasterURL(),
@@ -475,6 +480,48 @@ export default function MapCanvas() {
         layout: { visibility: "none" },
       });
 
+      // Flood risk (under water) — derived zones: high = water ±150 m, medium = 150–400 m
+      const floodColor: unknown[] = ["match", ["get", "level"]];
+      for (const [level, color] of Object.entries(FLOOD_COLORS)) floodColor.push(level, color);
+      floodColor.push("#d4a017");
+      map.addLayer({
+        id: "flood-fill",
+        type: "fill",
+        source: "flood",
+        paint: {
+          "fill-color": floodColor as never,
+          "fill-opacity": 0.38,
+        },
+        layout: { visibility: "none" },
+      });
+      map.addLayer({
+        id: "flood-line",
+        type: "line",
+        source: "flood",
+        paint: {
+          "line-color": floodColor as never,
+          "line-width": 1,
+          "line-opacity": 0.8,
+        },
+        layout: { visibility: "none" },
+      });
+
+      // Water bodies (on top of flood)
+      map.addLayer({
+        id: "water-fill",
+        type: "fill",
+        source: "water",
+        paint: { "fill-color": "#38bdf8", "fill-opacity": 0.55 },
+        layout: { visibility: "none" },
+      });
+      map.addLayer({
+        id: "water-line",
+        type: "line",
+        source: "water",
+        paint: { "line-color": "#0284c7", "line-width": 1.2, "line-opacity": 0.9 },
+        layout: { visibility: "none" },
+      });
+
       /* ---- sim coverage ring ---- */
       map.addLayer({
         id: "sim-coverage-fill",
@@ -527,6 +574,7 @@ export default function MapCanvas() {
         id: "parcels-fill",
         type: "fill",
         source: "parcels",
+        minzoom: 10,
         paint: {
           "fill-color": landUseColorExpr("use2026") as never,
           "fill-opacity": [
@@ -541,6 +589,7 @@ export default function MapCanvas() {
         id: "parcels-line",
         type: "line",
         source: "parcels",
+        minzoom: 10,
         paint: {
           "line-color": landUseColorExpr("use2026") as never,
           "line-opacity": 0.85,
@@ -718,6 +767,39 @@ export default function MapCanvas() {
       });
       map.on("mouseleave", "greenspace", () => setTooltip(null));
 
+      map.on("mousemove", "water-fill", (e) => {
+        if (dragging || map.isMoving()) return;
+        const f = e.features?.[0];
+        if (!f) return;
+        map.getCanvas().style.cursor = "pointer";
+        const p = f.properties ?? {};
+        const cat = (p.category as string) || "water";
+        const a = typeof p.area_sqm === "number" ? p.area_sqm : 0;
+        setTooltip({
+          x: e.point.x,
+          y: e.point.y,
+          title: (p.name as string) || cat,
+          lines: [`Category · ${cat}`, `Area · ${(a / 10000).toFixed(1)} ha`],
+        });
+      });
+      map.on("mouseleave", "water-fill", () => setTooltip(null));
+
+      map.on("mousemove", "flood-fill", (e) => {
+        if (dragging || map.isMoving()) return;
+        const f = e.features?.[0];
+        if (!f) return;
+        map.getCanvas().style.cursor = "pointer";
+        const p = f.properties ?? {};
+        const a = typeof p.area_sqm === "number" ? p.area_sqm : 0;
+        setTooltip({
+          x: e.point.x,
+          y: e.point.y,
+          title: `${(p.level as string) ?? "medium"} flood risk`,
+          lines: [`Area · ${(a / 10000).toFixed(1)} ha`],
+        });
+      });
+      map.on("mouseleave", "flood-fill", () => setTooltip(null));
+
       map.on("mousemove", "vegetation", (e) => {
         if (dragging || map.isMoving()) return;
         const f = e.features?.[0];
@@ -776,6 +858,8 @@ export default function MapCanvas() {
     push("gap-heat", gapHeatFC());
     push("vegetation", vegetationFC());
     push("greenspace", greenspaceFC());
+    push("water", waterFC());
+    push("flood", floodFC());
     push("gap", gapFC());
     for (const y of YEARS) push(`builtup-${y}`, builtupFC(y));
     push("sim-coverage", { type: "FeatureCollection", features: [] });
@@ -850,6 +934,10 @@ export default function MapCanvas() {
     setV("thermal-heat", !!L["thermal-heat"] && !!thermal.date);
     setV("greenspace", !!L["greenspace"]);
     setV("greenspace-line", !!L["greenspace"]);
+    setV("water-fill", !!L["water"]);
+    setV("water-line", !!L["water"]);
+    setV("flood-fill", !!L["flood-risk"]);
+    setV("flood-line", !!L["flood-risk"]);
     setV("gap", !!L["gap"]);
     setV("prediction", !!L["prediction"]);
     for (const y of YEARS) setV(`builtup-${y}`, !!L["builtup"]);
@@ -889,6 +977,14 @@ export default function MapCanvas() {
       map.setPaintProperty("thermal-heat", "raster-opacity", layerOpacity["thermal-heat"] ?? 0.7);
     if (map.getLayer("greenspace"))
       map.setPaintProperty("greenspace", "fill-opacity", layerOpacity["greenspace"] ?? 0.45);
+    if (map.getLayer("water-fill"))
+      map.setPaintProperty("water-fill", "fill-opacity", layerOpacity["water"] ?? 0.55);
+    if (map.getLayer("water-line"))
+      map.setPaintProperty("water-line", "line-opacity", (layerOpacity["water"] ?? 0.55) * 1.6);
+    if (map.getLayer("flood-fill"))
+      map.setPaintProperty("flood-fill", "fill-opacity", layerOpacity["flood-risk"] ?? 0.38);
+    if (map.getLayer("flood-line"))
+      map.setPaintProperty("flood-line", "line-opacity", (layerOpacity["flood-risk"] ?? 0.38) * 2.1);
   }, [activeLayers, ready, layerOpacity, thermal]);
 
   /* --------------------- year crossfade (builtup) ------------------- */
@@ -1041,6 +1137,20 @@ export default function MapCanvas() {
       essential: false,
     });
   }, [flyTarget]);
+
+  /* Fly to the study area whenever it changes. The map is created once at
+     Ahmedabad; without this every other district loads data into the sources
+     while the camera stays over Ahmedabad, so it looks like nothing works. */
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    map.flyTo({
+      center: city.center,
+      zoom: city.zoom,
+      duration: 1800,
+      essential: true,
+    });
+  }, [city.id, ready]);
 
   return (
     <div className="relative h-full w-full">

@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { FlaskConical, Landmark, User, X } from "lucide-react";
+import { FileDown, FlaskConical, Landmark, User, X } from "lucide-react";
 import { Section } from "@/components/panels/PanelShell";
 import { Badge } from "@/components/ui/badge";
 import { SegmentedScoreBar, FactorRows, MiniScore } from "@/components/shared/ScoreBar";
 import { useApp } from "@/lib/store";
+import { downloadRecommendationPdf } from "@/lib/export";
 import { PARCEL_BY_ID } from "@/data/parcels";
 import { WARD_BY_ID } from "@/data/wards";
 import { fetchParcelIntel, type ParcelIntel } from "@/services/parcels";
@@ -28,6 +29,8 @@ export default function ParcelDrawer() {
   const selectParcel = useApp((s) => s.selectParcel);
   const setSimTarget = useApp((s) => s.setSimTarget);
   const setMode = useApp((s) => s.setMode);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   const parcel = selectedParcelId ? PARCEL_BY_ID.get(selectedParcelId) : null;
 
@@ -48,6 +51,19 @@ export default function ParcelDrawer() {
       alive = false;
     };
   }, [selectedParcelId]);
+
+  const exportPdf = async () => {
+    if (!parcel) return;
+    setExporting(true);
+    setExportError(null);
+    try {
+      await downloadRecommendationPdf(parcel.id, intel?.recs[0]?.type);
+    } catch {
+      setExportError("Export failed — engine unreachable.");
+    } finally {
+      setExporting(false);
+    }
+  };
 
   return (
     <AnimatePresence>
@@ -200,11 +216,23 @@ export default function ParcelDrawer() {
           <div className="border-t border-border/80 bg-surface-2/40 p-3 backdrop-blur-md">
             <button
               type="button"
+              onClick={exportPdf}
+              disabled={exporting}
+              className="flex h-10 w-full items-center justify-center gap-2 rounded-2xl border border-border bg-surface-3/70 text-[12.5px] font-bold text-foreground shadow-sm transition-all hover:scale-[1.01] hover:bg-surface-3 active:scale-95 disabled:opacity-50 cursor-pointer"
+            >
+              <FileDown size={15} />
+              <span>{exporting ? "Generating…" : "Export recommendation (PDF)"}</span>
+            </button>
+            {exportError && (
+              <div className="mt-1.5 text-center text-[11px] font-medium text-critical">{exportError}</div>
+            )}
+            <button
+              type="button"
               onClick={() => {
                 setSimTarget(parcel.id);
                 setMode("simulator");
               }}
-              className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-accent text-[13px] font-bold text-accent-foreground shadow-md shadow-accent/25 ring-1 ring-accent/60 transition-all hover:scale-[1.01] hover:brightness-110 active:scale-95 cursor-pointer"
+              className="mt-2 flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-accent text-[13px] font-bold text-accent-foreground shadow-md shadow-accent/25 ring-1 ring-accent/60 transition-all hover:scale-[1.01] hover:brightness-110 active:scale-95 cursor-pointer"
             >
               <FlaskConical size={16} />
               <span>Simulate intervention here</span>

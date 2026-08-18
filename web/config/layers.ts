@@ -13,6 +13,8 @@ export type LayerId =
   | "ndvi-heat"
   | "thermal-heat"
   | "greenspace"
+  | "water"
+  | "flood-risk"
   | "builtup"
   | "prediction"
   | "gap"
@@ -97,6 +99,8 @@ export const LAYERS: LayerDef[] = [
   { id: "roads", label: "Road Network", category: "Infrastructure", description: "Arterial roads & highways" },
   { id: "facilities", label: "Public Facilities", category: "Infrastructure", description: "Hospitals, schools, parks, transit…" },
   { id: "greenspace", label: "Protected Green Space", category: "Infrastructure", description: "Public parks, gardens, and green reserves", hasOpacity: true },
+  { id: "water", label: "Water Bodies", category: "Land", description: "Lakes, reservoirs, wetlands, and rivers", hasOpacity: true },
+  { id: "flood-risk", label: "Flood Risk", category: "Land", description: "Derived flood-susceptibility zones near water", hasOpacity: true },
   { id: "population", label: "Population Density Heatmap", category: "Heatmaps", description: "Continuous population distribution", hasOpacity: true },
   { id: "growth-heat", label: "2030 Growth Pressure Heatmap", category: "Heatmaps", description: "Predicted urban expansion hotspots", hasOpacity: true },
   { id: "gap-heat", label: "Healthcare Gap Heatmap", category: "Heatmaps", description: "Underserved population deficit intensity", hasOpacity: true },

@@ -1,7 +1,9 @@
 /**
  * Fetch real taluka (sub-district) boundaries from OpenStreetMap.
  *
- * Run: `node scripts/fetch-talukas.mjs`  → data/engine/talukas.json
+ * Run: `node scripts/fetch-talukas.mjs [bbox] [outfile]`
+ *   default bbox  → the original Ahmedabad+Gandhinagar study area
+ *   default out   → data/engine/talukas.json
  *
  * This is what makes peri-urban coverage possible. Municipal wards stop at the
  * corporation limit, but the land that a metropolitan area actually expands into
@@ -25,8 +27,9 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const OUT = join(__dirname, "..", "data", "engine");
 mkdirSync(OUT, { recursive: true });
 
-/** Study area: both districts plus margin. south,west,north,east */
-const BBOX = "22.75,72.25,23.50,72.95";
+/** Study area. south,west,north,east — overridable on the command line. */
+const BBOX = process.argv[2] ?? "22.75,72.25,23.50,72.95";
+const OUTFILE = process.argv[3] ?? join(OUT, "talukas.json");
 
 const ENDPOINTS = [
   "https://overpass-api.de/api/interpreter",
@@ -172,7 +175,7 @@ console.log(`assembled: ${districts.length} districts, ${talukas.length} talukas
 for (const d of districts) console.log(`   district ${d.properties.name} — ${(d.properties.area_sqm / 1e6).toFixed(0)} km²`);
 
 writeFileSync(
-  join(OUT, "talukas.json"),
+  OUTFILE,
   JSON.stringify({
     type: "FeatureCollection",
     features,
@@ -186,4 +189,4 @@ writeFileSync(
     },
   })
 );
-console.log(`✓ wrote ${join(OUT, "talukas.json")}`);
+console.log(`✓ wrote ${OUTFILE}`);

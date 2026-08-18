@@ -83,7 +83,8 @@ export type FacilityType =
   | "transit"
   | "fire"
   | "police"
-  | "govt";
+  | "govt"
+  | "shop";
 
 export interface Facility {
   id: string;

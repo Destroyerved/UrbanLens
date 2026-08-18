@@ -16,8 +16,11 @@ import {
   Flame,
   Leaf,
   Activity,
+  Waves,
+  Droplets,
 } from "lucide-react";
 import { LAYERS, type LayerCategory, type LayerId } from "@/config/layers";
+import type { LazyLayer } from "@/lib/dataset";
 import { useApp } from "@/lib/store";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
@@ -31,6 +34,8 @@ const ICONS: Record<LayerId, React.ReactNode> = {
   roads: <Route size={14} />,
   facilities: <Hospital size={14} />,
   greenspace: <Leaf size={14} />,
+  water: <Droplets size={14} />,
+  "flood-risk": <Waves size={14} />,
   population: <Users size={14} />,
   "growth-heat": <Flame size={14} />,
   "gap-heat": <Activity size={14} />,
@@ -44,11 +49,21 @@ const ICONS: Record<LayerId, React.ReactNode> = {
 
 const CATEGORIES: LayerCategory[] = ["Heatmaps", "Land", "Infrastructure", "Intelligence"];
 
+/** Which lazy dataset a heavy layer id needs fetched before it can render. */
+const LAZY_OF: Partial<Record<LayerId, LazyLayer>> = {
+  parcels: "parcels",
+  "ndvi-heat": "vegetation",
+  greenspace: "greenspace",
+  water: "water",
+  "flood-risk": "flood",
+};
+
 export default function LayerPanel({ open }: { open: boolean }) {
   const activeLayers = useApp((s) => s.activeLayers);
   const toggleLayer = useApp((s) => s.toggleLayer);
   const layerOpacity = useApp((s) => s.layerOpacity);
   const setLayerOpacity = useApp((s) => s.setLayerOpacity);
+  const lazyLoading = useApp((s) => s.lazyLoading);
 
   const activeCount = Object.values(activeLayers).filter(Boolean).length;
 
@@ -127,6 +142,11 @@ export default function LayerPanel({ open }: { open: boolean }) {
                               >
                                 {l.label}
                               </span>
+                              {LAZY_OF[l.id] && lazyLoading[LAZY_OF[l.id]!] && (
+                                <span className="animate-pulse text-[10px] font-bold text-accent">
+                                  loading…
+                                </span>
+                              )}
                             </div>
                             <Switch
                               checked={on}

@@ -7,6 +7,8 @@ import { FACILITIES } from "@/data/facilities";
 import { GRID, BUILTUP_RINGS, urbanPosition } from "@/data/grid";
 import { VEGETATION } from "@/data/vegetation";
 import { GREENSPACE } from "@/data/greenspace";
+import { WATER } from "@/data/water";
+import { FLOOD } from "@/data/flood";
 import { API_BASE } from "@/lib/api";
 
 /**
@@ -46,6 +48,7 @@ const build_parcelsFC = memo((src: typeof PARCELS): FeatureCollection => ({
       use2026: p.landUseByYear[2026],
       conflict: p.zoningConflict,
       government: p.ownership === "government",
+      floodRisk: p.floodRisk,
     },
     geometry: { type: "Polygon", coordinates: [p.ring] },
   })),
@@ -158,6 +161,10 @@ export const gapHeatFC = (): FeatureCollection => build_gapHeatFC(GRID);
 export const vegetationFC = (): FeatureCollection => VEGETATION;
 export const greenspaceFC = (): FeatureCollection => GREENSPACE;
 
+/** Water bodies and derived flood-susceptibility zones (engine-built). */
+export const waterFC = (): FeatureCollection => WATER;
+export const floodFC = (): FeatureCollection => FLOOD;
+
 /** Metro extent the LST raster covers (matches backend BBOX). */
 export const THERMAL_BOUNDS: [number, number, number, number] = [72.0893, 22.7706, 72.8426, 23.4355];
 
@@ -186,6 +193,7 @@ export const FACILITY_COLORS: Record<string, string> = {
   fire: "#f97316",
   police: "#6366f1",
   govt: "#3b82f6",
+  shop: "#ec4899",
 };
 
 export const FACILITY_LABELS: Record<string, string> = {
@@ -197,6 +205,13 @@ export const FACILITY_LABELS: Record<string, string> = {
   fire: "Fire Station",
   police: "Police",
   govt: "Govt Office",
+  shop: "Shop",
+};
+
+/** Flood-susceptibility zone colours (high = water ±150 m, medium = 150–400 m). */
+export const FLOOD_COLORS: Record<string, string> = {
+  high: "#dc2626",
+  medium: "#fbbf24",
 };
 
 /** MapLibre expression: parcel colour from a land-use property. */

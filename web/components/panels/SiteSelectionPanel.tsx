@@ -7,6 +7,7 @@ import {
   Building,
   Check,
   Factory,
+  FileDown,
   FlaskConical,
   Home,
   Hospital,
@@ -25,6 +26,7 @@ import { SegmentedScoreBar } from "@/components/shared/ScoreBar";
 import { AnimatedNumber } from "@/components/shared/AnimatedNumber";
 import { GlowCard } from "@/components/ui/spotlight-card";
 import { useApp } from "@/lib/store";
+import { downloadRecommendationPdf } from "@/lib/export";
 import { WARD_BY_ID } from "@/data/wards";
 import type { ProjectType, SuitabilityWeights } from "@/types";
 import { cn, scoreTone, toneText } from "@/lib/utils";
@@ -67,6 +69,20 @@ export default function SiteSelectionPanel() {
   const setMode = useApp((s) => s.setMode);
   const flyTo = useApp((s) => s.flyTo);
   const [configOpen, setConfigOpen] = useState(true);
+  const [exportingId, setExportingId] = useState<string | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
+
+  const exportCandidate = async (parcelId: string) => {
+    setExportingId(parcelId);
+    setExportError(null);
+    try {
+      await downloadRecommendationPdf(parcelId, siteProject);
+    } catch {
+      setExportError(`Export failed for ${parcelId}.`);
+    } finally {
+      setExportingId(null);
+    }
+  };
 
   const totalWeight = Object.values(weights).reduce((s, v) => s + v, 0);
 
@@ -291,6 +307,15 @@ export default function SiteSelectionPanel() {
                     className="glass flex h-7 flex-1 items-center justify-center rounded-xl text-[11px] font-semibold transition-transform hover:scale-[1.02] active:scale-95 cursor-pointer"
                   >
                     Open parcel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => exportCandidate(c.parcelId)}
+                    disabled={exportingId === c.parcelId}
+                    className="glass flex h-7 flex-1 items-center justify-center gap-1 rounded-xl text-[11px] font-semibold transition-transform hover:scale-[1.02] active:scale-95 disabled:opacity-50 cursor-pointer"
+                  >
+                    <FileDown size={11} />
+                    {exportingId === c.parcelId ? "Exporting…" : "Export PDF"}
                   </button>
                   <button
                     type="button"

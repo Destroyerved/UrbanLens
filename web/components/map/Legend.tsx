@@ -1,7 +1,7 @@
 "use client";
 
 import { useApp } from "@/lib/store";
-import { LANDUSE_COLORS, FACILITY_COLORS, FACILITY_LABELS } from "@/lib/mapdata";
+import { LANDUSE_COLORS, FACILITY_COLORS, FACILITY_LABELS, FLOOD_COLORS } from "@/lib/mapdata";
 
 function Row({ color, label }: { color: string; label: string }) {
   return (
@@ -59,6 +59,8 @@ export default function Legend() {
   const showGapHeat = !!activeLayers["gap-heat"];
   const showNdviHeat = !!activeLayers["ndvi-heat"];
   const showThermalHeat = !!activeLayers["thermal-heat"];
+  const showWater = !!activeLayers["water"];
+  const showFlood = !!activeLayers["flood-risk"];
 
   if (
     !showPrediction &&
@@ -69,7 +71,9 @@ export default function Legend() {
     !showGrowthHeat &&
     !showGapHeat &&
     !showNdviHeat &&
-    !showThermalHeat
+    !showThermalHeat &&
+    !showWater &&
+    !showFlood
   )
     return null;
 
@@ -143,6 +147,21 @@ export default function Legend() {
         <div className="mb-2.5">
           <div className="label-caps mb-1 font-bold">Infrastructure Gap Grid</div>
           <Row color="#ef4444" label="Pop >3.5km from hospital" />
+        </div>
+      )}
+
+      {showFlood && (
+        <div className="mb-2.5">
+          <div className="label-caps mb-1.5 font-bold">Flood Risk</div>
+          <Row color={FLOOD_COLORS["high"]} label="High (water ±150 m)" />
+          <Row color={FLOOD_COLORS["medium"]} label="Medium (150–400 m)" />
+        </div>
+      )}
+
+      {showWater && (
+        <div className="mb-2.5">
+          <div className="label-caps mb-1.5 font-bold">Water Bodies</div>
+          <Row color="#38bdf8" label="Lakes, reservoirs, rivers" />
         </div>
       )}
 

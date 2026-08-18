@@ -18,6 +18,7 @@ import { cn, scoreTone, toneText } from "@/lib/utils";
  */
 export default function LandPanel() {
   const selectParcel = useApp((s) => s.selectParcel);
+  const city = useApp((s) => s.city);
   const datasetVersion = useApp((s) => s.datasetVersion);
   const [govtOnly, setGovtOnly] = useState(true);
   const [lowRisk, setLowRisk] = useState(true);

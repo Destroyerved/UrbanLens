@@ -50,17 +50,24 @@ const FACILITY: Record<string, string> = {
   fire_station: "fire",
   police_station: "police",
   government_office: "govt",
+  shop: "shop",
 };
 
-export interface CityDataset {
+/**
+ * Layers that are fetched lazily, only when something on screen asks for them.
+ * Everything else (wards, facilities, roads, population grid) loads eagerly when
+ * a study area is opened — those five calls are small and the dashboard needs
+ * them immediately.
+ */
+export type LazyLayer = "parcels" | "vegetation" | "greenspace" | "water" | "flood";
+
+/** The eagerly-loaded part of a study area. */
+export interface BaseDataset {
   cityId: string;
-  parcels: Parcel[];
   wards: Ward[];
   roads: Road[];
   facilities: Facility[];
   grid: GridCell[];
-  vegetation: FeatureCollection;
-  greenspace: FeatureCollection;
 }
 
 const round = (n: number, d = 2) => Number(Number(n).toFixed(d));
@@ -173,17 +180,14 @@ interface RoadProps {
   road_type: string;
 }
 
-export async function fetchCityDataset(cityId: string): Promise<CityDataset> {
+export async function fetchBaseDataset(cityId: string): Promise<BaseDataset> {
   const q = { city: cityId };
-  const [wardsFC, parcelsFC, facFC, roadsFC, popFC, predFC, vegFC, greenFC] = await Promise.all([
+  const [wardsFC, facFC, roadsFC, popFC, predFC] = await Promise.all([
     apiGet<FC<WardProps>>("/api/wards", q),
-    apiGet<FC<ParcelProps>>("/api/parcels", { ...q, detail: "full" }),
     apiGet<FC<FacilityProps>>("/api/facilities", q),
     apiGet<FC<RoadProps>>("/api/roads", q),
     apiGet<FC<{ population: number }>>("/api/population", { ...q, step: POP_STEP }),
     apiGet<FC<{ growth_probability: number }>>("/api/growth/prediction", q),
-    fetchOptional<FC<unknown>>("/api/vegetation", q),
-    fetchOptional<FC<unknown>>("/api/greenspace", q),
   ]);
 
   const wards: Ward[] = wardsFC.features.map((f) => {
@@ -204,36 +208,6 @@ export async function fetchCityDataset(cityId: string): Promise<CityDataset> {
         2026: pop,
       },
     } as Ward;
-  });
-
-  const parcels: Parcel[] = parcelsFC.features.map((f) => {
-    const p = f.properties;
-    const landUse = LAND_USE[p.land_use] ?? "vacant";
-    return {
-      id: p.parcel_id,
-      surveyNumber: p.survey_number ?? "—",
-      wardId: p.ward,
-      centroid: p.centroid,
-      ring: snap(outerRing(f.geometry)),
-      areaHa: round(p.area_sqm / 10_000, 2),
-      ownership: p.ownership,
-      zoning: ZONING[p.zoning] ?? "mixed",
-      landUse,
-      landUseByYear: landUseByYear(p, landUse),
-      builtUpPct: p.built_up_percent,
-      vegetationPct: p.vegetation_percent ?? 0,
-      roadDistKm: p.road_km ?? 0,
-      hospitalDistKm: p.hospital_km ?? 0,
-      schoolDistKm: p.school_km ?? 0,
-      parkDistKm: p.park_km ?? 0,
-      transitDistKm: p.transit_km ?? 0,
-      population3km: p.population_3km ?? 0,
-      floodRisk: p.flood_risk,
-      infraReadiness: p.infrastructure_readiness ?? 0,
-      envSensitivity: p.environmental_sensitivity ?? 0,
-      developmentPotential: p.development_potential ?? 0,
-      zoningConflict: Boolean(p.zoning_conflict),
-    } as Parcel;
   });
 
   const facilities: Facility[] = facFC.features
@@ -309,14 +283,73 @@ export async function fetchCityDataset(cityId: string): Promise<CityDataset> {
 
   return {
     cityId,
-    parcels,
     wards,
     roads,
     facilities,
     grid,
-    vegetation: (vegFC as FeatureCollection | null) ?? { type: "FeatureCollection", features: [] },
-    greenspace: (greenFC as FeatureCollection | null) ?? { type: "FeatureCollection", features: [] },
   };
+}
+
+/**
+ * GLIS parcels are the one genuinely heavy layer (full property attributes on
+ * hundreds of polygons), so they load on demand rather than with the study
+ * area. They are what the land/sites/simulator modes and the layer panel work
+ * on, so `ensureLayer("parcels")` is called at those entry points.
+ */
+export async function fetchParcels(cityId: string): Promise<Parcel[]> {
+  const parcelsFC = await apiGet<FC<ParcelProps>>("/api/parcels", {
+    city: cityId,
+    detail: "full",
+  });
+  return parcelsFC.features.map((f) => {
+    const p = f.properties;
+    const landUse = LAND_USE[p.land_use] ?? "vacant";
+    return {
+      id: p.parcel_id,
+      surveyNumber: p.survey_number ?? "—",
+      wardId: p.ward,
+      centroid: p.centroid,
+      ring: snap(outerRing(f.geometry)),
+      areaHa: round(p.area_sqm / 10_000, 2),
+      ownership: p.ownership,
+      zoning: ZONING[p.zoning] ?? "mixed",
+      landUse,
+      landUseByYear: landUseByYear(p, landUse),
+      builtUpPct: p.built_up_percent,
+      vegetationPct: p.vegetation_percent ?? 0,
+      roadDistKm: p.road_km ?? 0,
+      hospitalDistKm: p.hospital_km ?? 0,
+      schoolDistKm: p.school_km ?? 0,
+      parkDistKm: p.park_km ?? 0,
+      transitDistKm: p.transit_km ?? 0,
+      population3km: p.population_3km ?? 0,
+      floodRisk: p.flood_risk,
+      infraReadiness: p.infrastructure_readiness ?? 0,
+      envSensitivity: p.environmental_sensitivity ?? 0,
+      developmentPotential: p.development_potential ?? 0,
+      zoningConflict: Boolean(p.zoning_conflict),
+    } as Parcel;
+  });
+}
+
+export async function fetchVegetation(cityId: string): Promise<FeatureCollection> {
+  const fc = await fetchOptional<FC<unknown>>("/api/vegetation", { city: cityId });
+  return (fc as FeatureCollection | null) ?? { type: "FeatureCollection", features: [] };
+}
+
+export async function fetchGreenspace(cityId: string): Promise<FeatureCollection> {
+  const fc = await fetchOptional<FC<unknown>>("/api/greenspace", { city: cityId });
+  return (fc as FeatureCollection | null) ?? { type: "FeatureCollection", features: [] };
+}
+
+export async function fetchWater(cityId: string): Promise<FeatureCollection> {
+  const fc = await fetchOptional<FC<unknown>>("/api/water", { city: cityId });
+  return (fc as FeatureCollection | null) ?? { type: "FeatureCollection", features: [] };
+}
+
+export async function fetchFlood(cityId: string): Promise<FeatureCollection> {
+  const fc = await fetchOptional<FC<unknown>>("/api/flood", { city: cityId });
+  return (fc as FeatureCollection | null) ?? { type: "FeatureCollection", features: [] };
 }
 
 /**

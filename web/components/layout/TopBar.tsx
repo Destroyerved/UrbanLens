@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { ChevronDown, Search, Sparkles, ScanEye, Check } from "lucide-react";
+import { useMemo, useState } from "react";
+import { ChevronDown, Search, ScanEye, Check } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
-import { CITIES, ACTIVE_CITY } from "@/config/city";
+import { CITIES, HOT_PICKS } from "@/config/city";
 import { useApp } from "@/lib/store";
 import { ExpandingSearchDock } from "@/components/search/ExpandingSearchDock";
 import { LiquidMetalButton } from "@/components/ui/LiquidMetalButton";
@@ -19,6 +19,24 @@ export default function TopBar() {
   const setCity = useApp((s) => s.setCity);
   const cityLoading = useApp((s) => s.cityLoading);
   const [cityOpen, setCityOpen] = useState(false);
+  const [query, setQuery] = useState("");
+
+  const results = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return [];
+    return CITIES.filter((c) => c.name.toLowerCase().includes(q));
+  }, [query]);
+
+  const hotPicks = useMemo(() => {
+    const map = new Map(CITIES.map((c) => [c.id, c]));
+    return HOT_PICKS.map((id) => map.get(id)).filter((c): c is (typeof CITIES)[number] => Boolean(c));
+  }, []);
+
+  const pick = (id: string) => {
+    setCityOpen(false);
+    setQuery("");
+    void setCity(id);
+  };
 
   return (
     <div data-glow className="glass pointer-events-auto flex h-12 items-center gap-2.5 rounded-full pl-3.5 pr-2.5 shadow-elev-2 backdrop-blur-xl">
@@ -63,7 +81,7 @@ export default function TopBar() {
           searchFocused && "blur-[6px] opacity-30 pointer-events-none scale-[0.97]"
         )}
       >
-        {/* City selector */}
+        {/* City selector — search box + hot picks, no scroll-list of 36 */}
         <div className="relative">
           <button
             type="button"
@@ -92,36 +110,87 @@ export default function TopBar() {
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -4, scale: 0.95 }}
                 transition={{ duration: 0.16 }}
-                className="glass-strong absolute right-0 top-10 z-[50] w-60 rounded-2xl p-2 shadow-elev-3 backdrop-blur-xl border border-white/20 dark:border-white/10"
+                className="glass-strong absolute right-0 top-10 z-[50] w-72 rounded-2xl p-2 shadow-elev-3 backdrop-blur-xl border border-white/20 dark:border-white/10"
                 onMouseLeave={() => setCityOpen(false)}
               >
-                {CITIES.map((c) => {
-                  const active = city.id === c.id;
-                  return (
-                    <button
-                      key={c.id}
-                      type="button"
-                      onClick={() => {
-                        void setCity(c.id);
-                        setCityOpen(false);
-                      }}
-                      className={cn(
-                        "flex w-full items-center justify-between rounded-xl px-2.5 py-2 text-left text-[12px] font-semibold transition-colors cursor-pointer",
-                        active
-                          ? "bg-accent/15 text-accent"
-                          : "hover:bg-white/20 dark:hover:bg-white/10 text-foreground"
-                      )}
-                    >
-                      <div>
-                        <div className="flex items-center gap-1.5">
-                          <span>{c.name}</span>
-                        </div>
-                        <div className="text-[10px] text-muted-foreground font-normal">{c.blurb}</div>
-                      </div>
-                      {active && <Check size={13} className="text-accent shrink-0 ml-1.5" />}
-                    </button>
-                  );
-                })}
+                {/* Search box */}
+                <div className="flex items-center gap-2 rounded-xl border border-white/20 dark:border-white/10 bg-white/10 px-2.5 py-1.5 focus-within:ring-1 focus-within:ring-accent/60">
+                  <Search size={13} className="text-muted-foreground shrink-0" />
+                  <input
+                    autoFocus
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Search districts…"
+                    className="w-full bg-transparent text-[12px] font-medium text-foreground placeholder:text-muted-foreground outline-none"
+                  />
+                </div>
+
+                {query.trim() ? (
+                  /* Filtered results */
+                  results.length > 0 ? (
+                    <div className="mt-2 max-h-64 overflow-y-auto">
+                      {results.map((c) => {
+                        const active = city.id === c.id;
+                        return (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onClick={() => pick(c.id)}
+                            className={cn(
+                              "flex w-full items-center justify-between rounded-xl px-2.5 py-2 text-left text-[12px] font-semibold transition-colors cursor-pointer",
+                              active
+                                ? "bg-accent/15 text-accent"
+                                : "hover:bg-white/20 dark:hover:bg-white/10 text-foreground"
+                            )}
+                          >
+                            <div>
+                              <div className="flex items-center gap-1.5">
+                                <span>{c.name}</span>
+                              </div>
+                              <div className="text-[10px] text-muted-foreground font-normal">{c.blurb}</div>
+                            </div>
+                            {active && <Check size={13} className="text-accent shrink-0 ml-1.5" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="mt-2 rounded-xl px-2.5 py-3 text-center text-[11px] text-muted-foreground">
+                      No district matches “{query.trim()}”.
+                    </div>
+                  )
+                ) : (
+                  /* Hot picks when nothing typed yet */
+                  <div className="mt-2">
+                    <div className="px-2.5 pb-1.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+                      Hot picks
+                    </div>
+                    <div className="flex flex-wrap gap-1.5 px-1">
+                      {hotPicks.map((c) => {
+                        const active = city.id === c.id;
+                        return (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onClick={() => pick(c.id)}
+                            className={cn(
+                              "flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors cursor-pointer",
+                              active
+                                ? "bg-accent/20 text-accent ring-1 ring-accent/50"
+                                : "bg-white/10 hover:bg-white/20 dark:hover:bg-white/15 text-foreground"
+                            )}
+                          >
+                            {active && <Check size={11} className="text-accent" />}
+                            {c.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <div className="mt-2 px-2.5 pt-1.5 text-[10px] text-muted-foreground">
+                      <span className="font-semibold text-foreground">33 districts</span> · type to search all
+                    </div>
+                  </div>
+                )}
               </motion.div>
             )}
           </AnimatePresence>

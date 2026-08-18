@@ -55,10 +55,13 @@ function bboxFor(cityId) {
   ].join(",");
 }
 
+// Mirrors first: overpass-api.de is heavily rate-limited and 504s under load.
+// A running fetch already loaded whatever order was current at launch; these
+// edits only affect the next invocation.
 const ENDPOINTS = [
-  "https://overpass-api.de/api/interpreter",
   "https://overpass.kumi.systems/api/interpreter",
   "https://overpass.private.coffee/api/interpreter",
+  "https://overpass-api.de/api/interpreter",
 ];
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -85,7 +88,7 @@ async function overpass(query) {
       } catch (e) {
         console.warn("  failed:", e.message);
         lastErr = e;
-        if (/retryable/.test(e.message)) await sleep(4000 * attempt);
+        if (/retryable/.test(e.message)) await sleep(12000 * attempt);
         else break; // non-retryable → next endpoint
       }
     }
@@ -107,17 +110,19 @@ function facilityType(tags) {
   if (tags.office === "government") return "government_office";
   if (tags.railway === "subway_entrance") return "metro_station";
   if (tags.railway === "station" && (tags.station === "subway" || tags.subway === "yes")) return "metro_station";
+  if (tags.shop) return "shop";
   return null;
 }
 
 const CAP = {
   hospital: 300, clinic: 20, school: 800, college: 3000, park: 20,
   fire_station: 8, police_station: 40, bus_stop: 1, metro_station: 1, government_office: 60,
+  shop: 100,
 };
 const LABEL = {
   hospital: "Hospital", clinic: "Clinic", school: "School", college: "College", park: "Park",
   fire_station: "Fire Station", police_station: "Police Station", bus_stop: "Bus Stop",
-  metro_station: "Metro Station", government_office: "Govt. Office",
+  metro_station: "Metro Station", government_office: "Govt. Office", shop: "Shop",
 };
 
 async function fetchFacilities(BBOX) {
@@ -137,6 +142,7 @@ async function fetchFacilities(BBOX) {
   node["railway"="station"](${BBOX});
   nwr["office"="government"](${BBOX});
   nwr["amenity"="townhall"](${BBOX});
+  nwr["shop"](${BBOX});
 );
 out center tags;`;
   const els = await overpass(q);
@@ -370,9 +376,33 @@ out geom tags;`;
 
 const CITIES = ["ahmedabad", "gandhinagar"];
 const requested = process.argv.slice(2);
-const targets = requested.length ? requested : CITIES;
+let targets = requested.length ? requested : CITIES;
+
+// With no explicit arguments, fetch every district in the generated config.
+if (!requested.length && existsSync(join(OUT, "gujarat_config.json"))) {
+  const cfg = JSON.parse(readFileSync(join(OUT, "gujarat_config.json"), "utf8"));
+  targets = cfg.districts.map((d) => d.id);
+}
+
+// Resume-friendly: skip districts that already have a completed meta file. This
+// lets a restart continue exactly where a previous run stopped (or died), so a
+// rate-limited run never has to re-fetch finished districts.
+const RESUME = !requested.some((a) => a === "--force");
+targets = targets.filter((id) => !RESUME || !existsSync(join(OUT, `${id}_meta.json`)));
 
 for (const cityId of targets) {
+  try {
+    await fetchDistrict(cityId);
+  } catch (err) {
+    // One bad district must not kill the whole run — log it and move on; a later
+    // pass re-runs it (it has no _meta.json, so resume will pick it up).
+    console.error(`! ${cityId} FAILED: ${err.message}`);
+  }
+  // Respect the mirrors' rate limits between districts — slow but steady.
+  await sleep(8000);
+}
+
+async function fetchDistrict(cityId) {
   const BBOX = bboxFor(cityId);
   console.log(`\n=== ${cityId} — bbox ${BBOX} ===`);
 
