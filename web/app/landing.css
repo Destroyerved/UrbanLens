@@ -1,3 +1,5 @@
+@import "../components/urbanlens-globe/styles/globe.css";
+
 /* ==========================================================================
    UrbanLens — cinematic landing page
    Scoped to `.ulc` so the dashboard's design system is untouched.

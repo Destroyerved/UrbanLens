@@ -4,8 +4,8 @@ import { useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
 import { Html } from "@react-three/drei";
-import { CITIES, GUJARAT_CENTER, latLonToVec3, type City } from "./lib/geo";
-import { scrollState } from "./lib/scroll";
+import { CITIES, GUJARAT_CENTER, latLonToVec3, type City } from "../lib/geo";
+import { scrollState } from "../lib/scroll";
 
 const Z = new THREE.Vector3(0, 0, 1);
 

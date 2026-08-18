@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import GlobeCanvas from "@/components/urbanlens-globe/GlobeCanvas";
-import { setProgress } from "@/components/urbanlens-globe/lib/store";
+import { scrollState } from "@/components/urbanlens-globe/lib/scroll";
 import { clamp, stage, stageOpacity } from "@/lib/landing/timeline";
 
 export default function EarthStage() {
@@ -15,9 +15,13 @@ export default function EarthStage() {
     const loop = () => {
       raf = requestAnimationFrame(loop);
       const T = stage.T;
-      // Map stage.T (0 -> 3.8) to globe progress (0 -> 1)
-      const progress = clamp(T / 3.8);
-      setProgress(progress);
+      // Opening narrative (T 0..3.8) -> progress 0..1
+      if (T <= 4.0) {
+        scrollState.progress = clamp(T / 3.8);
+      } else if (T >= 11.6) {
+        // Outro & finale (T >= 11.6) -> return to wide planet view
+        scrollState.progress = 0;
+      }
 
       const { earth: opacity } = stageOpacity(T);
       if (Math.abs(opacity - lastOpacity) > 0.003) {
@@ -41,12 +45,9 @@ export default function EarthStage() {
       aria-hidden="true"
     >
       <GlobeCanvas
-        accent="#16D9F5"
-        atmosphereColor="#7ABEFF"
-        showCities={false}
-        showCityLabels={false}
-        showGrid={true}
-        quality="auto"
+        showMarkers={true}
+        showOutline={true}
+        showStars={true}
         className="size-full"
       />
     </div>
