@@ -1,0 +1,864 @@
+{
+  "state": "Gujarat",
+  "generatedAt": "2026-08-16T20:16:18.317Z",
+  "growth_factor": 1.196,
+  "population_basis": "District totals are Census 2011 (official 26-district figures plus published retro figures for the 8 districts created after 2011; multi-parent children split by area). 2026 = 2011 x 1.196. See generator header for the full reconciliation.",
+  "state_center": [
+    71.326,
+    22.4157
+  ],
+  "state_bbox": [
+    68.1757,
+    20.1195,
+    74.4764,
+    24.7119
+  ],
+  "gujarat": {
+    "id": "gujarat",
+    "name": "Gujarat",
+    "state": "Gujarat",
+    "code": "GJT",
+    "center": [
+      71.326,
+      22.4157
+    ],
+    "bbox": [
+      68.1757,
+      20.1195,
+      74.4764,
+      24.7119
+    ],
+    "population_2011": 60440574,
+    "population": 72286927,
+    "zoom": 6.8,
+    "kind": "composite",
+    "composite_of": [
+      "ahmedabad",
+      "amreli",
+      "anand",
+      "aravalli",
+      "banaskantha",
+      "bharuch",
+      "bhavnagar",
+      "botad",
+      "chhota-udaipur",
+      "dahod",
+      "dang",
+      "devbhumi-dwaraka",
+      "gandhinagar",
+      "gir-somnath",
+      "jamnagar",
+      "junagadh",
+      "kheda",
+      "kutch",
+      "mahesana",
+      "mahisagar",
+      "morbi",
+      "narmada",
+      "navsari",
+      "panchmahal",
+      "patan",
+      "porbandar",
+      "rajkot",
+      "sabarkantha",
+      "surat",
+      "surendranagar",
+      "tapi",
+      "vadodara",
+      "valsad",
+      "vav-tharad"
+    ]
+  },
+  "districts": [
+    {
+      "id": "ahmedabad",
+      "name": "Ahmedabad",
+      "state": "Gujarat",
+      "code": "AHM",
+      "center": [
+        72.2441,
+        22.8994
+      ],
+      "bbox": [
+        71.84,
+        21.9825,
+        72.8426,
+        23.5088
+      ],
+      "radius_km": 48,
+      "area_km2": 7133,
+      "population_2011": 6879794,
+      "population": 8228234,
+      "zoom": 7.6,
+      "kind": "district",
+      "municipality": {
+        "cityId": "ahmedabad",
+        "name": "AMC",
+        "population_2011": 5570585
+      }
+    },
+    {
+      "id": "amreli",
+      "name": "Amreli",
+      "state": "Gujarat",
+      "code": "AMR",
+      "center": [
+        71.3004,
+        21.2982
+      ],
+      "bbox": [
+        70.7676,
+        20.7944,
+        71.6794,
+        22.0413
+      ],
+      "radius_km": 48,
+      "area_km2": 7266,
+      "population_2011": 1514190,
+      "population": 1810971,
+      "zoom": 7.5,
+      "kind": "district",
+      "municipality": null
+    },
+    {
+      "id": "anand",
+      "name": "Anand",
+      "state": "Gujarat",
+      "code": "ANA",
+      "center": [
+        72.7737,
+        22.5319
+      ],
+      "bbox": [
+        72.3415,
+        22.2129,
+        73.2198,
+        22.735
+      ],
+      "radius_km": 30,
+      "area_km2": 2786,
+      "population_2011": 2092745,
+      "population": 2502923,
+      "zoom": 8.9,
+      "kind": "district",
+      "municipality": null
+    },
+    {
+      "id": "aravalli",
+      "name": "Aravalli",
+      "state": "Gujarat",
+      "code": "ARA",
+      "center": [
+        73.2445,
+        23.3774
+      ],
+      "bbox": [
+        72.9712,
+        23.0584,
+        73.656,
+        23.9103
+      ],
+      "radius_km": 32,
+      "area_km2": 3272,
+      "population_2011": 1051746,
+      "population": 1257888,
+      "zoom": 8.7,
+      "kind": "district",
+      "municipality": null
+    },
+    {
+      "id": "banaskantha",
+      "name": "Banaskantha",
+      "state": "Gujarat",
+      "code": "BAN",
+      "center": [
+        72.3915,
+        24.1154
+      ],
+      "bbox": [
+        71.6548,
+        23.8268,
+        73.0281,
+        24.7119
+      ],
+      "radius_km": 44,
+      "area_km2": 6154,
+      "population_2011": 2141666,
+      "population": 2561433,
+      "zoom": 7.8,
+      "kind": "district",
+      "municipality": null
+    },
+    {
+      "id": "bharuch",
+      "name": "Bharuch",
+      "state": "Gujarat",
+      "code": "BHA",
+      "center": [
+        72.895,
+        21.7556
+      ],
+      "bbox": [
+        72.508,
+        21.4213,
+        73.4999,
+        22.2503
+      ],
+      "radius_km": 41,
+      "area_km2": 5294,
+      "population_2011": 1551019,
+      "population": 1855019,
+      "zoom": 8,
+      "kind": "district",
+      "municipality": null
+    },
+    {
+      "id": "bhavnagar",
+      "name": "Bhavnagar",
+      "state": "Gujarat",
+      "code": "BHA",
+      "center": [
+        71.8706,
+        21.4241
+      ],
+      "bbox": [
+        71.4779,
+        21.0013,
+        72.3058,
+        22.1303
+      ],
+      "radius_km": 47,
+      "area_km2": 6856,
+      "population_2011": 2558791,
+      "population": 3060314,
+      "zoom": 7.6,
+      "kind": "district",
+      "municipality": null
+    },
+    {
+      "id": "botad",
+      "name": "Botad",
+      "state": "Gujarat",
+      "code": "BOT",
+      "center": [
+        71.6955,
+        22.0926
+      ],
+      "bbox": [
+        71.3907,
+        21.691,
+        72.0414,
+        22.4025
+      ],
+      "radius_km": 28,
+      "area_km2": 2480,
+      "population_2011": 656005,
+      "population": 784582,
+      "zoom": 9.1,
+      "kind": "district",
+      "municipality": null
+    },
+    {
+      "id": "chhota-udaipur",
+      "name": "Chhota Udaipur",
+      "state": "Gujarat",
+      "code": "CHH",
+      "center": [
+        73.8815,
+        22.1728
+      ],
+      "bbox": [
+        73.4761,
+        21.8708,
+        74.2912,
+        22.5741
+      ],
+      "radius_km": 33,
+      "area_km2": 3478,
+      "population_2011": 1071831,
+      "population": 1281910,
+      "zoom": 8.6,
+      "kind": "district",
+      "municipality": null
+    },
+    {
+      "id": "dahod",
+      "name": "Dahod",
+      "state": "Gujarat",
+      "code": "DAH",
+      "center": [
+        74.047,
+        22.8423
+      ],
+      "bbox": [
+        73.7972,
+        22.5028,
+        74.4764,
+        23.3358
+      ],
+      "radius_km": 34,
+      "area_km2": 3656,
+      "population_2011": 2127086,
+      "population": 2543995,
+      "zoom": 8.5,
+      "kind": "district",
+      "municipality": null
+    },
+    {
+      "id": "dang",
+      "name": "Dang",
+      "state": "Gujarat",
+      "code": "DAN",
+      "center": [
+        73.683,
+        20.7596
+      ],
+      "bbox": [
+        73.4656,
+        20.5618,
+        73.9439,
+        21.0149
+      ],
+      "radius_km": 23,
+      "area_km2": 1728,
+      "population_2011": 228291,
+      "population": 273036,
+      "zoom": 9.6,
+      "kind": "district",
+      "municipality": null
+    },
+    {
+      "id": "devbhumi-dwaraka",
+      "name": "Devbhumi Dwaraka",
+      "state": "Gujarat",
+      "code": "DEV",
+      "center": [
+        69.3631,
+        22.2715
+      ],
+      "bbox": [
+        68.9362,
+        21.7938,
+        69.936,
+        22.48
+      ],
+      "radius_km": 36,
+      "area_km2": 4156,
+      "population_2011": 752484,
+      "population": 899971,
+      "zoom": 8.3,
+      "kind": "district",
+      "municipality": null
+    },
+    {
+      "id": "gandhinagar",
+      "name": "Gandhinagar",
+      "state": "Gujarat",
+      "code": "GAN",
+      "center": [
+        72.6362,
+        23.2179
+      ],
+      "bbox": [
+        72.3362,
+        22.9963,
+        73.0294,
+        23.5676
+      ],
+      "radius_km": 26,
+      "area_km2": 2111,
+      "population_2011": 1391753,
+      "population": 1664537,
+      "zoom": 9.3,
+      "kind": "district",
+      "municipality": {
+        "cityId": "gandhinagar",
+        "name": "GMC",
+        "population_2011": 208299
+      }
+    },
+    {
+      "id": "gir-somnath",
+      "name": "Gir Somnath",
+      "state": "Gujarat",
+      "code": "GIR",
+      "center": [
+        70.7518,
+        20.9037
+      ],
+      "bbox": [
+        70.2391,
+        20.6903,
+        71.2238,
+        21.1696
+      ],
+      "radius_km": 29,
+      "area_km2": 2636,
+      "population_2011": 1217477,
+      "population": 1456102,
+      "zoom": 9,
+      "kind": "district",
+      "municipality": null
+    },
+    {
+      "id": "jamnagar",
+      "name": "Jamnagar",
+      "state": "Gujarat",
+      "code": "JAM",
+      "center": [
+        70.1151,
+        22.3156
+      ],
+      "bbox": [
+        69.7254,
+        21.698,
+        70.663,
+        22.962
+      ],
+      "radius_km": 46,
+      "area_km2": 6588,
+      "population_2011": 1407635,
+      "population": 1683531,
+      "zoom": 7.7,
+      "kind": "district",
+      "municipality": null
+    },
+    {
+      "id": "junagadh",
+      "name": "Junagadh",
+      "state": "Gujarat",
+      "code": "JUN",
+      "center": [
+        70.3975,
+        21.3537
+      ],
+      "bbox": [
+        69.9442,
+        20.9925,
+        70.9479,
+        21.6805
+      ],
+      "radius_km": 40,
+      "area_km2": 5066,
+      "population_2011": 1525605,
+      "population": 1824624,
+      "zoom": 8.1,
+      "kind": "district",
+      "municipality": null
+    },
+    {
+      "id": "kheda",
+      "name": "Kheda",
+      "state": "Gujarat",
+      "code": "KHE",
+      "center": [
+        72.9276,
+        22.8421
+      ],
+      "bbox": [
+        72.5048,
+        22.5001,
+        73.4193,
+        23.2056
+      ],
+      "radius_km": 33,
+      "area_km2": 3430,
+      "population_2011": 1793209,
+      "population": 2144678,
+      "zoom": 8.6,
+      "kind": "district",
+      "municipality": null
+    },
+    {
+      "id": "kutch",
+      "name": "Kutch",
+      "state": "Gujarat",
+      "code": "KUT",
+      "center": [
+        70.5186,
+        23.7577
+      ],
+      "bbox": [
+        68.1757,
+        22.7289,
+        71.762,
+        24.691
+      ],
+      "radius_km": 117,
+      "area_km2": 43320,
+      "population_2011": 2092371,
+      "population": 2502476,
+      "zoom": 7.2,
+      "kind": "district",
+      "municipality": null
+    },
+    {
+      "id": "mahesana",
+      "name": "Mahesana",
+      "state": "Gujarat",
+      "code": "MAH",
+      "center": [
+        72.3527,
+        23.5636
+      ],
+      "bbox": [
+        71.9404,
+        23.0388,
+        72.8667,
+        24.1023
+      ],
+      "radius_km": 38,
+      "area_km2": 4440,
+      "population_2011": 2035064,
+      "population": 2433937,
+      "zoom": 8.2,
+      "kind": "district",
+      "municipality": null
+    },
+    {
+      "id": "mahisagar",
+      "name": "Mahisagar",
+      "state": "Gujarat",
+      "code": "MAH",
+      "center": [
+        73.6163,
+        23.1398
+      ],
+      "bbox": [
+        73.2422,
+        22.9241,
+        74.0195,
+        23.4583
+      ],
+      "radius_km": 28,
+      "area_km2": 2521,
+      "population_2011": 994624,
+      "population": 1189570,
+      "zoom": 9.1,
+      "kind": "district",
+      "municipality": null
+    },
+    {
+      "id": "morbi",
+      "name": "Morbi",
+      "state": "Gujarat",
+      "code": "MOR",
+      "center": [
+        70.972,
+        22.6289
+      ],
+      "bbox": [
+        70.4369,
+        22.3825,
+        71.3596,
+        23.2188
+      ],
+      "radius_km": 39,
+      "area_km2": 4870,
+      "population_2011": 960329,
+      "population": 1148553,
+      "zoom": 8.1,
+      "kind": "district",
+      "municipality": null
+    },
+    {
+      "id": "narmada",
+      "name": "Narmada",
+      "state": "Gujarat",
+      "code": "NAR",
+      "center": [
+        73.6696,
+        21.8682
+      ],
+      "bbox": [
+        73.2967,
+        21.3964,
+        73.9892,
+        22.0821
+      ],
+      "radius_km": 30,
+      "area_km2": 2831,
+      "population_2011": 590379,
+      "population": 706093,
+      "zoom": 8.9,
+      "kind": "district",
+      "municipality": null
+    },
+    {
+      "id": "navsari",
+      "name": "Navsari",
+      "state": "Gujarat",
+      "code": "NAV",
+      "center": [
+        73.1483,
+        20.8611
+      ],
+      "bbox": [
+        72.7224,
+        20.58,
+        73.4969,
+        21.0794
+      ],
+      "radius_km": 27,
+      "area_km2": 2221,
+      "population_2011": 1329472,
+      "population": 1590049,
+      "zoom": 9.2,
+      "kind": "district",
+      "municipality": null
+    },
+    {
+      "id": "panchmahal",
+      "name": "Panchmahal",
+      "state": "Gujarat",
+      "code": "PAN",
+      "center": [
+        73.6558,
+        22.6973
+      ],
+      "bbox": [
+        73.3502,
+        22.2865,
+        73.9282,
+        23.1091
+      ],
+      "radius_km": 32,
+      "area_km2": 3303,
+      "population_2011": 1902828,
+      "population": 2275782,
+      "zoom": 8.7,
+      "kind": "district",
+      "municipality": null
+    },
+    {
+      "id": "patan",
+      "name": "Patan",
+      "state": "Gujarat",
+      "code": "PAT",
+      "center": [
+        72.0619,
+        23.7937
+      ],
+      "bbox": [
+        71.034,
+        23.392,
+        72.4825,
+        24.1553
+      ],
+      "radius_km": 43,
+      "area_km2": 5811,
+      "population_2011": 1343734,
+      "population": 1607106,
+      "zoom": 7.9,
+      "kind": "district",
+      "municipality": null
+    },
+    {
+      "id": "porbandar",
+      "name": "Porbandar",
+      "state": "Gujarat",
+      "code": "POR",
+      "center": [
+        69.7599,
+        21.6626
+      ],
+      "bbox": [
+        69.3712,
+        21.2266,
+        70.1484,
+        21.9794
+      ],
+      "radius_km": 27,
+      "area_km2": 2334,
+      "population_2011": 585449,
+      "population": 700197,
+      "zoom": 9.2,
+      "kind": "district",
+      "municipality": null
+    },
+    {
+      "id": "rajkot",
+      "name": "Rajkot",
+      "state": "Gujarat",
+      "code": "RAJ",
+      "center": [
+        70.7722,
+        22.09
+      ],
+      "bbox": [
+        70.0297,
+        21.5258,
+        71.5092,
+        22.6133
+      ],
+      "radius_km": 49,
+      "area_km2": 7637,
+      "population_2011": 3368775,
+      "population": 4029055,
+      "zoom": 7.5,
+      "kind": "district",
+      "municipality": null
+    },
+    {
+      "id": "sabarkantha",
+      "name": "Sabarkantha",
+      "state": "Gujarat",
+      "code": "SAB",
+      "center": [
+        73.043,
+        23.6862
+      ],
+      "bbox": [
+        72.7234,
+        23.2391,
+        73.4214,
+        24.4984
+      ],
+      "radius_km": 36,
+      "area_km2": 4162,
+      "population_2011": 1376843,
+      "population": 1646704,
+      "zoom": 8.3,
+      "kind": "district",
+      "municipality": null
+    },
+    {
+      "id": "surat",
+      "name": "Surat",
+      "state": "Gujarat",
+      "code": "SUR",
+      "center": [
+        73.06,
+        21.1892
+      ],
+      "bbox": [
+        72.5897,
+        20.8156,
+        73.699,
+        21.5693
+      ],
+      "radius_km": 37,
+      "area_km2": 4379,
+      "population_2011": 6081322,
+      "population": 7273261,
+      "zoom": 8.3,
+      "kind": "district",
+      "municipality": null
+    },
+    {
+      "id": "surendranagar",
+      "name": "Surendranagar",
+      "state": "Gujarat",
+      "code": "SUR",
+      "center": [
+        71.5933,
+        22.7494
+      ],
+      "bbox": [
+        70.9808,
+        22.1237,
+        72.1894,
+        23.5267
+      ],
+      "radius_km": 54,
+      "area_km2": 9190,
+      "population_2011": 1231722,
+      "population": 1473140,
+      "zoom": 7.2,
+      "kind": "district",
+      "municipality": null
+    },
+    {
+      "id": "tapi",
+      "name": "Tapi",
+      "state": "Gujarat",
+      "code": "TAP",
+      "center": [
+        73.6187,
+        21.161
+      ],
+      "bbox": [
+        73.198,
+        20.8086,
+        74.3317,
+        21.5694
+      ],
+      "radius_km": 32,
+      "area_km2": 3157,
+      "population_2011": 807022,
+      "population": 965198,
+      "zoom": 8.7,
+      "kind": "district",
+      "municipality": null
+    },
+    {
+      "id": "vadodara",
+      "name": "Vadodara",
+      "state": "Gujarat",
+      "code": "VAD",
+      "center": [
+        73.3291,
+        22.244
+      ],
+      "bbox": [
+        72.8629,
+        21.8222,
+        73.5662,
+        22.8146
+      ],
+      "radius_km": 36,
+      "area_km2": 4089,
+      "population_2011": 3093795,
+      "population": 3700179,
+      "zoom": 8.4,
+      "kind": "district",
+      "municipality": null
+    },
+    {
+      "id": "valsad",
+      "name": "Valsad",
+      "state": "Gujarat",
+      "code": "VAL",
+      "center": [
+        73.2093,
+        20.3691
+      ],
+      "bbox": [
+        72.7379,
+        20.1195,
+        73.4937,
+        20.7446
+      ],
+      "radius_km": 31,
+      "area_km2": 2972,
+      "population_2011": 1706678,
+      "population": 2041187,
+      "zoom": 8.8,
+      "kind": "district",
+      "municipality": null
+    },
+    {
+      "id": "vav-tharad",
+      "name": "Vav-Tharad",
+      "state": "Gujarat",
+      "code": "VAV",
+      "center": [
+        71.3771,
+        24.2648
+      ],
+      "bbox": [
+        71.2568,
+        23.9252,
+        72.0517,
+        24.6831
+      ],
+      "radius_km": 38,
+      "area_km2": 4614,
+      "population_2011": 978840,
+      "population": 1170693,
+      "zoom": 8.2,
+      "kind": "district",
+      "municipality": null
+    }
+  ]
+}
