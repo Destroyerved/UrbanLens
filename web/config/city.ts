@@ -59,12 +59,7 @@ export const AHMEDABAD_METRO: CityConfig = {
   growthCenter: [72.578, 23.025],
 };
 
-export const CITIES: CityConfig[] = [
-  ...GUJARAT_DISTRICTS.filter((c) => c.id !== "gujarat"),
-  AHMEDABAD_GANDHINAGAR,
-  AHMEDABAD_METRO,
-  ...GUJARAT_DISTRICTS.filter((c) => c.id === "gujarat"),
-];
+export const CITIES: CityConfig[] = GUJARAT_DISTRICTS.filter((c) => c.id !== "gujarat");
 
 /**
  * Quick picks shown in the city switcher. Gujarat's big districts; the search

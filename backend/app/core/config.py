@@ -96,68 +96,12 @@ def _cities_from_config() -> dict[str, City]:
             kind=d.get("kind", "district"),
         )
 
-    # The Gujarat composite is a view over every district.
-    if "gujarat" in cfg:
-        g = cfg["gujarat"]
-        cities["gujarat"] = City(
-            id=g["id"],
-            name=g["name"],
-            state="Gujarat",
-            code=g.get("code", "GJT"),
-            center=tuple(g["center"]),
-            bbox=tuple(g["bbox"]),
-            radius_km=250,
-            population=g["population"],
-            zoom=g.get("zoom", 6.8),
-            kind="composite",
-            composite_of=tuple(g.get("composite_of", list(cities))),
-        )
-
     return cities
 
 
 GUJARAT_CITIES = _cities_from_config()
 
-# Legacy composites, kept as views over the same district data.
-AHMEDABAD_GANDHINAGAR = City(
-    id="ahmedabad-gandhinagar",
-    name="Ahmedabad–Gandhinagar",
-    state="Gujarat",
-    code="AGR",
-    center=(72.58, 23.11),
-    bbox=(72.4493, 22.9139, 72.7015, 23.3113),
-    radius_km=26,
-    population=(GUJARAT_CITIES["ahmedabad"].population + GUJARAT_CITIES["gandhinagar"].population),
-    zoom=10.2,
-    kind="composite",
-    composite_of=("ahmedabad", "gandhinagar"),
-    cores=(GUJARAT_CITIES["ahmedabad"].center, GUJARAT_CITIES["gandhinagar"].center),
-    corridors=[GANDHINAGAR_AXIS, *DEFAULT_CORRIDORS],
-)
-
-AHMEDABAD_METRO = City(
-    id="ahmedabad-metro",
-    name="Ahmedabad Metro Region",
-    state="Gujarat",
-    code="AMR",
-    center=(72.55, 23.08),
-    bbox=(72.0893, 22.7706, 72.8426, 23.4355),
-    radius_km=45,
-    population=(
-        GUJARAT_CITIES["ahmedabad"].population + GUJARAT_CITIES["gandhinagar"].population
-    ),
-    zoom=9.3,
-    kind="composite",
-    composite_of=("ahmedabad", "gandhinagar"),
-    cores=(GUJARAT_CITIES["ahmedabad"].center, GUJARAT_CITIES["gandhinagar"].center),
-    corridors=[GANDHINAGAR_AXIS, *DEFAULT_CORRIDORS],
-)
-
-CITIES: dict[str, City] = {
-    **GUJARAT_CITIES,
-    AHMEDABAD_GANDHINAGAR.id: AHMEDABAD_GANDHINAGAR,
-    AHMEDABAD_METRO.id: AHMEDABAD_METRO,
-}
+CITIES: dict[str, City] = dict(GUJARAT_CITIES)
 DEFAULT_CITY = CITIES.get("ahmedabad", next(iter(CITIES.values())))
 
 

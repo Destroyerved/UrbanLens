@@ -44,3 +44,6 @@ credentials.json
 # Temporary / test folders
 landing-delivery/
 landing-page/
+
+# Archives
+*.zip

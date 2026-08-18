@@ -1102,6 +1102,8 @@ export default function MapCanvas() {
         map.fitBounds(city.bounds, {
           padding,
           maxZoom: 12.6,
+          bearing: 0,
+          pitch: 0,
           duration: 1500,
           essential: true,
         });
@@ -1114,6 +1116,9 @@ export default function MapCanvas() {
     map.flyTo({
       center: city.growthCenter ?? city.center,
       zoom: 12.4,
+      bearing: 0,
+      pitch: 0,
+      padding,
       duration: 1500,
       essential: true,
     });

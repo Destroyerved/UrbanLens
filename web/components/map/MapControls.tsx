@@ -42,12 +42,41 @@ export default function MapControls({
       icon: <Locate size={17} />,
       onClick: () => {
         const c = useApp.getState().city;
-        getMapInstance()?.flyTo({
+        const map = getMapInstance();
+        if (!map) return;
+
+        // Viewport padding clears the left ModeRail (100px) and right Intelligence Panel (390px)
+        const padding = {
+          top: 80,
+          bottom: 80,
+          left: 100,
+          right: 390,
+        };
+
+        if (c.bounds && c.bounds.length === 2) {
+          try {
+            map.fitBounds(c.bounds, {
+              padding,
+              maxZoom: c.zoom ?? 12.4,
+              bearing: 0,
+              pitch: 0,
+              duration: 900,
+              essential: true,
+            });
+            return;
+          } catch {
+            // Fallback to flyTo below
+          }
+        }
+
+        map.flyTo({
           center: c.growthCenter ?? c.center,
-          zoom: 12.4,
+          zoom: c.zoom ?? 12.2,
           bearing: 0,
           pitch: 0,
+          padding,
           duration: 900,
+          essential: true,
         });
       },
       active: false,

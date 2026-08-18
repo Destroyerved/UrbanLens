@@ -76,20 +76,20 @@
       "state": "Gujarat",
       "code": "AHM",
       "center": [
-        72.2441,
-        22.8994
+        72.5714,
+        23.0225
       ],
       "bbox": [
-        71.84,
-        21.9825,
-        72.8426,
-        23.5088
+        72.4193,
+        22.8839,
+        72.7315,
+        23.1705
       ],
       "radius_km": 48,
       "area_km2": 7133,
       "population_2011": 6879794,
       "population": 8228234,
-      "zoom": 7.6,
+      "zoom": 12.2,
       "kind": "district",
       "municipality": {
         "cityId": "ahmedabad",
