@@ -14,6 +14,7 @@ values never shift with file ordering.
 from __future__ import annotations
 
 import hashlib
+import math
 from dataclasses import dataclass, field
 from functools import lru_cache
 
@@ -22,6 +23,8 @@ from shapely.geometry import shape
 
 from app.core.config import City
 from app.gis.raster import haversine_km
+
+from typing import Any
 
 DATA_SEED = 20260814
 
@@ -147,8 +150,240 @@ def _intensity(city: City, lng: float, lat: float) -> float:
     return float(np.clip(best, 0, 100))
 
 
+FILL_MIN_AREA_SQM = 10_000  # slivers smaller than 1 ha are dropped from the gap-fill
+FILL_NEAR_EDGE_M = 400.0    # urban-fringe cell edge (~16 ha)
+FILL_FAR_EDGE_M = 3000.0    # deep-rural cell edge (~9 km2)
+FILL_KM_FULL = 30.0         # cell edge reaches the far size 30 km past a core
+SIMPLIFY_TOLERANCE = 0.00025  # ~25 m Douglas-Peucker for payload/draw reduction
+
+
+def _fill_cell_edge_m(ds, lng: float, lat: float) -> float:
+    """Cell edge grows with distance from the nearest urban core, and shrinks
+    again only in tight settlement cores near the road network — so a town away
+    from the district capital gets fine parcels while open farmland stays coarse."""
+    d = _nearest_core(ds.city, lng, lat)[1]
+    t = min(d / FILL_KM_FULL, 1.0)
+    edge = FILL_NEAR_EDGE_M + (FILL_FAR_EDGE_M - FILL_NEAR_EDGE_M) * t
+    if ds.road_index:
+        d_road = float(ds.road_index.nearest_km(lng, lat))
+        if d_road < 0.5:
+            edge = min(edge, 800.0)
+        elif d_road < 3.0:
+            edge = min(edge, 1500.0)
+    return float(edge)
+
+
+_risk_cache: dict[str, Any | None] = {}
+
+
+def _flood_risk_for(ds):
+    """The DEM-driven risk raster for this district, built once per city."""
+    from app.gis import flood as floodmod
+
+    if not floodmod.DEM_DIR.exists():
+        return None
+    risk = _risk_cache.get(ds.city.id, _sentinel)
+    if risk is _sentinel:
+        risk = floodmod.load_district(ds)
+        _risk_cache[ds.city.id] = risk
+    return risk
+
+
+_sentinel = object()
+
+
+def _water_shapes(ds):
+    """Polygons that should never be filled with a parcel: the land layer's
+    water polygons plus any OSM river line buffered out."""
+    from shapely.geometry import LineString
+
+    out = []
+    for f in ds.land:
+        if f["properties"].get("land_use") == "water":
+            out.append(shape(f["geometry"]))
+    for r in ds.roads:
+        if r["properties"].get("road_type") == "river":
+            line = shape(r["geometry"])
+            if isinstance(line, LineString):
+                out.append(line.buffer(0.0025))  # ~275 m swath
+    return out
+
+
+def _fill_ward(
+    ds, ward_geom, ward_code: str, covered: list, water: list, seq: int
+) -> list:
+    """Tessellate a ward's unmapped area into modelled parcels."""
+    from shapely.geometry import Polygon, box
+    from shapely.ops import unary_union
+
+    if ward_geom.area <= 0 or not ward_geom.is_valid:
+        return []
+    leftover = ward_geom.difference(unary_union(covered))
+    if leftover.is_empty or leftover.area <= 0:
+        return []
+
+    w, s, e, n = leftover.bounds
+    out: list[Parcel] = []
+    # Uniform grid per ward — take the finest edge over several sample points so
+    # a small town anywhere inside the ward forces fine cells there.
+    samples = [
+        (w, s), (w, n), (e, s), (e, n),
+        ((w + e) / 2, (s + n) / 2),
+        ((w + e) / 2, s), ((w + e) / 2, n),
+        (w, (s + n) / 2), (e, (s + n) / 2),
+    ]
+    cell = min(_fill_cell_edge_m(ds, max(w, min(x, e)), max(s, min(y, n))) for x, y in samples)
+    # Scale cells finer when the leftover is small and urban-ish.
+    if (e - w) < 0.05 and (n - s) < 0.05:
+        cell = min(cell, 500.0)
+
+    water_union = unary_union([u for u in water if not u.is_empty]) if water else None
+    min_area = FILL_MIN_AREA_SQM
+    mid_lat = (s + n) / 2
+    m2_per_deg2 = (111320.0 * math.cos(math.radians(mid_lat))) * 110540.0
+
+    lon_step = cell / (111320.0 * math.cos(math.radians(mid_lat)))
+    lat_step = cell / 110540.0
+    xi = w
+    idx = 0
+    while xi < e:
+        yi = s
+        while yi < n:
+            x0, y0 = xi, yi
+            x1, y1 = xi + lon_step, yi + lat_step
+            cell_box = box(x0, y0, x1, y1).intersection(leftover)
+            if not cell_box.is_empty:
+                for part in cell_box.geoms if cell_box.geom_type == "MultiPolygon" else [cell_box]:
+                    if not part.is_valid:
+                        continue
+                    part = part.simplify(SIMPLIFY_TOLERANCE, preserve_topology=True)
+                    if part.is_empty:
+                        continue
+                    if part.area * m2_per_deg2 < min_area:
+                        continue
+                    c = part.centroid
+                    if water_union is not None and water_union.contains(c):
+                        continue
+                    parcel = _model_parcel(
+                        ds, part, ward_code, f"{ward_code}-F{idx}", seq, modelled=True
+                    )
+                    out.append(parcel)
+                    seq += 1
+            idx += 1
+            yi += lat_step
+        xi += lon_step
+    return out
+
+
+def _model_parcel(
+    ds, geom, ward_code: str, seed_text: str, seq: int,
+    props: dict | None = None, modelled: bool = False,
+) -> Parcel:
+    """Build a fully-modelled Parcel from a geometry. Real parcels pass their OSM
+    properties; gap-fill parcels pass None and get land-use typed by real
+    distance from the urban core. All attributes are seeded per geometry so a
+    parcel's values never shift between runs."""
+    from shapely.geometry import mapping
+
+    c = geom.centroid
+    lng, lat = float(c.x), float(c.y)
+    city = ds.city
+    rng = _rng(seed_text)
+    area_sqm = float(props.get("area_sqm") or 0) if props else geom.area
+
+    if props is None:
+        land_use = "vacant"
+        _, d_core = _nearest_core(city, lng, lat)
+        d_road = float(ds.road_index.nearest_km(lng, lat)) if ds.road_index else float("inf")
+        if d_road < 0.5 or d_core < 8.0:
+            # Town/settlement core — parcel land, not farmland.
+            roll = rng.random()
+            land_use = "residential" if roll < 0.50 else ("vacant" if roll < 0.80 else "commercial")
+        elif d_road < 3.0:
+            # Village fringe — a real mix of homes and fields.
+            roll = rng.random()
+            land_use = "residential" if roll < 0.35 else ("agriculture" if roll < 0.70 else "vacant")
+        else:
+            roll = rng.random()
+            land_use = "agriculture" if roll < 0.72 else ("vacant" if roll < 0.92 else "green")
+        name = None
+        osm_tag = None
+        tenure_known = False
+    else:
+        land_use = props.get("land_use", "vacant")
+        if land_use not in BUILT_UP_BAND:
+            land_use = "vacant"
+        name = props.get("name")
+        osm_tag = props.get("osm_tag")
+        tenure_known = bool(props.get("government"))
+
+    core, d_km = _nearest_core(city, lng, lat)
+    local_it = float(np.clip(_intensity(city, lng, lat) + rng.uniform(-10, 10), 0, 100))
+
+    b_min, b_max = BUILT_UP_BAND[land_use]
+    built = int(round(np.clip(b_min + (b_max - b_min) * local_it / 100 + rng.uniform(-6, 6), b_min, b_max)))
+    v_min, v_max = VEGETATION_BAND[land_use]
+    veg = int(round(np.clip(v_max - (v_max - v_min) * local_it / 100 + rng.uniform(-5, 5), v_min, v_max)))
+    water = int(round(rng.uniform(70, 96))) if land_use == "water" else int(round(rng.uniform(0, 4)))
+
+    elevation = int(round(48 + (lng - city.center[0]) * 60 + rng.uniform(-4, 6)))
+    flood = "high" if land_use == "water" else ("medium" if elevation < 44 else "low")
+
+    # Replace the heuristic with the DEM-driven model when terrain is installed.
+    risk = _flood_risk_for(ds)
+    if risk is not None:
+        sample = risk.at(lng, lat)
+        if sample is not None:
+            level, dem_elev = sample
+            if land_use != "water":
+                flood = level
+            if dem_elev is not None:
+                elevation = dem_elev
+
+    gov_prob = (0.5 if land_use == "institutional" else 0.13) + (0.05 if d_km < 5 else 0.0)
+    ownership = "government" if (tenure_known or rng.random() < gov_prob) else "private"
+
+    zoning = _official_zoning(rng, d_km, city.radius_km)
+
+    # Built-up history: fringe land urbanised fastest.
+    fringe = float(np.exp(-(((local_it - 45) / 26) ** 2)))
+    bearing = _bearing_deg(core, (lng, lat))
+    strength = max(
+        (float(np.exp(-((_ang_diff(bearing, c.bearing) / c.width) ** 2))) for c in city.corridors),
+        default=0.0,
+    )
+    growth = int(round((fringe * 22 + strength * 11) * rng.uniform(0.5, 1.15)))
+    b2026 = built
+    b2018 = max(0, b2026 - growth)
+    b2022 = max(b2018, int(round(b2018 + (b2026 - b2018) * 0.62)))
+
+    pid = f"GJ-{city.code}-{seq:05d}"
+    return Parcel(
+        id=pid, parcel_id=pid,
+        name=name,
+        survey_number=f"{int(rng.integers(1, 999))}/{int(rng.integers(1, 40))}",
+        centroid=(round(lng, 6), round(lat, 6)),
+        geometry=mapping(geom),
+        area_sqm=area_sqm,
+        area_acres=round(area_sqm / 4046.86, 2),
+        land_use=land_use, zoning=zoning,
+        ownership=ownership,
+        owner_category=(GOV_OWNERS if ownership == "government" else PRIVATE_OWNERS)[
+            int(rng.integers(0, len(GOV_OWNERS if ownership == "government" else PRIVATE_OWNERS)))
+        ],
+        ward=ward_code,
+        built_up_percent=built, vegetation_percent=veg, water_percent=water,
+        flood_risk=flood, elevation_m=elevation,
+        history={2018: b2018, 2022: b2022, 2026: b2026},
+        osm_tag=osm_tag, tenure_known=tenure_known,
+        source="modelled-fill" if modelled else "osm",
+    )
+
+
 def build_parcels(ds) -> list[Parcel]:
-    """Turn real land polygons into parcels, dropping anything outside a ward."""
+    """Turn real land polygons into parcels, then gap-fill every unmapped ward
+    area with modelled parcels so no corner of the district is left uncovered."""
+    from shapely.geometry import Point
     from shapely.prepared import prep
     from shapely.strtree import STRtree
 
@@ -156,8 +391,7 @@ def build_parcels(ds) -> list[Parcel]:
     ward_codes = [w["properties"]["ward_code"] for w in ds.wards]
     tree = STRtree(ward_geoms)
     prepared = [prep(g) for g in ward_geoms]
-
-    from shapely.geometry import Point
+    by_ward: dict[str, list] = {code: [] for code in ward_codes}
 
     city = ds.city
     out: list[Parcel] = []
@@ -165,12 +399,12 @@ def build_parcels(ds) -> list[Parcel]:
     for feat in sorted(ds.land, key=lambda f: f["properties"]["id"]):
         props = feat["properties"]
         geom = shape(feat["geometry"])
+        geom = geom.simplify(SIMPLIFY_TOLERANCE, preserve_topology=True)
         c = geom.centroid
-        lng, lat = float(c.x), float(c.y)
+        pt = Point(float(c.x), float(c.y))
 
         # The OSM fetch bbox is padded beyond the municipal boundary; keep only
         # land that actually falls inside a ward.
-        pt = Point(lng, lat)
         ward = None
         for cand in tree.query(pt):
             if prepared[cand].contains(pt):
@@ -183,65 +417,19 @@ def build_parcels(ds) -> list[Parcel]:
         if area_sqm < 500:
             continue
 
-        rng = _rng(props["id"])
-        land_use = props.get("land_use", "vacant")
-        if land_use not in BUILT_UP_BAND:
-            land_use = "vacant"  # never index the bands as None
-
-        core, d_km = _nearest_core(city, lng, lat)
-        local_it = float(np.clip(_intensity(city, lng, lat) + rng.uniform(-10, 10), 0, 100))
-
-        b_min, b_max = BUILT_UP_BAND[land_use]
-        built = int(round(np.clip(b_min + (b_max - b_min) * local_it / 100 + rng.uniform(-6, 6), b_min, b_max)))
-        v_min, v_max = VEGETATION_BAND[land_use]
-        veg = int(round(np.clip(v_max - (v_max - v_min) * local_it / 100 + rng.uniform(-5, 5), v_min, v_max)))
-        water = int(round(rng.uniform(70, 96))) if land_use == "water" else int(round(rng.uniform(0, 4)))
-
-        elevation = int(round(48 + (lng - city.center[0]) * 60 + rng.uniform(-4, 6)))
-        flood = "high" if land_use == "water" else ("medium" if elevation < 44 else "low")
-
-        gov_prob = (0.5 if land_use == "institutional" else 0.13) + (0.05 if d_km < 5 else 0.0)
-        tenure_known = bool(props.get("government"))
-        ownership = "government" if (tenure_known or rng.random() < gov_prob) else "private"
-
-        zoning = _official_zoning(rng, d_km, city.radius_km)
-
-        # Built-up history: fringe land urbanised fastest.
-        fringe = float(np.exp(-(((local_it - 45) / 26) ** 2)))
-        # Land along a declared growth corridor urbanised faster than fringe
-        # land generally — without this term the history is direction-blind and
-        # the corridor analysis has nothing to find.
-        bearing = _bearing_deg(core, (lng, lat))
-        strength = max(
-            (float(np.exp(-((_ang_diff(bearing, c.bearing) / c.width) ** 2))) for c in city.corridors),
-            default=0.0,
-        )
-        growth = int(round((fringe * 22 + strength * 11) * rng.uniform(0.5, 1.15)))
-        b2026 = built
-        b2018 = max(0, b2026 - growth)
-        b2022 = max(b2018, int(round(b2018 + (b2026 - b2018) * 0.62)))
-
-        pid = f"GJ-{city.code}-{seq:05d}"
-        out.append(Parcel(
-            id=pid, parcel_id=pid,
-            name=props.get("name"),
-            survey_number=f"{int(rng.integers(1, 999))}/{int(rng.integers(1, 40))}",
-            centroid=(round(lng, 6), round(lat, 6)),
-            geometry=feat["geometry"],
-            area_sqm=area_sqm,
-            area_acres=round(area_sqm / 4046.86, 2),
-            land_use=land_use, zoning=zoning,
-            ownership=ownership,
-            owner_category=(GOV_OWNERS if ownership == "government" else PRIVATE_OWNERS)[
-                int(rng.integers(0, len(GOV_OWNERS if ownership == "government" else PRIVATE_OWNERS)))
-            ],
-            ward=ward,
-            built_up_percent=built, vegetation_percent=veg, water_percent=water,
-            flood_risk=flood, elevation_m=elevation,
-            history={2018: b2018, 2022: b2022, 2026: b2026},
-            osm_tag=props.get("osm_tag"), tenure_known=tenure_known,
-        ))
+        parcel = _model_parcel(ds, geom, ward, props["id"], seq, props=props)
+        out.append(parcel)
         seq += 1
+        if ward in by_ward:
+            by_ward[ward].append(geom)
+
+    # Gap-fill: every ward minus its mapped land gets deterministic parcels.
+    water = _water_shapes(ds)
+    for ward_code, wg in zip(ward_codes, ward_geoms):
+        fills = _fill_ward(ds, wg, ward_code, by_ward[ward_code], water, seq)
+        if fills:
+            out.extend(fills)
+            seq += len(fills)
     return out
 
 
@@ -298,7 +486,7 @@ def enrich(ds, parcels: list[Parcel]) -> None:
         }
 
 
-@lru_cache(maxsize=8)
+@lru_cache(maxsize=48)
 def get_parcels(city_id: str) -> list[Parcel]:
     from app.data.loader import get_dataset
 

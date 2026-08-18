@@ -6,19 +6,22 @@ Every route takes `?city=` and defaults to Ahmedabad.
 from __future__ import annotations
 
 import numpy as np
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Response
 from pydantic import BaseModel, Field
 
 from app.core.config import CITIES, get_city
 from app.data.loader import (
     FACILITY_TYPES,
     get_dataset,
+    get_flood,
     get_greenspace,
     get_vegetation,
+    get_water,
 )
 from app.gis import analysis
 from app.gis.parcels import get_parcels
 from app.gis.raster import population_within_km
+from app.gis.report import build_report_pdf
 from app.gis.scoring import DEFAULT_WEIGHTS, LIVABILITY_WEIGHTS, PROJECTS
 from app.ml import development_model
 
@@ -49,6 +52,11 @@ class CalculateBody(BaseModel):
     weights: dict[str, float] | None = None
 
 
+class ReportBody(BaseModel):
+    parcel_id: str
+    project_type: str | None = None
+
+
 class SimulateBody(BaseModel):
     project_type: str
     lng: float
@@ -76,6 +84,24 @@ def _project_or_400(name: str):
     if name not in PROJECTS:
         raise HTTPException(status_code=400, detail=f"Unknown project type '{name}'")
     return PROJECTS[name]
+
+
+# Frontend ProjectType aliases → engine project keys (report route only).
+PROJECT_ALIASES = {
+    "fire": "fire_station",
+    "govt": "government_office",
+    "affordable": "affordable_housing",
+    "mixed": "mixed_use",
+}
+
+
+def _resolve_project(name: str | None, uses: list[dict]) -> str:
+    """Resolve a (possibly frontend-aliased) project to a valid engine key."""
+    if name:
+        key = PROJECT_ALIASES.get(name, name)
+        if key in PROJECTS:
+            return key
+    return uses[0]["project"]
 
 
 def _find_parcel(city_id: str, parcel_id: str):
@@ -125,8 +151,10 @@ def _sources(ds) -> dict:
     """Per-layer provenance. Layers are not uniformly real or uniformly
     modelled, so each states its own (PRD §30, §80.12)."""
     meta = ds.ward_meta
-    confirmed = sum(1 for p in get_parcels(ds.city.id) if p.tenure_known)
-    total = len(get_parcels(ds.city.id))
+    parcels_all = get_parcels(ds.city.id)
+    confirmed = sum(1 for p in parcels_all if p.tenure_known)
+    total = len(parcels_all)
+    mapped = sum(1 for p in parcels_all if p.source != "modelled-fill")
     return {
         "wards": {
             "source": "official",
@@ -142,9 +170,11 @@ def _sources(ds) -> dict:
         "parcels": {
             "source": "osm",
             "label": "OpenStreetMap land polygons",
-            "detail": f"{total:,} real mapped land boundaries with their real land-use tag. "
-                      "Surveyed blocks and estates, not cadastral title plots — GLIS records "
-                      "are not public.",
+            "detail": f"{mapped:,} real mapped land boundaries with their real land-use tag. "
+                      f"{total - mapped:,} modelled gap-fill parcels cover the remaining area "
+                      "so no corner is left unmapped; fill boundaries follow the real ward edge "
+                      "and exclude water. Surveyed blocks and estates, not cadastral title plots "
+                      "— GLIS records are not public.",
         },
         "tenure": {
             "source": "derived",
@@ -203,6 +233,13 @@ def cities() -> dict:
 def layers(city: str | None = Query(default=None)) -> dict:
     ds = _dataset(city)
     sources = _sources(ds)
+
+    def _count(loader, city_id: str) -> int:
+        try:
+            return len(loader(city_id).get("features", []))
+        except FileNotFoundError:
+            return 0
+
     entries = [
         ("wards", "Ward boundaries", "/api/wards", "polygon", len(ds.wards), "wards"),
         ("population", "Population density", "/api/population", "point", ds.grid.populated_cells, "population"),
@@ -212,9 +249,13 @@ def layers(city: str | None = Query(default=None)) -> dict:
         ("roads", "Roads", "/api/roads", "line", len(ds.roads), "roads"),
         ("facilities", "Public facilities", "/api/facilities", "point", len(ds.facilities), "facilities"),
         ("vegetation", "Vegetation & NDVI", "/api/vegetation", "polygon",
-         len(get_vegetation(ds.city.id).get("features", [])), "satellite"),
+         _count(get_vegetation, ds.city.id), "satellite"),
         ("greenspace", "Green space", "/api/greenspace", "polygon",
-         len(get_greenspace(ds.city.id).get("features", [])), "osm"),
+         _count(get_greenspace, ds.city.id), "osm"),
+        ("water", "Water bodies", "/api/water", "polygon",
+         _count(get_water, ds.city.id), "osm"),
+        ("flood", "Flood risk", "/api/flood", "polygon",
+         _count(get_flood, ds.city.id), "derived"),
     ]
     return {
         "city": {"id": ds.city.id, "name": ds.city.name, "center": list(ds.city.center), "zoom": ds.city.zoom},
@@ -285,6 +326,24 @@ def greenspace(city: str | None = Query(default=None)) -> dict:
     """Green-space polygons (parks + green landuse)."""
     try:
         return get_greenspace(city)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.get("/water")
+def water(city: str | None = Query(default=None)) -> dict:
+    """Water-body polygons (lakes, reservoirs, rivers)."""
+    try:
+        return get_water(city)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.get("/flood")
+def flood(city: str | None = Query(default=None)) -> dict:
+    """Derived flood-susceptibility zones (high = water ±150 m, medium = 150–400 m)."""
+    try:
+        return get_flood(city)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
@@ -431,14 +490,7 @@ def parcels(
 def parcel_detail(parcel_id: str, city: str | None = Query(default=None)) -> dict:
     ds = _dataset(city)
     p = _find_parcel(ds.city.id, parcel_id)
-    recommended = sorted(
-        (
-            {"project": k, "label": PROJECTS[k].label,
-             "score": analysis.suitability(ds, p, k)["final"]}
-            for k in ("hospital", "residential", "school", "park", "commercial", "affordable_housing")
-        ),
-        key=lambda r: -r["score"],
-    )[:4]
+    recommended = analysis.recommended_uses(ds, p)
     return {
         "parcel_id": p.parcel_id, "survey_number": p.survey_number, "name": p.name,
         "area_acres": p.area_acres, "area_sqm": p.area_sqm,
@@ -466,6 +518,23 @@ def parcel_detail(parcel_id: str, city: str | None = Query(default=None)) -> dic
         },
         "recommended_uses": recommended,
     }
+
+
+@router.post("/report")
+def generate_report(body: ReportBody, city: str | None = Query(default=None)) -> Response:
+    """Render a parcel recommendation as a fileable PDF (VD-9 / FE-B3)."""
+    ds = _dataset(city)
+    p = _find_parcel(ds.city.id, body.parcel_id)
+    uses = analysis.recommended_uses(ds, p)
+    project = _resolve_project(body.project_type, uses)
+    suit = analysis.suitability(ds, p, project)
+    pdf = build_report_pdf(ds, p, project, suit, uses, _sources(ds))
+    filename = f"urbanlens-recommendation-{p.parcel_id}.pdf"
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 # --------------------------------------------------------------------------

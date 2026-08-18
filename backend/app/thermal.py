@@ -3,10 +3,10 @@
 NASA's GIBS WMTS tile cache is missing z6+ tiles over parts of India, but the
 GIBS WMS service returns real data there in EPSG:3857. So instead of depending
 on tiles we can't rely on, we fetch ONE georeferenced raster over the whole
-metro region (covers all four study areas), validate it, and publish it
-atomically as `latest.png` + `meta.json`. The frontend draws it as a MapLibre
-`image` source. Nothing is published unless every check passes — a failed
-refresh keeps the last good files.
+state of Gujarat (covers every district and composite), validate it, and
+publish it atomically as `latest.png` + `meta.json`. The frontend draws it as a
+MapLibre `image` source. Nothing is published unless every check passes — a
+failed refresh keeps the last good files.
 """
 
 from __future__ import annotations
@@ -22,6 +22,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
+
+from app.core.config import get_city
 
 log = logging.getLogger("uvicorn.error")
 
@@ -40,10 +42,14 @@ META_PATH = THERMAL_DIR / "meta.json"
 LOCK_PATH = THERMAL_DIR / ".lock"
 LOG_PATH = THERMAL_DIR / "update.log"
 
-# Metro bbox in lon/lat (west, south, east, north) — the same extent as the
-# "ahmedabad-metro" study area, which contains every other city config.
-BBOX = (72.0893, 22.7706, 72.8426, 23.4355)
-SIZE = 2048
+# One statewide raster covers every district and composite — there is no
+# per-city thermal file (PRD §38). The bbox comes from the same generated
+# config the engine uses, so the map and this fetch can never disagree.
+def _statewide_bbox() -> tuple[float, float, float, float]:
+    city = get_city("gujarat")
+    return tuple(city.bbox)  # (west, south, east, north)
+
+SIZE = 4096
 STALE_LOCK_MIN = 3  # steal a lock this old (crashed process)
 
 
@@ -55,7 +61,7 @@ def _lonlat_to_3857(lon: float, lat: float) -> tuple[float, float]:
 
 
 def bounds_3857() -> tuple[float, float, float, float]:
-    w, s, e, n = BBOX
+    w, s, e, n = _statewide_bbox()
     x0, y0 = _lonlat_to_3857(w, s)
     x1, y1 = _lonlat_to_3857(e, n)
     return x0, y0, x1, y1
@@ -324,7 +330,7 @@ def refresh(force: bool = False) -> dict:
             _log(f"thermal: could not check latest date: {exc}")
             if meta:
                 return {**meta, "ok": False, "reason": f"could not check GIBS: {exc}"}
-            return {"ok": False, "reason": f"could not check GIBS: {exc}", "bounds": list(BBOX)}
+            return {"ok": False, "reason": f"could not check GIBS: {exc}", "bounds": list(_statewide_bbox())}
         if meta and meta.get("date") == latest:
             _log(f"thermal: up to date ({latest}), skipping")
             return {**meta, "ok": True}
@@ -358,7 +364,7 @@ def refresh(force: bool = False) -> dict:
         meta_tmp = META_PATH.with_suffix(".json.tmp")
         _convert_to_png(tiff, png_tmp)
         stamp = datetime.now(timezone.utc).isoformat()
-        payload = {"ok": True, "date": date, "updated_at": stamp, "bounds": list(BBOX), "stretch": "2-98 percentile"}
+        payload = {"ok": True, "date": date, "updated_at": stamp, "bounds": list(_statewide_bbox()), "stretch": "2-98 percentile"}
         with meta_tmp.open("w", encoding="utf-8") as fh:
             json.dump(payload, fh)
         os.replace(png_tmp, PNG_PATH)

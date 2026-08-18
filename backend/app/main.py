@@ -107,12 +107,36 @@ def _register_windows_task() -> None:
         log.exception("could not register Windows task")
 
 
-def _warm(city_id: str) -> None:
-    """Build and cache a study area's layers, grid, indexes and parcel scores."""
+def _warm_base(city_id: str) -> None:
+    """Cache a study area's base dataset: wards, land, facilities, roads, the
+    population grid and the point indexes. Every eager endpoint shares this, so
+    warming it makes city switches instant without paying for parcels."""
     from app.data.loader import get_dataset
+
+    get_dataset(city_id)
+
+
+def _warm_parcels(city_id: str) -> None:
+    """Cache parcel generation and the DEM-driven risk raster."""
     from app.gis.parcels import get_parcels
 
-    get_parcels(get_dataset(city_id).city.id)
+    get_parcels(city_id)
+
+
+def _warm_all(cities: list[str], label: str, fn) -> None:
+    """Warm a batch of cities in parallel so a slow district (e.g. Surat's
+    parcel build) can't stall the queue for everyone else."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    def safe(city_id: str) -> None:
+        try:
+            fn(city_id)
+            log.info("warmed %s (%s)", city_id, label)
+        except Exception:  # noqa: BLE001 — never let warming break the server
+            log.exception("could not warm %s (%s)", city_id, label)
+
+    with ThreadPoolExecutor(max_workers=4, thread_name_prefix=f"warm-{label}") as pool:
+        list(pool.map(safe, cities))
 
 
 @app.on_event("startup")
@@ -126,6 +150,11 @@ def prewarm() -> None:
     "Loading Ahmedabad Metro Region…". A planner switching study areas mid-demo
     reads that as a hang.
 
+    Warming is two-phase so the UI is usable everywhere quickly:
+      1. base datasets (wards/facilities/roads/grid/indexes) for every district,
+         in parallel — the eager endpoints all share this build;
+      2. parcels + DEM risk rasters, also in parallel.
+
     A daemon thread keeps startup instant and the server answering throughout;
     warming is strictly an optimisation, so a failure here is logged and
     dropped rather than taking the process down — the route would rebuild the
@@ -133,13 +162,11 @@ def prewarm() -> None:
     """
 
     def run() -> None:
-        # Default area first: it is what the app opens on.
-        for city_id in [DEFAULT_CITY.id, *(c for c in CITIES if c != DEFAULT_CITY.id)]:
-            try:
-                _warm(city_id)
-                log.info("warmed %s", city_id)
-            except Exception:  # noqa: BLE001 — never let warming break the server
-                log.exception("could not warm %s", city_id)
+        cities = [DEFAULT_CITY.id, *(c for c in CITIES if c != DEFAULT_CITY.id)]
+        _warm_all(cities, "base", _warm_base)
+        log.info("warmed base dataset for %d districts", len(cities))
+        _warm_all(cities, "parcels", _warm_parcels)
+        log.info("warmed parcels for %d districts", len(cities))
         _register_windows_task()
 
     threading.Thread(target=run, name="urbanlens-warmup", daemon=True).start()

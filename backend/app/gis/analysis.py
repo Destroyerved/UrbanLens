@@ -161,6 +161,27 @@ def suitability(ds, p: Parcel, project: str, weights: dict[str, float] | None = 
     }
 
 
+RECOMMENDED_ORDER = (
+    "hospital", "residential", "school", "park", "commercial", "affordable_housing",
+)
+
+
+def recommended_uses(ds, p: Parcel, limit: int = 4) -> list[dict]:
+    """Rank this parcel against the project catalogue (drawer + PDF report)."""
+    ranked = sorted(
+        (
+            {
+                "project": k,
+                "label": PROJECTS[k].label,
+                "score": suitability(ds, p, k)["final"],
+            }
+            for k in RECOMMENDED_ORDER
+        ),
+        key=lambda r: -r["score"],
+    )
+    return ranked[:limit]
+
+
 def search_sites(
     city_id: str,
     project: str,

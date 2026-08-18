@@ -4,6 +4,16 @@ Layers are read from web/data/engine — the same files the TypeScript engine
 serves — so there is one copy of the real data in the repo and the two backends
 cannot drift apart on inputs.
 
+Composites (gujarat, ahmedabad-gandhinagar, ahmedabad-metro) are views: they
+carry no files of their own and are merged in memory from their member
+districts, so nothing is ever stored twice (PRD §38).
+
+── DB-READY ──────────────────────────────────────────────────────────────────
+The filesystem is the default and only required backend. Pointing URBANLENS_DB
+at a SQLite file makes every read go through the same Source interface instead;
+imports/import-to-db.py populates that file, so the app runs unchanged either
+way (PRD §41).
+
 Everything here is cached per city: the raster and the facility distance fields
 cost a couple of seconds to build and never change during a run.
 """
@@ -11,9 +21,12 @@ cost a couple of seconds to build and never change during a run.
 from __future__ import annotations
 
 import json
+import os
+import sqlite3
 from dataclasses import dataclass, field
 from functools import lru_cache
-from typing import Any
+from pathlib import Path
+from typing import Any, Protocol
 
 import numpy as np
 
@@ -28,37 +41,194 @@ from app.gis.raster import (
 FACILITY_TYPES = [
     "hospital", "clinic", "school", "college", "park",
     "fire_station", "police_station", "bus_stop", "metro_station", "government_office",
+    "shop",
 ]
+
+# Composites larger than this never merge the heavy detail layers: a 34-district
+# merge would ship tens of MB to the browser and freeze it. Vegetation is exempt —
+# it is a lightweight per-ward choropleth (all 34 districts merge to ~5 MB) and
+# is what powers the statewide "Gujarat" view.
+MAX_MERGE_MEMBERS = 4
+HEAVY_LAYERS = {"land", "facilities", "roads", "greenspace", "water", "flood"}
+
+
+class Source(Protocol):
+    """A place layer documents come from: the filesystem or a database."""
+
+    def load(self, city_id: str, name: str) -> dict[str, Any] | None: ...
+
+    def fingerprint(self, city_id: str, name: str) -> str | float | None:
+        """A value that changes whenever the layer content changes (file mtime,
+        DB updated_at). Drives the cache key so a refresh is served immediately
+        without a restart."""
+        ...
+
+
+class FilesystemSource:
+    def load(self, city_id: str, name: str) -> dict[str, Any] | None:
+        path = DATA_DIR / f"{city_id}_{name}.json"
+        if not path.exists():
+            return None
+        with path.open("r", encoding="utf-8") as fh:
+            return json.load(fh)
+
+    def fingerprint(self, city_id: str, name: str) -> float | None:
+        path = DATA_DIR / f"{city_id}_{name}.json"
+        return path.stat().st_mtime if path.exists() else None
+
+
+class SqliteSource:
+    def __init__(self, path: str | Path):
+        self.path = Path(path)
+
+    def load(self, city_id: str, name: str) -> dict[str, Any] | None:
+        conn = sqlite3.connect(f"file:{self.path}?mode=ro", uri=True)
+        try:
+            row = conn.execute(
+                "SELECT data FROM layers WHERE city = ? AND layer = ?",
+                (city_id, name),
+            ).fetchone()
+        finally:
+            conn.close()
+        return json.loads(row[0]) if row else None
+
+    def fingerprint(self, city_id: str, name: str) -> str | None:
+        conn = sqlite3.connect(f"file:{self.path}?mode=ro", uri=True)
+        try:
+            row = conn.execute(
+                "SELECT updated_at FROM layers WHERE city = ? AND layer = ?",
+                (city_id, name),
+            ).fetchone()
+        finally:
+            conn.close()
+        return row[0] if row else None
+
+
+SOURCE: Source = (
+    SqliteSource(os.environ["URBANLENS_DB"])
+    if os.environ.get("URBANLENS_DB")
+    else FilesystemSource()
+)
 
 
 def _read(city_id: str, name: str) -> dict[str, Any] | None:
-    path = DATA_DIR / f"{city_id}_{name}.json"
-    if not path.exists():
+    return SOURCE.load(city_id, name)
+
+
+def _as_number(v) -> float | None:
+    """Coerce a numeric-able meta value to float. String numbers ('441.1')
+    are accepted too — some member docs ship area_km2 as text."""
+    if isinstance(v, bool):
         return None
-    with path.open("r", encoding="utf-8") as fh:
-        return json.load(fh)
+    if isinstance(v, (int, float)):
+        return float(v)
+    if isinstance(v, str):
+        try:
+            return float(v)
+        except (TypeError, ValueError):
+            return None
+    return None
 
 
-@lru_cache(maxsize=8)
+def _merge_docs(docs: list[dict[str, Any]]) -> dict[str, Any]:
+    """Concatenate a member district's layer documents into one composite."""
+    merged: dict[str, Any] = {"type": "FeatureCollection", "features": [], "meta": {}}
+    for doc in docs:
+        merged["features"].extend(doc.get("features", []))
+        meta = doc.get("meta", {})
+        for key, value in meta.items():
+            num = _as_number(value)
+            if num is not None:
+                current = _as_number(merged["meta"].get(key))
+                merged["meta"][key] = (current + num) if current is not None else value
+            elif key not in merged["meta"]:
+                merged["meta"][key] = value
+    return merged
+
+
+def _resolve_layer(city: City, name: str) -> dict[str, Any] | None:
+    """Fetch a layer for a city: a single document for districts, an in-memory
+    merge of every member district for composites.
+
+    Heavy layers (land, facilities, roads, vegetation, greenspace) are skipped
+    for composites wider than MAX_MERGE_MEMBERS — a 34-district merge would ship
+    tens of MB to the browser and freeze it. Such composites are not offered as
+    selectable datasets; the empty result here is defence-in-depth.
+    """
+    if not city.composite_of:
+        return _read(city.id, name)
+    if len(city.composite_of) > MAX_MERGE_MEMBERS and name in HEAVY_LAYERS:
+        return None
+    docs = [_read(m, name) for m in city.composite_of]
+    docs = [d for d in docs if d is not None]
+    if not docs:
+        return None
+    return _merge_docs(docs) if len(docs) > 1 else docs[0]
+
+
+def _fingerprint(city: City, name: str) -> str:
+    """A content fingerprint (file mtime / DB updated_at) so caches drop the
+    moment a layer refreshes — no restart needed."""
+    if not city.composite_of:
+        return str(SOURCE.fingerprint(city.id, name))
+    return "|".join(str(SOURCE.fingerprint(m, name)) for m in city.composite_of)
+
+
+@lru_cache(maxsize=512)
+def _layer(name: str, city_id: str, fingerprint: str) -> dict[str, Any] | None:
+    """Layer document, keyed by content fingerprint."""
+    return _resolve_layer(get_city(city_id), name)
+
+
+def _layer_doc(name: str, city_id: str | None) -> dict[str, Any] | None:
+    city = get_city(city_id)
+    return _layer(name, city.id, _fingerprint(city, name))
+
+
+@lru_cache(maxsize=64)
 def get_vegetation(city_id: str | None = None) -> dict:
     """Per-ward NDVI choropleth: the engine JSON is already a FeatureCollection."""
-    city = get_city(city_id)
-    doc = _read(city.id, "vegetation")
+    doc = _layer_doc("vegetation", city_id)
     if doc is None:
+        city = get_city(city_id)
         raise FileNotFoundError(
             f"No vegetation layer for '{city.id}'. Run web/scripts/fetch-satellite.py first."
         )
     return doc
 
 
-@lru_cache(maxsize=8)
+@lru_cache(maxsize=64)
 def get_greenspace(city_id: str | None = None) -> dict:
     """Green-space polygons (parks + green landuse), clipped to the city."""
-    city = get_city(city_id)
-    doc = _read(city.id, "greenspace")
+    doc = _layer_doc("greenspace", city_id)
     if doc is None:
+        city = get_city(city_id)
         raise FileNotFoundError(
             f"No greenspace layer for '{city.id}'. Run web/scripts/build-greenspace.py first."
+        )
+    return doc
+
+
+@lru_cache(maxsize=64)
+def get_water(city_id: str | None = None) -> dict:
+    """Water-body polygons (lakes, reservoirs, rivers), clipped to the city."""
+    doc = _layer_doc("water", city_id)
+    if doc is None:
+        city = get_city(city_id)
+        raise FileNotFoundError(
+            f"No water layer for '{city.id}'. Run web/scripts/build-water-flood.py first."
+        )
+    return doc
+
+
+@lru_cache(maxsize=64)
+def get_flood(city_id: str | None = None) -> dict:
+    """Derived flood-susceptibility zones (high = water ±150 m, medium = 150–400 m)."""
+    doc = _layer_doc("flood", city_id)
+    if doc is None:
+        city = get_city(city_id)
+        raise FileNotFoundError(
+            f"No flood layer for '{city.id}'. Run web/scripts/build-water-flood.py first."
         )
     return doc
 
@@ -104,20 +274,20 @@ class Dataset:
         return int(round(self.grid.total))
 
 
-@lru_cache(maxsize=8)
-def get_dataset(city_id: str | None = None) -> Dataset:
+@lru_cache(maxsize=64)
+def _dataset_build(city_id: str, signature: str) -> Dataset:
     city = get_city(city_id)
 
-    wards_doc = _read(city.id, "wards")
+    wards_doc = _layer_doc("wards", city.id)
     if wards_doc is None:
         raise FileNotFoundError(
             f"No ward layer for '{city.id}'. Run the data pipeline in web/ first "
             f"(npm run data:wards)."
         )
     wards = wards_doc["features"]
-    land_doc = _read(city.id, "land")
-    fac_doc = _read(city.id, "facilities")
-    road_doc = _read(city.id, "roads")
+    land_doc = _layer_doc("land", city.id)
+    fac_doc = _layer_doc("facilities", city.id)
+    road_doc = _layer_doc("roads", city.id)
 
     land = land_doc["features"] if land_doc else []
     # India's OSM over-tags hospitals; normalising here keeps this backend and
@@ -156,3 +326,13 @@ def get_dataset(city_id: str | None = None) -> Dataset:
         facility_index=facility_index,
         road_index=road_index,
     )
+
+
+def get_dataset(city_id: str | None = None) -> Dataset:
+    city = get_city(city_id)
+    # Signature covers every layer the Dataset reads, so refreshing any of them
+    # busts the cache and the rebuilt grid/indexes are served immediately.
+    signature = "|".join(
+        _fingerprint(city, n) for n in ("wards", "land", "facilities", "roads")
+    )
+    return _dataset_build(city.id, signature)
