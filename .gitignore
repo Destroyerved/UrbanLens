@@ -13,6 +13,11 @@ logs/
 # Python
 .venv/
 
+# Runtime artifacts (regenerable, never commit)
+backend/urbanlens.db
+backend/err.log
+backend/out.log
+
 # Secrets — never commit credentials
 *.cdse_token
 .sat-credentials
