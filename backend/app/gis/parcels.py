@@ -830,9 +830,8 @@ def build_and_enrich(city_id: str) -> list[Parcel]:
 
 
 @lru_cache(maxsize=48)
-def get_parcels(city_id: str) -> list[Parcel]:
+def _parcels_for(city_id: str, signature: str) -> list[Parcel]:
     from app.core.config import get_city
-    from app.data.loader import layer_signature
 
     city = get_city(city_id)
     if city.composite_of:
@@ -844,7 +843,7 @@ def get_parcels(city_id: str) -> list[Parcel]:
             out.extend(get_parcels(m))
         return out
 
-    path = _cache_path(city_id, layer_signature(city))
+    path = _cache_path(city_id, signature)
     cached = _cache_read(path)
     if cached is not None:
         return cached
@@ -852,6 +851,21 @@ def get_parcels(city_id: str) -> list[Parcel]:
     ps = build_and_enrich(city_id)
     _cache_write(path, ps)
     return ps
+
+
+def get_parcels(city_id: str) -> list[Parcel]:
+    """This area's enriched parcels, rebuilt whenever a source layer changes.
+
+    The in-process cache is keyed on the layer fingerprint, exactly as the
+    dataset cache is. Keyed on city_id alone it outlived its own inputs: after
+    fetching Gandhinagar's street network and rebuilding its parcels on disk,
+    a running engine kept serving the 2,749 parcels it had loaded at startup
+    while the disk held 7,308. Refreshing a layer should not need a restart.
+    """
+    from app.core.config import get_city
+    from app.data.loader import layer_signature
+
+    return _parcels_for(city_id, layer_signature(get_city(city_id)))
 
 
 # ---------------------------------------------------------------------------
@@ -871,7 +885,7 @@ def get_parcels(city_id: str) -> list[Parcel]:
 
 
 @lru_cache(maxsize=8)
-def _bbox_index(city_id: str):
+def _bbox_index_for(city_id: str, signature: str):
     """STRtree over parcel geometries, plus the parcels in tree order."""
     from shapely.geometry import shape
     from shapely.strtree import STRtree
@@ -879,6 +893,15 @@ def _bbox_index(city_id: str):
     items = get_parcels(city_id)
     geoms = [shape(p.geometry) for p in items]
     return STRtree(geoms), items
+
+
+def _bbox_index(city_id: str):
+    """Keyed on the layer fingerprint for the same reason get_parcels is: an
+    index built over last week's parcels would return the wrong ones."""
+    from app.core.config import get_city
+    from app.data.loader import layer_signature
+
+    return _bbox_index_for(city_id, layer_signature(get_city(city_id)))
 
 
 def parcels_in_bbox(
