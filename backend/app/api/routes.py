@@ -155,6 +155,8 @@ def _sources(ds) -> dict:
     confirmed = sum(1 for p in parcels_all if p.tenure_known)
     total = len(parcels_all)
     mapped = sum(1 for p in parcels_all if p.source != "modelled-fill")
+    subdivided = sum(1 for p in parcels_all if p.source == "osm-subdivided")
+    streets = len(ds.streets)
     return {
         "wards": {
             "source": "official",
@@ -170,11 +172,14 @@ def _sources(ds) -> dict:
         "parcels": {
             "source": "osm",
             "label": "OpenStreetMap land polygons",
-            "detail": f"{mapped:,} real mapped land boundaries with their real land-use tag. "
-                      f"{total - mapped:,} modelled gap-fill parcels cover the remaining area "
-                      "so no corner is left unmapped; fill boundaries follow the real ward edge "
-                      "and exclude water. Surveyed blocks and estates, not cadastral title plots "
-                      "— GLIS records are not public.",
+            "detail": f"{mapped:,} parcels from real mapped land polygons carrying their real "
+                      f"land-use tag, of which {subdivided:,} were cut into plot-sized units along "
+                      f"the {streets + len(ds.roads):,} OpenStreetMap road and street centrelines "
+                      f"that bound the block. {total - mapped:,} gap-fill parcels cover land the "
+                      "map never recorded, bounded by those same streets. Water bodies are not "
+                      "parcels and are excluded. Street blocks and plots, not cadastral title "
+                      "records — Bhu-Naksha publishes no bulk parcel geometry, so the outer "
+                      "boundary and land use are real and the internal division is modelled.",
         },
         "tenure": {
             "source": "derived",
@@ -198,7 +203,9 @@ def _sources(ds) -> dict:
         "roads": {
             "source": "osm",
             "label": "OpenStreetMap",
-            "detail": f"{len(ds.roads):,} major road segments via the Overpass API.",
+            "detail": f"{len(ds.roads):,} major road segments via the Overpass API"
+                      + (f", plus {streets:,} residential and service streets used to cut "
+                         "parcel blocks (engine-side only)." if streets else "."),
         },
         "satellite": {
             "source": "satellite",

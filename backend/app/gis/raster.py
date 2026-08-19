@@ -217,19 +217,26 @@ class PointIndex:
         return float(haversine_km(x, y, lng, lat))
 
     def nearest_km_many(self, lngs: np.ndarray, lats: np.ndarray) -> np.ndarray:
-        """Nearest distance for a whole array of query points."""
+        """Nearest distance for a whole array of query points.
+
+        STRtree.nearest is vectorised in Shapely 2, so the whole query set goes
+        down to GEOS in one call. The previous Python loop built one Point
+        object per query and re-entered the tree each time, which is what made
+        per-parcel enrichment the slowest stage of a district build.
+        """
         if self._tree is None:
             return np.full(lngs.shape, np.inf)
-        from shapely.geometry import Point
+        import shapely
 
-        flat_lng = lngs.ravel()
-        flat_lat = lats.ravel()
-        out = np.empty(flat_lng.size, dtype=float)
-        for i in range(flat_lng.size):
-            idx = self._tree.nearest(Point(flat_lng[i], flat_lat[i]))
-            x, y = self.coords[idx]
-            out[i] = haversine_km(x, y, flat_lng[i], flat_lat[i])
-        return out.reshape(lngs.shape)
+        flat_lng = np.ascontiguousarray(np.ravel(lngs), dtype=float)
+        flat_lat = np.ascontiguousarray(np.ravel(lats), dtype=float)
+        if flat_lng.size == 0:
+            return np.empty(np.shape(lngs), dtype=float)
+        idx = self._tree.nearest(shapely.points(flat_lng, flat_lat))
+        idx = np.asarray(idx, dtype=int).ravel()
+        near = self.coords[idx]
+        out = haversine_km(near[:, 0], near[:, 1], flat_lng, flat_lat)
+        return np.asarray(out, dtype=float).reshape(np.shape(lngs))
 
     def count_within_km(self, lng: float, lat: float, radius_km: float) -> int:
         if len(self.coords) == 0:

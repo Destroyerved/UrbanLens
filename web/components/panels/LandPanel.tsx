@@ -11,6 +11,9 @@ import { WARD_BY_ID } from "@/data/wards";
 import { fetchZoningConflicts, type ZoningConflictRow } from "@/services/land";
 import { cn, scoreTone, toneText } from "@/lib/utils";
 
+/** Smallest plot worth listing: the least demanding project type needs 0.5 ha. */
+const MIN_OPPORTUNITY_HA = 0.5;
+
 /**
  * Land Intelligence: vacant-government-land finder with an Opportunity Score
  * (same explainable engine, mixed-use profile) + zoning conflict detection.
@@ -28,6 +31,10 @@ export default function LandPanel() {
       if (lowRisk && (p.floodRisk === "high" || p.envSensitivity > 55)) return false;
       if (developableOnly && p.builtUpPct > 25) return false;
       if (p.landUse === "water") return false;
+      // Parcels are plot-sized now, so without a floor the top of this list
+      // fills with 800 m2 slivers that cannot host any project the app models
+      // — the smallest, transit, needs 0.5 ha.
+      if (p.areaHa < MIN_OPPORTUNITY_HA) return false;
       return true;
     })
       // The engine's development-potential score travels with each parcel, so

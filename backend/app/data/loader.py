@@ -49,7 +49,7 @@ FACILITY_TYPES = [
 # it is a lightweight per-ward choropleth (all 34 districts merge to ~5 MB) and
 # is what powers the statewide "Gujarat" view.
 MAX_MERGE_MEMBERS = 4
-HEAVY_LAYERS = {"land", "facilities", "roads", "greenspace", "water", "flood"}
+HEAVY_LAYERS = {"land", "facilities", "roads", "streets", "greenspace", "water", "flood"}
 
 
 class Source(Protocol):
@@ -240,6 +240,10 @@ class Dataset:
     land: list[dict]
     facilities: list[dict]
     roads: list[dict]
+    # Residential/service streets, used only to cut parcels into street blocks.
+    # Optional: absent until scripts/fetch_streets.py has run for this area, and
+    # never served to the browser.
+    streets: list[dict]
     ward_meta: dict[str, Any]
     grid: PopulationGrid
     facility_index: dict[str, PointIndex] = field(default_factory=dict)
@@ -288,12 +292,14 @@ def _dataset_build(city_id: str, signature: str) -> Dataset:
     land_doc = _layer_doc("land", city.id)
     fac_doc = _layer_doc("facilities", city.id)
     road_doc = _layer_doc("roads", city.id)
+    street_doc = _layer_doc("streets", city.id)
 
     land = land_doc["features"] if land_doc else []
     # India's OSM over-tags hospitals; normalising here keeps this backend and
     # the TypeScript engine reporting the same facility counts.
     facilities = normalise_facilities(fac_doc["features"]) if fac_doc else []
     roads = road_doc["features"] if road_doc else []
+    streets = street_doc["features"] if street_doc else []
 
     grid = build_population_grid(wards)
 
@@ -321,6 +327,7 @@ def _dataset_build(city_id: str, signature: str) -> Dataset:
         land=land,
         facilities=facilities,
         roads=roads,
+        streets=streets,
         ward_meta=wards_doc.get("meta", {}),
         grid=grid,
         facility_index=facility_index,
@@ -328,11 +335,18 @@ def _dataset_build(city_id: str, signature: str) -> Dataset:
     )
 
 
+SIGNATURE_LAYERS = ("wards", "land", "facilities", "roads", "streets")
+
+
+def layer_signature(city: City) -> str:
+    """Fingerprint of every layer a Dataset (and therefore its parcels) reads.
+
+    Refreshing any layer changes this, which busts both the in-process dataset
+    cache and the on-disk parcel cache.
+    """
+    return "|".join(_fingerprint(city, n) for n in SIGNATURE_LAYERS)
+
+
 def get_dataset(city_id: str | None = None) -> Dataset:
     city = get_city(city_id)
-    # Signature covers every layer the Dataset reads, so refreshing any of them
-    # busts the cache and the rebuilt grid/indexes are served immediately.
-    signature = "|".join(
-        _fingerprint(city, n) for n in ("wards", "land", "facilities", "roads")
-    )
-    return _dataset_build(city.id, signature)
+    return _dataset_build(city.id, layer_signature(city))

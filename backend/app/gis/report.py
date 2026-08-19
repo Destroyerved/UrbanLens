@@ -93,7 +93,11 @@ _LAYER_LABELS = {
 }
 _YES_NO = {True: "Yes", False: "No"}
 _FLOOD = {"low": "Low", "medium": "Moderate", "high": "High"}
-_SOURCE = {"osm": "Mapped (OpenStreetMap)", "modelled-fill": "Modelled gap-fill"}
+_SOURCE = {
+    "osm": "Mapped (OpenStreetMap)",
+    "osm-subdivided": "Mapped (OpenStreetMap), subdivided at street blocks",
+    "modelled-fill": "Modelled gap-fill",
+}
 
 
 def _score_style(v: float):

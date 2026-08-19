@@ -18,6 +18,7 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.api import routes
@@ -37,6 +38,12 @@ app = FastAPI(
         "OpenStreetMap land and infrastructure, and a census-grounded population raster."
     ),
 )
+
+# GeoJSON is extremely repetitive text and compresses about 8:1, so this is the
+# difference between a 12 MB parcel response and a 1.5 MB one. It applies to
+# every JSON endpoint; the 1 KB floor keeps it off the small ones where the
+# compression would cost more than it saves.
+app.add_middleware(GZipMiddleware, minimum_size=1024)
 
 # The Next.js app runs on another port in development.
 app.add_middleware(
@@ -186,13 +193,24 @@ def prewarm() -> None:
         # request — they are lru_cached, so that cost is paid once either way.
         # Set URBANLENS_WARM=all to restore eager warming (useful for a demo
         # machine that can be started well in advance).
+        # Parcels now persist to backend/.cache/parcels, so "warm the district
+        # the app opens on" is no longer the whole story: an area that is
+        # already cached costs ~0.2 s to warm rather than a minute, and there is
+        # no reason to make the first visitor wait for a file read. So the
+        # default warms every cached area plus the opening district — which
+        # after `python scripts/prebuild_parcels.py` is all of them, and on a
+        # fresh clone is just the one.
+        from app.gis.parcels import is_cached
+
         scope = os.environ.get("URBANLENS_WARM", "default").strip().lower()
         if scope == "all":
             targets = every
         elif scope == "none":
             targets = []
         else:
-            targets = [DEFAULT_CITY.id]
+            targets = [DEFAULT_CITY.id] + [
+                c for c in every if c != DEFAULT_CITY.id and is_cached(c)
+            ]
         if targets:
             _warm_all(targets, "parcels", _warm_parcels)
 
@@ -200,10 +218,11 @@ def prewarm() -> None:
         # competes with a request the user is actually waiting on.
         _warm_all(others, "base", _warm_base, workers=2)
         log.info("warmed base dataset for %d districts", len(every))
+        remaining = len(every) - len(targets)
         log.info(
-            "warmed parcels for %d of %d districts (URBANLENS_WARM=%s); "
-            "the rest build on first request",
+            "warmed parcels for %d of %d districts (URBANLENS_WARM=%s)%s",
             len(targets), len(every), scope,
+            f"; the other {remaining} build on first request" if remaining else "",
         )
         _register_windows_task()
 

@@ -33,6 +33,46 @@ import type { Year } from "@/types";
 
 const YEARS: Year[] = [2018, 2022, 2026];
 
+/**
+ * Parcel paint, shared by the initial layer and the basemap-theme effect so the
+ * two can never drift apart.
+ *
+ * Parcels are now plot-sized rather than neighbourhood-sized, which means a
+ * city-wide view holds thousands of them. At a flat 0.48 opacity that reads as
+ * one solid sheet of colour with the basemap invisible underneath, so opacity
+ * ramps with zoom: a wash at district scale where the pattern is what matters,
+ * and a legible fill once individual plots are big enough to click.
+ */
+function parcelFillOpacity(isDarkBg: boolean) {
+  const hoverOr = (rest: number) => [
+    "case",
+    ["boolean", ["feature-state", "hover"], false],
+    isDarkBg ? 0.72 : 0.8,
+    rest,
+  ];
+  // `zoom` is only legal as the direct input of a top-level step/interpolate,
+  // so the zoom ramp has to be the outer expression and the hover test the
+  // inner one. The other way round MapLibre rejects the whole paint property
+  // and the layer silently renders with no fill at all.
+  return [
+    "interpolate",
+    ["linear"],
+    ["zoom"],
+    9, hoverOr(isDarkBg ? 0.34 : 0.38),
+    12, hoverOr(isDarkBg ? 0.44 : 0.5),
+    14, hoverOr(isDarkBg ? 0.5 : 0.58),
+    16, hoverOr(isDarkBg ? 0.55 : 0.62),
+  ];
+}
+
+/** Plot edges fade in only once plots are separable — invisible below z12.5. */
+const PARCEL_LINE_OPACITY = [
+  "interpolate", ["linear"], ["zoom"], 12.5, 0, 14, 0.28, 16, 0.45,
+];
+const PARCEL_LINE_WIDTH = [
+  "interpolate", ["linear"], ["zoom"], 13, 0.4, 16, 0.8, 18, 1.2,
+];
+
 const CARTO_ATTRIB =
   '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>';
 
@@ -146,6 +186,7 @@ export default function MapCanvas() {
               "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
             ],
             tileSize: 256,
+            maxzoom: 18,
             attribution: "Tiles &copy; Esri &mdash; Satellite Imagery",
           },
           "esri-topo": {
@@ -154,6 +195,10 @@ export default function MapCanvas() {
               "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}",
             ],
             tileSize: 256,
+            // Esri stops serving real topo tiles over most of India above z16
+            // and returns a "Map data not yet available" placeholder image.
+            // Capping here makes MapLibre upscale the last real tile instead.
+            maxzoom: 16,
             attribution: "Tiles &copy; Esri &mdash; Topographic",
           },
           "carto-voyager": {
@@ -172,6 +217,7 @@ export default function MapCanvas() {
               "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
             ],
             tileSize: 256,
+            maxzoom: 16,
             attribution: "Labels &copy; Esri",
           },
         },
@@ -534,22 +580,21 @@ export default function MapCanvas() {
         source: "parcels",
         paint: {
           "fill-color": landUseColorExpr("use2026") as never,
-          "fill-opacity": [
-            "case",
-            ["boolean", ["feature-state", "hover"], false],
-            0.75,
-            0.48,
-          ] as never,
+          "fill-opacity": parcelFillOpacity(false) as never,
         },
       });
       map.addLayer({
         id: "parcels-line",
         type: "line",
         source: "parcels",
+        // Plot edges are a hairline that only appears once you are zoomed in
+        // far enough for individual plots to be distinguishable. Drawn in the
+        // fill colour at city zoom they doubled the saturation of every parcel
+        // and turned the whole district into one flat block of colour.
         paint: {
-          "line-color": landUseColorExpr("use2026") as never,
-          "line-opacity": 0.85,
-          "line-width": 1.1,
+          "line-color": "#0f172a",
+          "line-opacity": PARCEL_LINE_OPACITY as never,
+          "line-width": PARCEL_LINE_WIDTH as never,
         },
       });
       map.addLayer({
@@ -631,12 +676,19 @@ export default function MapCanvas() {
         id: "facilities-ring",
         type: "circle",
         source: "facilities",
+        // The halo is what makes a facility readable when you are looking at
+        // one; across a whole district it is 1,200 overlapping rings that hide
+        // the city underneath. It fades in with zoom, the dot does not.
         paint: {
-          "circle-radius": 7.5,
+          "circle-radius": [
+            "interpolate", ["linear"], ["zoom"], 10, 4.5, 13, 6.5, 16, 8,
+          ] as never,
           "circle-color": "rgba(0,0,0,0)",
-          "circle-stroke-width": 1.8,
+          "circle-stroke-width": 1.6,
           "circle-stroke-color": facColor as never,
-          "circle-stroke-opacity": 0.6,
+          "circle-stroke-opacity": [
+            "interpolate", ["linear"], ["zoom"], 10.5, 0.12, 12.5, 0.45, 14, 0.62,
+          ] as never,
         },
       });
       map.addLayer({
@@ -644,9 +696,13 @@ export default function MapCanvas() {
         type: "circle",
         source: "facilities",
         paint: {
-          "circle-radius": 3.8,
+          "circle-radius": [
+            "interpolate", ["linear"], ["zoom"], 10, 2.2, 13, 3.4, 16, 4.5,
+          ] as never,
           "circle-color": facColor as never,
-          "circle-opacity": 0.95,
+          "circle-opacity": [
+            "interpolate", ["linear"], ["zoom"], 10, 0.7, 13, 0.95,
+          ] as never,
         },
       });
 
@@ -816,16 +872,12 @@ export default function MapCanvas() {
     map.setPaintProperty("wards-line", "line-opacity", isDarkBg ? 0.4 : 0.65);
 
     if (map.getLayer("parcels-fill")) {
-      map.setPaintProperty("parcels-fill", "fill-opacity", [
-        "case",
-        ["boolean", ["feature-state", "hover"], false],
-        isDarkBg ? 0.7 : 0.78,
-        isDarkBg ? 0.4 : 0.52,
-      ] as never);
+      map.setPaintProperty("parcels-fill", "fill-opacity", parcelFillOpacity(isDarkBg) as never);
     }
     if (map.getLayer("parcels-line")) {
-      map.setPaintProperty("parcels-line", "line-opacity", isDarkBg ? 0.8 : 0.9);
-      map.setPaintProperty("parcels-line", "line-width", isDarkBg ? 0.9 : 1.2);
+      map.setPaintProperty("parcels-line", "line-color", isDarkBg ? "#020617" : "#1e293b");
+      map.setPaintProperty("parcels-line", "line-opacity", PARCEL_LINE_OPACITY as never);
+      map.setPaintProperty("parcels-line", "line-width", PARCEL_LINE_WIDTH as never);
     }
   }, [basemap, ready]);
 

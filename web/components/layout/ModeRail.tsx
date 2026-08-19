@@ -121,11 +121,16 @@ export default function ModeRail() {
                   {m.label}
                 </span>
 
-                {/* Active Dot indicator on the right edge */}
+                {/* Active marker, inset on the tile's right edge.
+
+                    It used to sit at -right-1 with a 2px opaque ring, which put
+                    a hard-edged blob outside the rail's rounded glass container
+                    — the one piece of visual noise in the top-left corner. Kept
+                    inside the tile it reads as part of the active state. */}
                 {active && (
                   <motion.span
                     layoutId="mode-rail-active-dot"
-                    className="pointer-events-none absolute -right-1 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-accent ring-2 ring-white dark:ring-slate-900 shadow-[0_0_8px_rgba(56,189,248,0.9)] z-20"
+                    className="pointer-events-none absolute right-1 top-1/2 h-4 w-[3px] -translate-y-1/2 rounded-full bg-accent-foreground/70 z-20"
                     transition={{ type: "spring", stiffness: 500, damping: 30 }}
                   />
                 )}
