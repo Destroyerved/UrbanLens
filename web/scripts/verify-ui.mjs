@@ -108,6 +108,28 @@ const panel = () => page.locator("[data-panel]");
 /** Text of the right-hand intelligence panel. */
 const panelText = async () => (await panel().count()) ? (await panel().first().innerText()) : "";
 
+/**
+ * Wait for a condition, and say whether it arrived.
+ *
+ * Fixed sleeps make an assertion depend on how fast the machine is rather than
+ * on whether the app works: `sleep(2500)` then "KPIs resolved" passed against
+ * the dev server and failed against a production build under swiftshader, for
+ * the same working app. Polling keeps the assertion strict — it still fails if
+ * the condition never arrives — without encoding a hardware assumption.
+ */
+async function waitFor(fn, timeout = 30000) {
+  const deadline = Date.now() + timeout;
+  for (;;) {
+    try {
+      if (await fn()) return true;
+    } catch {
+      /* the element may not exist yet */
+    }
+    if (Date.now() > deadline) return false;
+    await sleep(250);
+  }
+}
+
 async function openMode(ariaLabel, expectTitle) {
   await page.click(`button[aria-label="${ariaLabel}"]`);
   // The panel swaps behind an exit animation; wait for the new title.
@@ -131,7 +153,10 @@ await page.goto(`${base}/app`, { waitUntil: "domcontentloaded", timeout: 60000 }
 await page.waitForSelector("[data-panel]", { timeout: 30000 });
 // Study area has to finish loading before any panel holds real figures.
 await page.waitForFunction(() => !document.body.innerText.includes("Loading "), { timeout: 60000 });
-await sleep(2500);
+const kpisResolved = await waitFor(async () => {
+  const t = await panelText();
+  return /glis parcels tracked/i.test(t) || /failed to load/i.test(t);
+});
 check(await page.locator(".maplibregl-canvas").count() > 0, "Map canvas mounted");
 await shot("01-overview-dark");
 
@@ -139,7 +164,7 @@ step("Overview — engine KPIs");
 {
   const t = await panelText();
   check(/command center/i.test(t), "Overview panel is showing");
-  check(!/computing city intelligence/i.test(t), "KPIs resolved (not stuck loading)");
+  check(kpisResolved && !/computing city intelligence/i.test(t), "KPIs resolved (not stuck loading)");
   check(!/failed to load/i.test(t), "No KPI load failure");
   // Population must be a real figure, not a zero placeholder.
   const pop = t.match(/([\d.]+)M\s*\n?\s*Population/);
@@ -149,10 +174,11 @@ step("Overview — engine KPIs");
 
 step("Urban Growth — timeline + prediction");
 await openMode("Urban Growth", "Urban Time Machine");
-await sleep(1500);
+const trajectoryRendered = await waitFor(async () =>
+  /built-up trajectory/i.test(await panelText()));
 {
   const t = await panelText();
-  check(/built-up trajectory/i.test(t), "Built-up trajectory section renders");
+  check(trajectoryRendered && /built-up trajectory/i.test(t), "Built-up trajectory section renders");
   check(!/computing|analysing|analyzing/i.test(t), "Growth data resolved");
   // Toggle the 2030 prediction layer.
   const sw = page.locator('button[role="switch"]');

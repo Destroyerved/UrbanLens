@@ -12,7 +12,29 @@
  * without shipping four cities' geometry to everyone who opens the page.
  */
 
-const BASE = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000").replace(/\/$/, "");
+/**
+ * Where the engine lives, from the browser's point of view.
+ *
+ * Empty means same-origin: `/api/...` and `/static/...` are proxied to the
+ * engine by the rewrites in next.config.mjs. That is the only base that works
+ * everywhere, and the default for that reason.
+ *
+ * It used to default to `http://localhost:8000`, which made every request
+ * cross-origin. That worked in exactly one situation — the browser running on
+ * the same machine as the engine, with the app served from port 3000, because
+ * those two origins are the engine's entire CORS allow-list. A production
+ * build served on any other port was blocked outright, and opening the app
+ * from a phone or a second laptop sent every request to *that* device's port
+ * 8000. It also paid a CORS preflight round-trip per request, and resolved
+ * `localhost` to ::1 first on Windows before falling back to IPv4.
+ *
+ * Set NEXT_PUBLIC_API_URL to an absolute URL when the engine really is on a
+ * different host and you have configured CORS for it.
+ */
+const BASE = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/$/, "");
+
+/** Absolute fallback for any code that runs before a document exists. */
+const SERVER_FALLBACK = "http://127.0.0.1:8000";
 
 export const API_BASE = BASE;
 
@@ -37,8 +59,15 @@ export class ApiError extends Error {
   }
 }
 
+function origin(): string {
+  if (BASE) return BASE;
+  // Same-origin in the browser; anything running without a document (a
+  // prerender, a test) has no origin to be relative to and needs the engine's.
+  return typeof window === "undefined" ? SERVER_FALLBACK : window.location.origin;
+}
+
 function url(path: string, params?: Record<string, string | number | boolean | undefined>) {
-  const u = new URL(BASE + path);
+  const u = new URL(origin() + path);
   u.searchParams.set("city", currentCity);
   for (const [k, v] of Object.entries(params ?? {})) {
     if (v !== undefined) u.searchParams.set(k, String(v));
@@ -57,7 +86,7 @@ async function request<T>(path: string, init?: RequestInit, params?: Record<stri
     // The engine is a separate process; a refused connection is the common
     // case in development and deserves a message that says what to start.
     throw new ApiError(
-      `Cannot reach the spatial engine at ${BASE}. Start it with: cd backend && uvicorn app.main:app --port 8000`,
+      `Cannot reach the spatial engine at ${origin()}. Start it with: cd backend && uvicorn app.main:app --port 8000`,
       0,
       path,
     );
@@ -87,7 +116,7 @@ export async function apiPostPdf(path: string, body: unknown): Promise<Blob> {
     });
   } catch (cause) {
     throw new ApiError(
-      `Cannot reach the spatial engine at ${BASE}. Start it with: cd backend && uvicorn app.main:app --port 8000`,
+      `Cannot reach the spatial engine at ${origin()}. Start it with: cd backend && uvicorn app.main:app --port 8000`,
       0,
       path,
     );
