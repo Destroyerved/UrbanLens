@@ -17,6 +17,9 @@ unchanged while parcel boundaries become real streets instead of a synthetic gri
     python scripts/fetch_streets.py ahmedabad ...  # named areas only
 
 Re-running skips areas whose file already exists; pass --force to refetch.
+Individual tiles are checkpointed under backend/.cache/overpass-tiles, so a run
+interrupted by an Overpass timeout resumes where it stopped rather than starting
+the area again.
 """
 from __future__ import annotations
 
@@ -34,6 +37,7 @@ import requests  # noqa: E402
 from app.core.config import CITIES  # noqa: E402
 
 OUT_DIR = os.path.join("web", "data", "engine")
+TILE_DIR = os.path.join("backend", ".cache", "overpass-tiles")
 
 ENDPOINTS = [
     "https://overpass.kumi.systems/api/interpreter",
@@ -68,6 +72,12 @@ def tiles(bbox: tuple[float, float, float, float]) -> list[tuple[float, float, f
         for i in range(nx)
         for j in range(ny)
     ]
+
+
+def tile_cache_path(city_id: str, tile: tuple[float, float, float, float]) -> str:
+    w, s, e, n = tile
+    key = f"{w:.5f}_{s:.5f}_{e:.5f}_{n:.5f}"
+    return os.path.join(TILE_DIR, f"{city_id}-{key}.json")
 
 
 def fetch_tile(tile: tuple[float, float, float, float]) -> list[dict]:
@@ -126,10 +136,24 @@ def fetch_area(city_id: str, force: bool = False) -> None:
 
     parts = tiles(city.bbox)
     print(f"== {city_id}: {len(parts)} tiles", flush=True)
+    os.makedirs(TILE_DIR, exist_ok=True)
     elements: list[dict] = []
     for i, t in enumerate(parts, 1):
+        # Overpass regularly 504s under load, and losing 40 successful tiles
+        # because the 41st timed out makes this script unusable. Each tile is
+        # checkpointed, so a rerun resumes rather than restarts.
+        cache = tile_cache_path(city_id, t)
+        if os.path.exists(cache):
+            with open(cache, encoding="utf-8") as fh:
+                got = json.load(fh)
+            elements.extend(got)
+            print(f"   tile {i}/{len(parts)}  {len(got):6d} ways  (cached)", flush=True)
+            continue
+
         started = time.time()
         got = fetch_tile(t)
+        with open(cache, "w", encoding="utf-8") as fh:
+            json.dump(got, fh, separators=(",", ":"))
         elements.extend(got)
         print(f"   tile {i}/{len(parts)}  {len(got):6d} ways  {time.time() - started:5.1f}s",
               flush=True)
