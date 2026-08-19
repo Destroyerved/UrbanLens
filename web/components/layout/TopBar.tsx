@@ -104,7 +104,7 @@ export default function TopBar() {
                     type="text"
                     value={filterText}
                     onChange={(e) => setFilterText(e.target.value)}
-                    placeholder="Search 34 Gujarat districts…"
+                    placeholder="Search study areas…"
                     autoFocus
                     className="w-full h-8 pl-8 pr-3 text-[12px] rounded-xl bg-white/20 dark:bg-white/10 border border-white/20 dark:border-white/10 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1.5 focus:ring-accent"
                   />

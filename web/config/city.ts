@@ -59,22 +59,47 @@ export const AHMEDABAD_METRO: CityConfig = {
   growthCenter: [72.578, 23.025],
 };
 
-export const CITIES: CityConfig[] = GUJARAT_DISTRICTS.filter((c) => c.id !== "gujarat");
-
 /**
- * Quick picks shown in the city switcher. Gujarat's big districts; the search
- * box covers the remaining 29 + the composite views.
+ * Active study areas — mirrors ACTIVE_DISTRICTS + REGIONS in
+ * backend/app/core/config.py. The engine only serves these, so offering more
+ * here would put areas in the switcher that return 404.
+ *
+ * Scoped to the Ahmedabad–Gandhinagar metropolitan region and the five
+ * districts that border it. The generated file still holds all 34 districts, so
+ * widening this is a matter of adding ids to both lists.
  */
+const ACTIVE_DISTRICT_IDS = [
+  "ahmedabad",
+  "gandhinagar",
+  "kheda",
+  "mahesana",
+  "sabarkantha",
+  "aravalli",
+  "patan",
+] as const;
+
+const byId = new Map(GUJARAT_DISTRICTS.map((c) => [c.id, c]));
+
+/** Core cities, then the two regional views, then the bordering districts —
+ *  the order the switcher shows them in. */
+export const CITIES: CityConfig[] = [
+  byId.get("ahmedabad"),
+  byId.get("gandhinagar"),
+  AHMEDABAD_GANDHINAGAR,
+  AHMEDABAD_METRO,
+  ...ACTIVE_DISTRICT_IDS.filter((id) => id !== "ahmedabad" && id !== "gandhinagar").map((id) =>
+    byId.get(id),
+  ),
+].filter((c): c is CityConfig => Boolean(c));
+
+/** Quick picks shown in the city switcher — the metropolitan set. */
 export const HOT_PICKS: string[] = [
   "ahmedabad",
-  "surat",
-  "vadodara",
-  "rajkot",
-  "bhavnagar",
+  "ahmedabad-metro",
+  "ahmedabad-gandhinagar",
   "gandhinagar",
-  "jamnagar",
-  "junagadh",
-  "kutch",
+  "kheda",
+  "mahesana",
 ];
 
 /** The area the app opens on. The active one at runtime lives in the store. */

@@ -25,6 +25,10 @@ export function PanelShell({
 
   return (
     <motion.div
+      // Stable hook for scripts/verify-ui.mjs: the panel is the one region
+      // every mode swaps, so assertions can find it without matching on
+      // presentation classes the design is free to change.
+      data-panel={title}
       data-glow
       initial={{ opacity: 0, x: 16 }}
       animate={{ opacity: 1, x: 0 }}

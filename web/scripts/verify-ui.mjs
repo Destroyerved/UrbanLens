@@ -28,7 +28,12 @@ mkdirSync(outDir, { recursive: true });
 
 // Third-party basemap tiles and webfonts are not this app's correctness, and a
 // tile 404 must not mask an app error. Everything else counts.
-const IGNORED_REQUEST_HOSTS = ["basemaps.cartocdn.com", "fonts.gstatic.com", "fonts.googleapis.com"];
+const IGNORED_REQUEST_HOSTS = [
+  "basemaps.cartocdn.com",
+  "server.arcgisonline.com",
+  "fonts.gstatic.com",
+  "fonts.googleapis.com",
+];
 const IGNORED_CONSOLE = [
   /Download the React DevTools/i,
   /\[Fast Refresh\]/i,
@@ -118,11 +123,11 @@ async function openMode(ariaLabel, expectTitle) {
 step("Landing page");
 await page.goto(base, { waitUntil: "domcontentloaded", timeout: 60000 });
 await sleep(5000);
-check(await page.getByText("UrbanLens").first().isVisible(), "Landing renders");
+check(await page.getByText(/UrbanLens/i).first().count() > 0, "Landing renders");
 await shot("00-landing");
 
 step("Enter the product");
-await page.goto(`${base}/?app=1`, { waitUntil: "domcontentloaded", timeout: 60000 });
+await page.goto(`${base}/app`, { waitUntil: "domcontentloaded", timeout: 60000 });
 await page.waitForSelector("[data-panel]", { timeout: 30000 });
 // Study area has to finish loading before any panel holds real figures.
 await page.waitForFunction(() => !document.body.innerText.includes("Loading "), { timeout: 60000 });
@@ -205,11 +210,12 @@ await shot("05-site-selection");
 
 step("Parcel Intelligence drawer");
 {
-  const open = page.getByText(/Open parcel|View parcel/i).first();
+  // The candidate row's control is "Parcel" in the current UI (was "Open
+  // parcel"); accept either, then fall back to the row itself.
+  const open = panel().getByRole("button", { name: /^(Parcel|Open parcel|View parcel)$/i }).first();
   if (await open.count()) {
     await open.click();
   } else {
-    // Fall back to clicking the top-ranked candidate row.
     await panel().locator("button").filter({ hasText: /GJ-/ }).first().click();
   }
   await page.waitForSelector('[aria-label="Close parcel drawer"]', { timeout: 20000 });

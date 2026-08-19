@@ -81,6 +81,10 @@ export default function CopilotDrawer() {
 
   return (
     <motion.aside
+      // Stable hook for scripts/verify-ui.mjs — the parcel drawer is also an
+      // <aside>, and parcel ids appear in the panel behind, so assertions
+      // must scope to the copilot rather than the page.
+      data-copilot=""
       key="copilot-drawer"
       initial={{ opacity: 0, x: 30 }}
       animate={{ opacity: 1, x: 0 }}

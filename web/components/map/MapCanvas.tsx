@@ -101,6 +101,11 @@ export default function MapCanvas() {
     if (activeLayers["thermal-heat"]) refreshThermalStatus();
     const map = mapRef.current;
     if (!map || !ready || !thermal.date) return;
+    // Only pull the raster in when the layer is actually on. updateImage starts
+    // a fetch for a ~340 KB PNG and aborts any in-flight one, and doing that for
+    // a hidden layer produced an AbortError in the console plus a cancelled
+    // request on every load — noise that masks real map failures.
+    if (!activeLayers["thermal-heat"]) return;
     const src = map.getSource("thermal-raster") as maplibregl.ImageSource | undefined;
     if (src) {
       const url = thermalRasterURL(thermal.updated_at ?? undefined);

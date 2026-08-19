@@ -100,6 +100,12 @@ export const GlowCard: React.FC<GlowCardProps> = ({
   interactive = true,
   onClick,
   style,
+  // Declared in GlowCardProps and accepted by callers, but consumed via CSS
+  // variables rather than as attributes. They must still be pulled out of the
+  // rest spread: React only warns about unknown props once they reach a DOM
+  // element, and `borderGlowColor` was landing on the <div> on every render.
+  borderGlowColor: _borderGlowColor,
+  glowSize: _glowSize,
   ...props
 }) => {
   const cardRef = useRef<HTMLDivElement>(null);
