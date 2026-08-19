@@ -9,6 +9,7 @@ OpenStreetMap land and infrastructure, and a census-grounded population raster.
 from __future__ import annotations
 
 import logging
+import os
 import subprocess
 import sys
 import threading
@@ -123,7 +124,7 @@ def _warm_parcels(city_id: str) -> None:
     get_parcels(city_id)
 
 
-def _warm_all(cities: list[str], label: str, fn) -> None:
+def _warm_all(cities: list[str], label: str, fn, workers: int = 4) -> None:
     """Warm a batch of cities in parallel so a slow district (e.g. Surat's
     parcel build) can't stall the queue for everyone else."""
     from concurrent.futures import ThreadPoolExecutor
@@ -135,7 +136,7 @@ def _warm_all(cities: list[str], label: str, fn) -> None:
         except Exception:  # noqa: BLE001 — never let warming break the server
             log.exception("could not warm %s (%s)", city_id, label)
 
-    with ThreadPoolExecutor(max_workers=4, thread_name_prefix=f"warm-{label}") as pool:
+    with ThreadPoolExecutor(max_workers=workers, thread_name_prefix=f"warm-{label}") as pool:
         list(pool.map(safe, cities))
 
 
@@ -162,11 +163,48 @@ def prewarm() -> None:
     """
 
     def run() -> None:
-        cities = [DEFAULT_CITY.id, *(c for c in CITIES if c != DEFAULT_CITY.id)]
-        _warm_all(cities, "base", _warm_base)
-        log.info("warmed base dataset for %d districts", len(cities))
-        _warm_all(cities, "parcels", _warm_parcels)
-        log.info("warmed parcels for %d districts", len(cities))
+        others = [c for c in CITIES if c != DEFAULT_CITY.id]
+        every = [DEFAULT_CITY.id, *others]
+
+        # The district the app opens on comes first and alone. Warming all 34
+        # base datasets up front reads 150 MB of GeoJSON and builds 34
+        # population grids and index sets, and while that ran the default
+        # district was queued behind it — /api/health did not answer for 88 s on
+        # a cold start. Getting the default ready first makes the app usable in
+        # a couple of seconds; the rest can trickle in behind it.
+        _warm_all([DEFAULT_CITY.id], "base", _warm_base)
+
+        # Parcels are not cheap. Enrichment is ~1.8 ms per parcel and the state
+        # holds 226,650 of them across 34 districts — Kutch alone is 22,311 and
+        # takes over three minutes. Warming all of them saturates the CPU for
+        # tens of minutes and holds gigabytes, and because the work is
+        # numpy/shapely under the GIL it competes with every request the server
+        # is trying to answer. That made the whole product feel broken: the
+        # engine was busy pre-building districts nobody had asked for.
+        #
+        # So warm the district the app opens on, and let the rest build on first
+        # request — they are lru_cached, so that cost is paid once either way.
+        # Set URBANLENS_WARM=all to restore eager warming (useful for a demo
+        # machine that can be started well in advance).
+        scope = os.environ.get("URBANLENS_WARM", "default").strip().lower()
+        if scope == "all":
+            targets = every
+        elif scope == "none":
+            targets = []
+        else:
+            targets = [DEFAULT_CITY.id]
+        if targets:
+            _warm_all(targets, "parcels", _warm_parcels)
+
+        # Everything else, behind the default and at low concurrency so it never
+        # competes with a request the user is actually waiting on.
+        _warm_all(others, "base", _warm_base, workers=2)
+        log.info("warmed base dataset for %d districts", len(every))
+        log.info(
+            "warmed parcels for %d of %d districts (URBANLENS_WARM=%s); "
+            "the rest build on first request",
+            len(targets), len(every), scope,
+        )
         _register_windows_task()
 
     threading.Thread(target=run, name="urbanlens-warmup", daemon=True).start()

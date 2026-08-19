@@ -19,7 +19,7 @@ from app.data.loader import (
     get_water,
 )
 from app.gis import analysis
-from app.gis.parcels import get_parcels
+from app.gis.parcels import get_parcels, parcels_in_bbox
 from app.gis.raster import population_within_km
 from app.gis.report import build_report_pdf
 from app.gis.scoring import DEFAULT_WEIGHTS, LIVABILITY_WEIGHTS, PROJECTS
@@ -432,13 +432,38 @@ def parcels(
     ownership: str | None = Query(default=None),
     vacant: bool = Query(default=False),
     detail: str | None = Query(default=None),
+    bbox: str | None = Query(
+        default=None,
+        description="minLng,minLat,maxLng,maxLat — return only parcels intersecting this extent",
+    ),
+    limit: int | None = Query(default=None, ge=1, le=50_000),
 ) -> dict:
-    """Parcels as GeoJSON. `?detail=full` adds the enriched per-parcel
-    measurements — proximities, catchment population, factor scores. They are
-    already computed and cached, so the only cost is payload; the map omits them
-    to stay light."""
+    """Parcels as GeoJSON.
+
+    `?detail=full` adds the enriched per-parcel measurements — proximities,
+    catchment population, factor scores. They are already computed and cached,
+    so the only cost is payload.
+
+    `?bbox=` and `?limit=` scope the response to a viewport. Both are optional
+    and omitting them preserves the previous whole-district behaviour, but at
+    district scale that is a lot to send: Kutch is 22,311 parcels and 20.5 MB.
+    A capped response is ordered largest-first so it stays a coherent picture
+    of the significant land rather than an arbitrary sample.
+    """
     ds = _dataset(city)
-    items = get_parcels(ds.city.id)
+    extent: tuple[float, float, float, float] | None = None
+    if bbox:
+        try:
+            parts = [float(x) for x in bbox.split(",")]
+            if len(parts) != 4:
+                raise ValueError
+            extent = (parts[0], parts[1], parts[2], parts[3])
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="bbox must be four comma-separated numbers: minLng,minLat,maxLng,maxLat",
+            ) from None
+    items = parcels_in_bbox(ds.city.id, extent, limit)
     if ownership:
         items = [p for p in items if p.ownership == ownership]
     if vacant:

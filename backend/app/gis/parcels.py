@@ -184,7 +184,18 @@ def _flood_risk_for(ds):
         return None
     risk = _risk_cache.get(ds.city.id, _sentinel)
     if risk is _sentinel:
-        risk = floodmod.load_district(ds)
+        try:
+            risk = floodmod.load_district(ds)
+        except ImportError:
+            # rasterio (and its GDAL wheels) drive the DEM read. Without it the
+            # DEM-derived risk simply is not available, which the rest of this
+            # module already handles as None. Letting the ImportError escape
+            # took /api/health, /api/wards, /api/overview, /api/growth and
+            # /api/zoning/conflicts to 500 — half the product dead because one
+            # optional dependency was missing from requirements.txt.
+            risk = None
+        except Exception:  # noqa: BLE001 — a bad tile must not take the API down
+            risk = None
         _risk_cache[ds.city.id] = risk
     return risk
 
@@ -505,3 +516,54 @@ def get_parcels(city_id: str) -> list[Parcel]:
     ps = build_parcels(ds)
     enrich(ds, ps)
     return ps
+
+
+# ---------------------------------------------------------------------------
+# Viewport scoping
+# ---------------------------------------------------------------------------
+#
+# A district is not a city. Kutch has 22,311 parcels and serving them as one
+# GeoJSON response is 20.5 MB, of which 15.1 MB is properties — the browser then
+# parses that into JS objects and hands it to MapLibre. Statewide there are
+# 226,650 parcels. Nothing about that gets faster by tuning the engine; it is a
+# delivery problem, so the fix is to send only what the viewport actually shows.
+#
+# The index is the same STRtree the rest of the module uses, so a bbox lookup is
+# O(log n) rather than a scan. Simplification is deliberately NOT applied:
+# parcels average 7 vertices, so geometry is only 30% of the payload and there
+# is nothing to win there.
+
+
+@lru_cache(maxsize=8)
+def _bbox_index(city_id: str):
+    """STRtree over parcel geometries, plus the parcels in tree order."""
+    from shapely.geometry import shape
+    from shapely.strtree import STRtree
+
+    items = get_parcels(city_id)
+    geoms = [shape(p.geometry) for p in items]
+    return STRtree(geoms), items
+
+
+def parcels_in_bbox(
+    city_id: str,
+    bbox: tuple[float, float, float, float] | None,
+    limit: int | None = None,
+) -> list[Parcel]:
+    """Parcels intersecting `bbox`, largest first, capped at `limit`.
+
+    Ordering by area matters at low zoom: an arbitrary cap would drop parcels at
+    random and the map would flicker as the viewport moved. Largest-first means
+    a capped response is a coherent picture of the significant land rather than
+    a sample of it.
+    """
+    items = get_parcels(city_id)
+    if bbox is not None:
+        from shapely.geometry import box
+
+        tree, indexed = _bbox_index(city_id)
+        hits = tree.query(box(*bbox))
+        items = [indexed[i] for i in hits]
+    if limit is not None and len(items) > limit:
+        items = sorted(items, key=lambda p: -p.area_sqm)[:limit]
+    return items
