@@ -1,4 +1,4 @@
-# UrbanLens - Main
+# GUGUGAGA - Main
 
 **AI-powered urban planning & land intelligence** — SIH 2026, PS-SW-001.
 
