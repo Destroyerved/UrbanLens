@@ -29,7 +29,7 @@ import {
 import { circleRing, ringsBounds } from "@/lib/geo";
 import { WARDS } from "@/data/wards";
 import { setMapInstance } from "@/lib/mapref";
-import { refreshThermalStatus, useThermalStatus } from "@/data/thermal";
+import { refreshThermalStatus, THERMAL_STATUS, useThermalStatus } from "@/data/thermal";
 import type { Year } from "@/types";
 import { m2 } from "@/lib/marks";
 import { YEARS } from "@/types";
@@ -43,9 +43,20 @@ function rasterTiles(style: "dark_all" | "light_all"): string[] {
   );
 }
 
-/** MapLibre image-source corners for the LST raster: [top-left, top-right, bottom-right, bottom-left]. */
-function thermalCorners(): [[number, number], [number, number], [number, number], [number, number]] {
-  const [w, s, e, n] = THERMAL_BOUNDS;
+/**
+ * MapLibre image-source corners for the LST raster: [top-left, top-right,
+ * bottom-right, bottom-left].
+ *
+ * The extent must come from the backend, which decides what it fetched and
+ * reports it on /api/thermal/status. Pinning it to a constant here silently
+ * rescales the scene whenever the fetch bbox changes — a statewide raster
+ * drawn into a metro-sized box is compressed ~8x and sits over the wrong
+ * ground. THERMAL_BOUNDS is only the pre-status fallback.
+ */
+function thermalCorners(
+  bounds: [number, number, number, number] | null
+): [[number, number], [number, number], [number, number], [number, number]] {
+  const [w, s, e, n] = bounds ?? THERMAL_BOUNDS;
   return [
     [w, n],
     [e, n],
@@ -130,9 +141,34 @@ export default function MapCanvas() {
   const selectParcel = useApp((s) => s.selectParcel);
   const setHovered = useApp((s) => s.setHovered);
   const setMapClick = useApp((s) => s.setMapClick);
+  const corridorPath = useApp((s) => s.corridorPath);
   const city = useApp((s) => s.city);
   const datasetVersion = useApp((s) => s.datasetVersion);
   const thermal = useThermalStatus();
+
+  /* --------------------------- corridor ---------------------------- */
+  // The routed alignment lives in the store rather than in this component so
+  // the panel that produced it and the map that draws it cannot disagree.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    const src = map.getSource("corridor") as maplibregl.GeoJSONSource | undefined;
+    if (!src) return;
+    src.setData(
+      corridorPath && corridorPath.length > 1
+        ? {
+            type: "FeatureCollection",
+            features: [
+              {
+                type: "Feature",
+                properties: {},
+                geometry: { type: "LineString", coordinates: corridorPath },
+              },
+            ],
+          }
+        : { type: "FeatureCollection", features: [] }
+    );
+  }, [corridorPath, ready]);
 
   /* ------------------------- thermal status ------------------------- */
   // Thermal data is lazy: do not wake the Python service on normal dashboard load.
@@ -146,10 +182,13 @@ export default function MapCanvas() {
     const src = map.getSource("thermal-raster") as maplibregl.ImageSource | undefined;
     if (src) {
       const url = thermalRasterURL(thermal.updated_at ?? undefined);
-      if (thermalUrlRef.current === url) return;
-      thermalUrlRef.current = url;
+      // Keyed on bounds too: the scene is re-placed when the backend widens or
+      // narrows its fetch bbox, not only when the image itself changes.
+      const key = `${url}|${(thermal.bounds ?? THERMAL_BOUNDS).join(",")}`;
+      if (thermalUrlRef.current === key) return;
+      thermalUrlRef.current = key;
       try {
-        src.updateImage({ url, coordinates: thermalCorners() });
+        src.updateImage({ url, coordinates: thermalCorners(thermal.bounds) });
       } catch {
         // updateImage aborts any in-flight image load; ignore if it throws
         // during mount/teardown (e.g. WebGL context already lost).
@@ -256,13 +295,15 @@ export default function MapCanvas() {
       map.addSource("gap-heat", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
       map.addSource("vegetation", { type: "geojson", data: vegetationFC(), promoteId: "id" });
       map.addSource("greenspace", { type: "geojson", data: greenspaceFC() });
+      // Corridor alignment — empty until the corridor panel routes one.
+      map.addSource("corridor", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
       map.addSource("thermal-raster", {
         type: "image",
         // MapLibre's image source decoder does not support GIFs. A tiny
         // transparent PNG keeps the source valid until a real LST raster is
         // requested, without an eager /static/thermal request.
         url: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL5nAAAAABJRU5ErkJggg==",
-        coordinates: thermalCorners(),
+        coordinates: thermalCorners(THERMAL_STATUS().bounds),
       });
       // Swallow maplibre's ErrorEvent logging: updateImage() aborts the
       // initial load() on mount, which fires an 'error' event with no
@@ -613,6 +654,22 @@ export default function MapCanvas() {
         source: "greenspace",
         paint: { "line-color": "#15803d", "line-width": 1.2, "line-opacity": 0.7 },
         layout: { visibility: "none" },
+      });
+
+      /* ---- routed corridor ---- */
+      map.addLayer({
+        id: "corridor-casing",
+        type: "line",
+        source: "corridor",
+        paint: { "line-color": "#0f172a", "line-width": 7, "line-opacity": 0.55 },
+        layout: { "line-cap": "round", "line-join": "round" },
+      });
+      map.addLayer({
+        id: "corridor-line",
+        type: "line",
+        source: "corridor",
+        paint: { "line-color": "#22d3ee", "line-width": 3.2, "line-opacity": 0.95 },
+        layout: { "line-cap": "round", "line-join": "round" },
       });
 
       /* ---- sim coverage ring ---- */

@@ -8,6 +8,7 @@ import { GlowCard } from "@/components/ui/spotlight-card";
 import { fetchCityKpis } from "@/services/infrastructure";
 import { useApp } from "@/lib/store";
 import { formatCompact, formatNumber } from "@/lib/utils";
+import { ProvenanceSection } from "@/components/shared/ProvenanceSection";
 
 type Kpis = Awaited<ReturnType<typeof fetchCityKpis>>;
 
@@ -236,6 +237,8 @@ export default function OverviewPanel() {
               </div>
             </GlowCard>
           </Section>
+
+          <ProvenanceSection />
         </>
       )}
     </PanelShell>

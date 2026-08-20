@@ -137,6 +137,9 @@ interface AppState {
 
   /** Last empty-map click (used by the 15-minute analyzer). */
   mapClick: LngLat | null;
+  /** Routed corridor alignment, drawn on the map while the panel is open. */
+  corridorPath: LngLat[] | null;
+  setCorridorPath: (path: LngLat[] | null) => void;
   setMapClick: (p: LngLat | null) => void;
 
   // Map
@@ -433,6 +436,8 @@ export const useApp = create<AppState>((set, get) => ({
 
   mapClick: null,
   setMapClick: (mapClick) => set({ mapClick }),
+  corridorPath: null,
+  setCorridorPath: (corridorPath) => set({ corridorPath }),
 
   flyTarget: null,
   flyTo: (center, zoom = 13.5) =>

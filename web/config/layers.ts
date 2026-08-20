@@ -117,6 +117,13 @@ export const MODE_PRESETS: Record<Mode, LayerId[]> = {
   land: ["wards", "parcels", "govt-land", "zoning-conflicts", "roads"],
   sites: ["wards", "parcels", "roads", "candidates"],
   simulator: ["wards", "roads", "facilities", "candidates"],
+  // Equity reads at ward scale: boundaries plus the population and gap
+  // surfaces the index is computed from. Parcels would only add noise.
+  equity: ["wards", "population", "gap", "facilities"],
+  // Conservation reads the environmental surfaces it scores against.
+  conservation: ["wards", "greenspace", "ndvi-heat", "flood-risk", "prediction"],
+  // A corridor is argued about against terrain and what it would serve.
+  corridor: ["wards", "roads", "population", "flood-risk", "greenspace"],
 };
 
 export const MODE_META: Record<
@@ -129,4 +136,7 @@ export const MODE_META: Record<
   land: { label: "Land Intelligence", caption: "GLIS parcels & opportunities" },
   sites: { label: "Site Selection", caption: "Explainable site recommendation" },
   simulator: { label: "Simulator", caption: "What-if impact analysis" },
+  equity: { label: "Service Equity", caption: "Who is underserved, and by how much" },
+  conservation: { label: "Conservation", caption: "Ecology under development pressure" },
+  corridor: { label: "Corridor", caption: "Least-cost route for linear infrastructure" },
 };

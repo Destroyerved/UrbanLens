@@ -23,7 +23,7 @@ from app.data.loader import ACTIVE_DB_PATH, get_dataset
 from app.gis import analysis
 from app.gis.parcels import _observed_for, get_parcels
 
-CACHE_KEY = "ui-bootstrap-v5"
+CACHE_KEY = "ui-bootstrap-v6"
 POP_STEP = 4
 CELL_DEG = 0.00225 * POP_STEP
 
@@ -131,7 +131,7 @@ def _build(city_id: str) -> dict[str, Any]:
             p.land_use,
             int(p.history.get(2018, 0)),
             int(p.history.get(2022, 0)),
-            int(p.history.get(2024, 0)),
+            int(p.history.get(2024, p.history.get(2026, 0))),
             int(p.built_up_percent),
             int(p.vegetation_percent),
             round(_finite(p.road_km), 2),
@@ -242,7 +242,7 @@ def _build(city_id: str) -> dict[str, Any]:
     return {
         # Deliberately short keys: this is a browser transport format, not the
         # public semantic API. web/lib/dataset.ts is its documented decoder.
-        "v": 5,
+        "v": 6,
         "c": city_id,
         "cell": CELL_DEG,
         "w": wards,
@@ -271,7 +271,7 @@ def bootstrap_signature(city_id: str) -> str:
     # persisted response cache after an engine swap.
     from app.gis.parcels import parcel_signature
 
-    return f"boot-v5|{parcel_signature(city_id)}"
+    return f"boot-v6|{parcel_signature(city_id)}"
 
 
 @lru_cache(maxsize=128)

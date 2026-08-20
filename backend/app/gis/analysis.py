@@ -454,6 +454,226 @@ def livability(city_id: str) -> list[dict]:
 
 
 # ---------------------------------------------------------------------------
+# Ward equity — who is underserved, by how much, and is the gap systematic
+# ---------------------------------------------------------------------------
+
+# The service floor is relative to each city's own standard, not a fixed mark.
+#
+# A single absolute cut-off asks the wrong question of a state this varied: 50
+# is a demanding floor in a district whose median ward scores 59 and a slack
+# one where the median is 70, so the same number means "badly underserved" in
+# one place and "slightly below par" in another.
+#
+# 0.6x the median is the standard relative-deprivation line (the convention
+# used for relative poverty). Its useful property here is that the resulting
+# deprived share still varies between cities: an evenly-served city has few
+# people below 60% of its own median, an unequal one has many. A percentile
+# floor would not — fixing the floor at, say, P25 puts 25% of every city below
+# it by construction, which destroys the headline's information.
+EQUITY_FLOOR_RATIO = 0.6
+
+# Below this many wards a weighted median is noise rather than a city standard,
+# so the absolute livability "poor" boundary is used instead.
+EQUITY_MIN_WARDS_FOR_RELATIVE = 4
+EQUITY_ABSOLUTE_FLOOR = 50
+
+# Components carried through from livability(). Every one is computed from a
+# real layer — Census ward population, OSM facilities and roads, Sentinel-2
+# NDVI, DEM flood — so nothing here rests on modelled zoning, ownership or
+# parcel geometry. That matters: this is the one analytic whose inputs are
+# real end to end.
+EQUITY_COMPONENTS = (
+    "healthcare", "education", "green_space",
+    "transportation", "public_services", "road_connectivity",
+    "environmental_quality",
+)
+
+
+def _weighted_gini(values: list[float], weights: list[float]) -> float:
+    """Population-weighted Gini over a non-negative quantity.
+
+    People are the unit, not wards: a badly-served ward of 400,000 must not
+    count the same as a badly-served ward of 12,000. An unweighted Gini across
+    ward polygons says something about administrative geometry rather than
+    about who actually lives with the shortfall.
+    """
+    pairs = sorted(
+        ((float(v), float(w)) for v, w in zip(values, weights) if w > 0 and np.isfinite(v)),
+        key=lambda t: t[0],
+    )
+    if len(pairs) < 2:
+        return 0.0
+    v = np.array([p[0] for p in pairs], dtype=float)
+    w = np.array([p[1] for p in pairs], dtype=float)
+    total_v = float((v * w).sum())
+    if total_v <= 0:
+        return 0.0
+    cum_w = np.cumsum(w)
+    w_total = float(cum_w[-1])
+    # Brown's formula on the population-weighted Lorenz curve.
+    cum_v = np.cumsum(v * w)
+    lorenz = np.concatenate(([0.0], cum_v / total_v))
+    pop = np.concatenate(([0.0], cum_w / w_total))
+    area = float(np.sum((pop[1:] - pop[:-1]) * (lorenz[1:] + lorenz[:-1]) / 2.0))
+    return round(max(0.0, min(1.0, 1.0 - 2.0 * area)), 4)
+
+
+def _weighted_percentile(values: list[float], weights: list[float], pct: float) -> float:
+    """Percentile of a distribution over people rather than over wards."""
+    pairs = sorted(
+        ((float(v), float(w)) for v, w in zip(values, weights) if w > 0 and np.isfinite(v)),
+        key=lambda t: t[0],
+    )
+    if not pairs:
+        return 0.0
+    v = np.array([p[0] for p in pairs], dtype=float)
+    w = np.array([p[1] for p in pairs], dtype=float)
+    cum = np.cumsum(w) / float(w.sum())
+    idx = int(np.searchsorted(cum, pct / 100.0, side="left"))
+    return round(float(v[min(idx, len(v) - 1)]), 1)
+
+
+def _distribution(values: list[float], weights: list[float]) -> dict:
+    p10 = _weighted_percentile(values, weights, 10)
+    p90 = _weighted_percentile(values, weights, 90)
+    return {
+        "gini": _weighted_gini(values, weights),
+        "p10": p10,
+        "p50": _weighted_percentile(values, weights, 50),
+        "p90": p90,
+        # How much better the well-served tenth has it than the worst-served
+        # tenth. Easier to act on than a Gini, and it survives translation
+        # into a sentence a planner can repeat in a meeting.
+        "p90_p10_ratio": round(p90 / p10, 2) if p10 > 0 else None,
+    }
+
+
+def equity(city_id: str) -> dict:
+    """Distribution of service provision across a city's population.
+
+    livability() answers "how well served is this ward". This answers the
+    questions that follow from it and that the ward list cannot: how unequally
+    is provision spread, how many people live below the floor, which shortfall
+    is the systematic one, and where does fixing it reach the most people.
+
+    Nothing here is a new measurement — every component comes from
+    livability(), so the two can never tell different stories about the same
+    ward.
+    """
+    wards = livability(city_id)
+    if not wards:
+        return {"city": city_id, "wards": [], "population_total": 0,
+                "floor": float(EQUITY_ABSOLUTE_FLOOR), "floor_basis": "absolute",
+                "inequality": {}, "deprivation": {}, "priorities": []}
+
+    pops = [float(w["population"] or 0) for w in wards]
+    total_pop = float(sum(pops))
+    scores = [float(w["score"]) for w in wards]
+
+    # The floor this city is judged against, derived from its own distribution.
+    median_score = _weighted_percentile(scores, pops, 50)
+    # The level the city already reaches for its best-served tenth — the target
+    # the priority ranking measures every ward against.
+    target_score = _weighted_percentile(scores, pops, 90)
+    if len(wards) >= EQUITY_MIN_WARDS_FOR_RELATIVE and median_score > 0:
+        floor = round(EQUITY_FLOOR_RATIO * median_score, 1)
+        floor_basis = "relative"
+    else:
+        floor = float(EQUITY_ABSOLUTE_FLOOR)
+        floor_basis = "absolute"
+
+    inequality = {"composite": _distribution(scores, pops)}
+    for key in EQUITY_COMPONENTS:
+        vals = [float(w["components"].get(key, 0)) for w in wards]
+        inequality[key] = _distribution(vals, pops)
+
+    # The systematic shortfall: the component whose provision is spread most
+    # unequally across people, which is where an equity intervention buys the
+    # most fairness per rupee.
+    worst_component = max(
+        EQUITY_COMPONENTS, key=lambda k: inequality[k]["gini"]
+    )
+
+    below = [w for w in wards if w["score"] < floor]
+    deprived_pop = float(sum(float(w["population"] or 0) for w in below))
+
+    # The relative floor measures inequality *within* a city, which is what an
+    # equity question asks — but it cannot see a district that is uniformly
+    # badly served. Gir Somnath's median ward scores 18, so its relative floor
+    # lands at 10.8 and almost nobody is "below" it; read alone that says the
+    # district is fine. The absolute livability floor is carried alongside so
+    # the two readings can be shown together and neither can be mistaken for
+    # the other.
+    below_abs = [w for w in wards if w["score"] < EQUITY_ABSOLUTE_FLOOR]
+    deprived_abs = float(sum(float(w["population"] or 0) for w in below_abs))
+
+    rows = []
+    for w in wards:
+        pop = float(w["population"] or 0)
+        shortfall = max(0.0, floor - float(w["score"]))
+        comps = {k: float(w["components"].get(k, 0)) for k in EQUITY_COMPONENTS}
+        weakest = min(comps, key=comps.get) if comps else None
+        rows.append({
+            "ward_code": w["ward_code"],
+            "name": w["name"],
+            "population": int(pop),
+            "centroid": w["centroid"],
+            "score": w["score"],
+            "band": w["band"],
+            "shortfall": round(shortfall, 1),
+            "weakest_component": weakest,
+            "weakest_score": round(comps[weakest], 1) if weakest else None,
+            # Ranking by shortfall alone sends attention to small wards with
+            # extreme scores; weighting by the people who live there is what
+            # makes this an inclusion measure rather than a severity one.
+            "people_below_floor": int(pop) if shortfall > 0 else 0,
+            # Measured against what this city already achieves for its
+            # best-served tenth, not against the floor or the median.
+            #
+            # The floor fails in an evenly-served district: nobody is under it,
+            # every shortfall is 0, and the list headed "where a fix reaches
+            # the most people" silently ranks the best wards first. The median
+            # fails too, and more often than it looks — Porbandar's three wards
+            # score 22/17/17, so the median *is* the bottom and all three
+            # shortfalls collapse to 0 again. P90 is the only one of the three
+            # that keeps discriminating when most wards tie at the low end,
+            # and it states an actionable target: bring everyone up to the
+            # standard the city already reaches somewhere.
+            "priority": round(max(0.0, target_score - float(w["score"])) * pop / 1000.0, 1),
+        })
+    rows.sort(key=lambda r: -r["priority"])
+
+    return {
+        "city": city_id,
+        "population_total": int(total_pop),
+        "floor": floor,
+        "floor_basis": floor_basis,
+        "floor_detail": (
+            f"{int(EQUITY_FLOOR_RATIO * 100)}% of this city's population-weighted "
+            f"median ward score ({median_score})"
+            if floor_basis == "relative"
+            else f"absolute livability floor — too few wards for a city-relative line"
+        ),
+        "median_score": median_score,
+        "target_score": target_score,
+        "wards": rows,
+        "inequality": inequality,
+        "most_unequal_service": worst_component,
+        "deprivation": {
+            "wards_below_floor": len(below),
+            "ward_count": len(wards),
+            "population_below_floor": int(deprived_pop),
+            "population_share_pct": round(deprived_pop / total_pop * 100, 1) if total_pop else 0.0,
+            "absolute_floor": EQUITY_ABSOLUTE_FLOOR,
+            "wards_below_absolute": len(below_abs),
+            "population_below_absolute": int(deprived_abs),
+            "absolute_share_pct": round(deprived_abs / total_pop * 100, 1) if total_pop else 0.0,
+        },
+        "priorities": rows[:10],
+    }
+
+
+# ---------------------------------------------------------------------------
 # 15-minute city (PRD §14)
 # ---------------------------------------------------------------------------
 
@@ -707,7 +927,11 @@ def growth_summary(city_id: str) -> dict:
         for p in parcels:
             a = agg.setdefault(p.ward, [0.0, 0.0, 0.0, 0.0])
             for i, y in enumerate(years):
-                a[i] += p.history.get(y, 0)
+                # The modelled history's last year is 2026; the observed
+                # (Esri) overlay's is 2024 and mirrors itself into 2026. Read
+                # both, or synthetic cities aggregate the final year to zero
+                # and growth reads -100%.
+                a[i] += p.history.get(y, p.history.get(2026, 0) if y == 2024 else 0)
             a[3] += 1
         built = {y: 0.0 for y in years}
         for ward, a in agg.items():

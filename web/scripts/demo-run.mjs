@@ -77,11 +77,11 @@ check(
 );
 
 // ── 2 ───────────────────────────────────────────────────────────────────────
-step("Urban growth, 2018 → 2026");
+step("Urban growth, 2018 → 2024");
 const growth = await get("/api/growth");
 const b = growth.built_up_km2;
-check(b[2018] < b[2022] && b[2022] < b[2026], `Built-up ${b[2018]} → ${b[2022]} → ${b[2026]} km² (monotonic)`, `built-up is not increasing: ${JSON.stringify(b)}`);
-check(growth.growth_pct_2018_2026 > 0, `Growth +${growth.growth_pct_2018_2026}% over the period`);
+check(b[2018] < b[2022] && b[2022] < b[2024], `Built-up ${b[2018]} → ${b[2022]} → ${b[2024]} km² (monotonic)`, `built-up is not increasing: ${JSON.stringify(b)}`);
+check(growth.growth_pct_2018_2024 > 0, `Growth +${growth.growth_pct_2018_2024}% over the period`);
 check(growth.corridors?.length > 0, `${growth.corridors.length} expansion corridors detected`);
 const topCorridor = [...growth.corridors].sort((x, y) => y.predicted_growth_pct - x.predicted_growth_pct)[0];
 ok(`Strongest: ${topCorridor.name} — ${topCorridor.predicted_growth_pct}% predicted, ${fmt(topCorridor.population)} residents`);

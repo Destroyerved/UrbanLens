@@ -2,15 +2,7 @@
 
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import {
-  LayoutDashboard,
-  TrendingUp,
-  Hospital,
-  Landmark,
-  Target,
-  FlaskConical,
-  type LucideIcon,
-} from "lucide-react";
+import { FlaskConical, Hospital, Landmark, LayoutDashboard, Leaf, Route, Scale, Target, TrendingUp, type LucideIcon } from "lucide-react";
 import type { Mode } from "@/types";
 import { MODE_META } from "@/config/layers";
 import { useApp } from "@/lib/store";
@@ -23,6 +15,9 @@ const MODES: { id: Mode; label: string; icon: LucideIcon }[] = [
   { id: "land", label: "Land", icon: Landmark },
   { id: "sites", label: "Sites", icon: Target },
   { id: "simulator", label: "Sim", icon: FlaskConical },
+  { id: "equity", label: "Equity", icon: Scale },
+  { id: "conservation", label: "Eco", icon: Leaf },
+  { id: "corridor", label: "Route", icon: Route },
 ];
 
 export default function ModeRail() {

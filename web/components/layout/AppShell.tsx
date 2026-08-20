@@ -29,6 +29,9 @@ const InfrastructurePanel = dynamic(() => import("@/components/panels/Infrastruc
 const LandPanel = dynamic(() => import("@/components/panels/LandPanel"), { ssr: false });
 const SiteSelectionPanel = dynamic(() => import("@/components/panels/SiteSelectionPanel"), { ssr: false });
 const SimulatorPanel = dynamic(() => import("@/components/panels/SimulatorPanel"), { ssr: false });
+const EquityPanel = dynamic(() => import("@/components/panels/EquityPanel"), { ssr: false });
+const ConservationPanel = dynamic(() => import("@/components/panels/ConservationPanel"), { ssr: false });
+const CorridorPanel = dynamic(() => import("@/components/panels/CorridorPanel"), { ssr: false });
 const CompareCandidatesPanel = dynamic(() => import("@/components/panels/CompareCandidatesPanel"), { ssr: false });
 
 export default function AppShell() {
@@ -107,6 +110,9 @@ export default function AppShell() {
                 {mode === "land" && <LandPanel key="land" />}
                 {mode === "sites" && <SiteSelectionPanel key="sites" />}
                 {mode === "simulator" && <SimulatorPanel key="simulator" />}
+                {mode === "equity" && <EquityPanel key="equity" />}
+                {mode === "conservation" && <ConservationPanel key="conservation" />}
+                {mode === "corridor" && <CorridorPanel key="corridor" />}
               </AnimatePresence>
             </motion.div>
           ) : null}

@@ -20,6 +20,8 @@ from app.data.loader import (
     get_water,
 )
 from app.gis import analysis
+from app.gis import conservation as conservation_gis
+from app.gis import corridor as corridor_gis
 from app.gis.parcels import get_parcels
 from app.gis.raster import population_within_km
 from app.gis.report import build_report_pdf
@@ -62,6 +64,13 @@ class SimulateBody(BaseModel):
     project_type: str
     lng: float
     lat: float
+
+
+class CorridorBody(BaseModel):
+    from_lng: float
+    from_lat: float
+    to_lng: float
+    to_lat: float
 
 
 class CopilotBody(BaseModel):
@@ -649,6 +658,93 @@ def gaps(city: str | None = Query(default=None)) -> dict:
     ds = _dataset(city)
     return {"wards": analysis.infrastructure_gaps(ds.city.id),
             "coverage": analysis.coverage_report(ds.city.id)}
+
+
+@router.post("/corridor")
+def corridor(body: CorridorBody, city: str | None = Query(default=None)) -> dict:
+    """Least-cost alignment for linear infrastructure between two points.
+
+    Sites for roads, transmission lines and canals are not chosen the way a
+    hospital is: there is no single best cell, only a best path, and its cost
+    is dominated by what it has to cross. The straight line is returned
+    alongside so the detour — and what the detour avoided — can be argued with.
+    """
+    ds = _dataset(city)
+    return corridor_gis.route(
+        ds.city.id,
+        (body.from_lng, body.from_lat),
+        (body.to_lng, body.to_lat),
+    )
+
+
+@router.get("/provenance")
+def provenance(city: str | None = Query(default=None)) -> dict:
+    """Where every layer on screen came from, and how much of it is measured.
+
+    Layers are not uniformly real: ward boundaries are official, facilities and
+    roads are OpenStreetMap, NDVI is satellite, and zoning is modelled outright.
+    Presenting them identically is what lets a modelled figure be mistaken for
+    a surveyed one, so the split is reported rather than left implicit.
+    """
+    ds = _dataset(city)
+    layers = _sources(ds)
+    # "Measured" means somebody observed it — surveyed, mapped or sensed.
+    # "Derived" is computed from something measured. "Modelled" is generated.
+    kind = {
+        "official": "measured", "osm": "measured", "satellite": "measured",
+        "derived": "derived", "synthetic": "modelled",
+    }
+    counts: dict[str, int] = {"measured": 0, "derived": 0, "modelled": 0}
+    for meta in layers.values():
+        counts[kind.get(meta.get("source", ""), "derived")] += 1
+    total = sum(counts.values()) or 1
+    return {
+        "city": ds.city.id,
+        "layers": layers,
+        "rollup": {
+            **counts,
+            "total": total,
+            "measured_pct": round(counts["measured"] / total * 100, 1),
+        },
+    }
+
+
+@router.get("/conservation")
+def conservation(city: str | None = Query(default=None)) -> dict:
+    """Ecologically sensitive land ranked by the development pressure on it.
+
+    Sensitivity comes only from measured layers (OSM green space and water,
+    Sentinel-2 NDVI, DEM flood); pressure is the trained development model's
+    own output. The product, not the sum — land already protected by having no
+    pressure on it is not a conservation priority.
+    """
+    ds = _dataset(city)
+    return conservation_gis.conservation(ds.city.id)
+
+
+@router.get("/encroachment")
+def encroachment(city: str | None = Query(default=None)) -> dict:
+    """Built land overlapping mapped water bodies and green space.
+
+    Real geometry against real geometry: only parcels traced from a mapped OSM
+    boundary are tested, never the modelled gap-fill grid, and never against
+    ownership or zoning — both are modelled here and would turn a screening
+    result into an accusation the data cannot support.
+    """
+    ds = _dataset(city)
+    return conservation_gis.encroachment(ds.city.id)
+
+
+@router.get("/equity")
+def equity(city: str | None = Query(default=None)) -> dict:
+    """Distribution of service provision across the city's population.
+
+    /livability ranks wards; this reports how unequally that provision is
+    spread, how many people fall below the service floor, and where an
+    intervention reaches the most of them.
+    """
+    ds = _dataset(city)
+    return analysis.equity(ds.city.id)
 
 
 @router.get("/livability")

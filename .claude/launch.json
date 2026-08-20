@@ -2,9 +2,9 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "urbanlens-ultrafast-web",
+      "name": "urbanlens",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--prefix", "web"],
+      "runtimeArgs": ["run", "dev"],
       "port": 3000
     }
   ]

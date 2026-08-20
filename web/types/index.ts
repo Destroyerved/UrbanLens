@@ -12,6 +12,9 @@ export const MODES = [
   "land",
   "sites",
   "simulator",
+  "equity",
+  "conservation",
+  "corridor",
 ] as const;
 
 export type Mode = (typeof MODES)[number];

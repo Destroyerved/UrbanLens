@@ -3,18 +3,7 @@
 import { useEffect } from "react";
 import { Command } from "cmdk";
 import { AnimatePresence, motion } from "framer-motion";
-import {
-  LayoutDashboard,
-  TrendingUp,
-  Hospital,
-  Landmark,
-  Target,
-  FlaskConical,
-  Grid2x2,
-  MapPin,
-  Sparkles,
-  Moon,
-} from "lucide-react";
+import { FlaskConical, Grid2x2, Hospital, Landmark, LayoutDashboard, Leaf, MapPin, Moon, Route, Scale, Sparkles, Target, TrendingUp } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useApp } from "@/lib/store";
 import { PARCELS } from "@/data/parcels";
@@ -30,6 +19,9 @@ const MODE_ICONS: Record<Mode, React.ReactNode> = {
   land: <Landmark size={14} />,
   sites: <Target size={14} />,
   simulator: <FlaskConical size={14} />,
+  equity: <Scale size={14} />,
+  conservation: <Leaf size={14} />,
+  corridor: <Route size={14} />,
 };
 
 export default function CommandPalette() {

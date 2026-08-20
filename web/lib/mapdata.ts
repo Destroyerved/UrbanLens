@@ -222,8 +222,14 @@ export const gapHeatFC = (): FeatureCollection => build_gapHeatFC(GRID);
 export const vegetationFC = (): FeatureCollection => VEGETATION;
 export const greenspaceFC = (): FeatureCollection => GREENSPACE;
 
-/** Metro extent the LST raster covers (matches backend BBOX). */
-export const THERMAL_BOUNDS: [number, number, number, number] = [72.0893, 22.7706, 72.8426, 23.4355];
+/**
+ * Fallback extent for the LST raster, used only until `/api/thermal/status`
+ * reports the real one. The backend publishes ONE statewide scene covering
+ * every district (app/thermal.py), so this is Gujarat's bbox — a metro-sized
+ * box here squeezes the whole state into the city and the overlay lands on
+ * the wrong geography entirely.
+ */
+export const THERMAL_BOUNDS: [number, number, number, number] = [68.1757, 20.1195, 74.4764, 24.7119];
 
 /** Raster URL for the committed LST layer; `updated_at` busts the browser cache. */
 export const thermalRasterURL = (updatedAt?: string): string =>

@@ -159,7 +159,7 @@ def _find_valid_date(meta: dict | None, max_lag_days: int = 200) -> str | None:
 
 
 def _wms(date: str, size: int, fmt: str) -> bytes:
-    """GetMap over the metro bbox. ``fmt`` is e.g. 'image/png' or 'image/tiff'."""
+    """GetMap over the statewide bbox. ``fmt`` is e.g. 'image/png' or 'image/tiff'."""
     x0, y0, x1, y1 = bounds_3857()
     url = (
         f"{GIBS_WMS}?SERVICE=WMS&REQUEST=GetMap&VERSION=1.1.1&LAYERS={LAYER}"
@@ -173,12 +173,12 @@ def _wms(date: str, size: int, fmt: str) -> bytes:
 
 
 def _fetch_tiff(date: str) -> bytes:
-    """Download a georeferenced 3857 TIFF of the LST layer over the metro."""
+    """Download a georeferenced 3857 TIFF of the LST layer over the state."""
     return _wms(date, SIZE, "image/tiff")
 
 
 def _probe(date: str, size: int = 256) -> bool:
-    """Cheap check that a date actually has data over the metro (fast PNG).
+    """Cheap check that a date actually has data over the state (fast PNG).
 
     GIBS advertises dates whose rasters are still empty over parts of India;
     a 256px probe returns in a second or two and avoids pulling a 16 MB TIFF
