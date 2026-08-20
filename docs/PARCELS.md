@@ -1,7 +1,7 @@
 # Where UrbanLens parcels come from
 
-**Status:** all nine study areas are on the full street network — 431,000
-OpenStreetMap street centrelines, 163,000 parcels.
+**Status:** all nine study areas are on the full street network — 315,674
+OpenStreetMap street centrelines cut into 163,078 parcels.
 
 ---
 
@@ -114,12 +114,12 @@ never sent to the browser, so the map payload is unchanged.
 | Ahmedabad | 55,580 | 3,224 | 17,215 | 0.11 | **1.12** | 4.24 | 49.8 | 2.6 MB |
 | Gandhinagar | 23,855 | 1,766 | 7,308 | 0.11 | **0.37** | 4.92 | 49.7 | 1.1 MB |
 | Ahmedabad–Gandhinagar | 65,275 | 3,884 | 24,556 | 0.11 | **0.92** | 4.42 | 49.8 | 3.6 MB |
-| Ahmedabad Metro Region | 92,000 | 4,930 | 37,349 | 0.14 | **1.51** | 30.61 | 50.0 | 6.4 MB |
-| Kheda | 38,000 | 5,000 | 12,781 | 0.71 | 23.52 | 42.29 | 50.0 | 2.4 MB |
-| Mahesana | 39,000 | 4,597 | 15,427 | 2.46 | 28.49 | 43.68 | 50.0 | 3.1 MB |
-| Sabarkantha | 20,000 | 865 | 18,130 | 4.10 | 17.87 | 41.27 | 50.0 | 2.2 MB |
-| Aravalli | 11,000 | 741 | 13,512 | 3.32 | 25.13 | 42.57 | 50.0 | 1.8 MB |
-| Patan | 23,000 | 600 | 16,800 | 2.24 | 30.73 | 44.64 | 50.0 | 2.4 MB |
+| Ahmedabad Metro Region | 84,960 | 4,930 | 37,349 | 0.14 | **1.51** | 30.61 | 50.0 | 6.4 MB |
+| Kheda | 27,843 | 5,000 | 12,781 | 0.71 | 23.52 | 42.29 | 50.0 | 2.4 MB |
+| Mahesana | 24,725 | 4,597 | 15,427 | 2.46 | 28.49 | 43.68 | 50.0 | 3.1 MB |
+| Sabarkantha | 13,469 | 865 | 18,130 | 4.10 | 17.87 | 41.27 | 50.0 | 2.2 MB |
+| Aravalli | 6,004 | 741 | 13,512 | 3.32 | 25.13 | 42.57 | 50.0 | 1.8 MB |
+| Patan | 13,963 | 600 | 16,800 | 2.24 | 30.73 | 44.64 | 50.0 | 2.4 MB |
 
 Sizes in hectares; payload is the gzipped `?detail=full` response. **No parcel
 anywhere reports 0 ha, and none exceeds its cap.**
