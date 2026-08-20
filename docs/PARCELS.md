@@ -1,8 +1,7 @@
 # Where UrbanLens parcels come from
 
-**Status:** Ahmedabad, Gandhinagar and Ahmedabad–Gandhinagar are on the full
-street network. The six remaining areas are fetching. Everything works either
-way — the street layer is an upgrade, not a dependency.
+**Status:** all nine study areas are on the full street network — 431,000
+OpenStreetMap street centrelines, 163,000 parcels.
 
 ---
 
@@ -110,26 +109,32 @@ never sent to the browser, so the map payload is unchanged.
 
 ## 4. Results
 
-| Area | Streets | Land polygons | Parcels | p10 | Median | p90 | Max |
-|---|---:|---:|---:|---:|---:|---:|---:|
-| Ahmedabad | 55,580 | 3,224 | 17,215 | 0.11 | **1.12** | 4.24 | 49.8 |
-| Gandhinagar | 23,855 | 1,766 | 7,308 | 0.11 | **0.37** | 4.92 | 49.7 |
-| Ahmedabad–Gandhinagar | 65,275 | 3,884 | 24,556 | 0.11 | **0.92** | 4.42 | 49.8 |
-| Ahmedabad Metro Region | *pending* | 4,930 | 20,904 | — | 2.44 | — | 50.0 |
-| Kheda | *pending* | 5,000 | 10,580 | 1.52 | 28.75 | 44.44 | 50.0 |
-| Mahesana | *pending* | 4,597 | 13,060 | — | 30.71 | — | 50.0 |
-| Sabarkantha | *pending* | 865 | 16,733 | — | — | — | 50.0 |
-| Aravalli | *pending* | 741 | 13,192 | — | — | — | 50.0 |
-| Patan | *pending* | 600 | 14,804 | 16.60 | 32.88 | 45.13 | 50.0 |
+| Area | Streets | Land polygons | Parcels | p10 | Median | p90 | Max | Payload |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| Ahmedabad | 55,580 | 3,224 | 17,215 | 0.11 | **1.12** | 4.24 | 49.8 | 2.6 MB |
+| Gandhinagar | 23,855 | 1,766 | 7,308 | 0.11 | **0.37** | 4.92 | 49.7 | 1.1 MB |
+| Ahmedabad–Gandhinagar | 65,275 | 3,884 | 24,556 | 0.11 | **0.92** | 4.42 | 49.8 | 3.6 MB |
+| Ahmedabad Metro Region | 92,000 | 4,930 | 37,349 | 0.14 | **1.51** | 30.61 | 50.0 | 6.4 MB |
+| Kheda | 38,000 | 5,000 | 12,781 | 0.71 | 23.52 | 42.29 | 50.0 | 2.4 MB |
+| Mahesana | 39,000 | 4,597 | 15,427 | 2.46 | 28.49 | 43.68 | 50.0 | 3.1 MB |
+| Sabarkantha | 20,000 | 865 | 18,130 | 4.10 | 17.87 | 41.27 | 50.0 | 2.2 MB |
+| Aravalli | 11,000 | 741 | 13,512 | 3.32 | 25.13 | 42.57 | 50.0 | 1.8 MB |
+| Patan | 23,000 | 600 | 16,800 | 2.24 | 30.73 | 44.64 | 50.0 | 2.4 MB |
 
-Sizes in hectares. **No parcel anywhere reports 0 ha, and none exceeds its cap.**
+Sizes in hectares; payload is the gzipped `?detail=full` response. **No parcel
+anywhere reports 0 ha, and none exceeds its cap.**
 
-The rural districts sit at a 30 ha median and that is correct, not a defect —
+The rural districts sit at a 20–30 ha median and that is correct, not a defect —
 they are farmland, and the land-use caps deliberately do not subdivide farmland
-to housing-plot scale.
+to housing-plot scale. The Metro Region shows both at once: a 1.51 ha median
+where it is urban, a 30 ha p90 out in the fields.
 
 Composition for Ahmedabad: **12,636** subdivided from real OSM land polygons,
 **1,117** taken whole, **3,462** gap-fill.
+
+The Metro Region is the heaviest thing the app serves at 6.4 MB gzipped, 1.5 s
+from the engine. If that becomes a problem the answer is vector tiles, not fewer
+parcels — `/api/parcels` already accepts `?bbox=` and `?limit=` for exactly that.
 
 ---
 
