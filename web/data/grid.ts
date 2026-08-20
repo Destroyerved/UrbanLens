@@ -14,19 +14,60 @@ import { mulberry32, clamp } from "@/lib/seeded";
 import { WARDS, wardForPoint } from "./wards";
 import { ROADS } from "./roads";
 import { FACILITY_COORDS } from "./facilities";
+import {
+  OBSERVED_BUILT,
+  OBSERVED_DLAT,
+  OBSERVED_DLON,
+  OBSERVED_KM2,
+  OBSERVED_LAT_MAX,
+  OBSERVED_LAT_MIN,
+  OBSERVED_LON_MAX,
+  OBSERVED_LON_MIN,
+} from "./observed";
 
 /**
- * Analysis grid (~1.1 km cells) + historical built-up extents + 2030 growth
- * probability. Deterministic stand-in for the future PostGIS raster layer and
- * XGBoost growth model. Illustrative/demo data modelled on Ahmedabad —
- * NOT an official record.
+ * Analysis grid (~1.1 km cells) + observed built-up extent (Esri land cover,
+ * 2018/2022/2024) + 2030 growth probability. Deterministic stand-in for the
+ * future PostGIS raster layer. Built-up extent and per-cell density come from
+ * real satellite land-cover observation; growth probability remains modelled.
  */
 
 const CENTER = DEFAULT_CITY.growthCenter;
 
-/* ---------------------- Historical built-up extent ---------------------- */
+/* ---------------------- Observed built-up extent ---------------------- */
 
-const BASE_RADIUS_KM: Record<Year, number> = { 2018: 7.8, 2022: 8.45, 2026: 9.0 };
+/** (row, col) → { 2018, 2022, 2024 } built fraction, from the satellite pass. */
+const OBSERVED_CELLS = new Map<number, Record<Exclude<Year, 2026>, number>>();
+for (const [r, c, b18, b22, b24] of OBSERVED_BUILT) {
+  OBSERVED_CELLS.set(r * 1000 + c, { 2018: b18, 2022: b22, 2024: b24 });
+}
+
+const BUILT_THRESHOLD = 0.2;
+
+function observedCellFor(p: LngLat): Record<Exclude<Year, 2026>, number> | undefined {
+  if (
+    p[0] < OBSERVED_LON_MIN ||
+    p[0] > OBSERVED_LON_MAX ||
+    p[1] < OBSERVED_LAT_MIN ||
+    p[1] > OBSERVED_LAT_MAX
+  ) {
+    return undefined;
+  }
+  const r = Math.floor((p[1] - OBSERVED_LAT_MIN) / OBSERVED_DLAT);
+  const c = Math.floor((p[0] - OBSERVED_LON_MIN) / OBSERVED_DLON);
+  return OBSERVED_CELLS.get(r * 1000 + c);
+}
+
+/** Observed built-up area per satellite epoch (Esri land cover). */
+export const BUILTUP_KM2: Record<Exclude<Year, 2026>, number> = {
+  2018: OBSERVED_KM2["2018"],
+  2022: OBSERVED_KM2["2022"],
+  2024: OBSERVED_KM2["2024"],
+};
+
+/* ---------------------- Deterministic growth model ---------------------- */
+
+const BASE_RADIUS_KM: Record<Year, number> = { 2018: 7.8, 2022: 8.45, 2024: 9.0, 2026: 9.0 };
 /** 2030 model horizon radius used for the prediction surface. */
 const RADIUS_2030 = 9.9;
 
@@ -43,8 +84,6 @@ function angDiff(a: number, b: number): number {
  * but is identical across years so growth reads as coherent expansion.
  */
 export function builtupRadiusKm(theta: number, baseKm: number): number {
-  // NW corridor amplitude grows with the base year radius → the corridor
-  // visibly "explodes" north-west between 2018 and 2026/2030.
   const nwAmp = clamp(0.2 * (baseKm - 6.7), 0, 0.62);
   const nw = nwAmp * Math.exp(-Math.pow(angDiff(theta, 2.35), 2) / 0.45);
   const east = 0.18 * Math.exp(-Math.pow(angDiff(theta, 0.15), 2) / 0.5);
@@ -62,16 +101,12 @@ function ringForRadius(baseKm: number, n = 72): LngLat[] {
   return ring;
 }
 
+/** Fallback extent rings, used only where the observed lattice has no data. */
 export const BUILTUP_RINGS: Record<Year, LngLat[]> = {
   2018: ringForRadius(BASE_RADIUS_KM[2018]),
   2022: ringForRadius(BASE_RADIUS_KM[2022]),
+  2024: ringForRadius(BASE_RADIUS_KM[2024]),
   2026: ringForRadius(BASE_RADIUS_KM[2026]),
-};
-
-export const BUILTUP_KM2: Record<Year, number> = {
-  2018: Math.round(ringAreaKm2(BUILTUP_RINGS[2018])),
-  2022: Math.round(ringAreaKm2(BUILTUP_RINGS[2022])),
-  2026: Math.round(ringAreaKm2(BUILTUP_RINGS[2026])),
 };
 
 /** Angle + radial position of a point relative to the growth centre. */
@@ -81,7 +116,17 @@ export function urbanPosition(p: LngLat): { theta: number; rKm: number } {
   return { theta: Math.atan2(dy, dx), rKm: Math.sqrt(dx * dx + dy * dy) };
 }
 
+/**
+ * Observed-vector lookup: a point is urbanised in a year if its satellite cell
+ * carried ≥ 20% built cover. Outside the observed lattice the deterministic
+ * radius model stands in.
+ */
 export function isUrbanized(p: LngLat, year: Year, jitter = 1): boolean {
+  const obs = observedCellFor(p);
+  // 2026 remains a parcel/domain year, while satellite observations end in
+  // 2024; use the latest observed epoch when the fallback grid is queried.
+  const observedYear = year === 2026 ? 2024 : year;
+  if (obs) return (obs[observedYear] ?? 0) >= BUILT_THRESHOLD * jitter;
   const { theta, rKm } = urbanPosition(p);
   return rKm < builtupRadiusKm(theta, BASE_RADIUS_KM[year]) * jitter;
 }
@@ -133,6 +178,7 @@ function buildGrid(): GridCell[] {
         growthProb: 0, // filled below
         hospitalDistKm: nearestDistKm(center, hospitals),
         inCity,
+        built: observedCellFor(center),
       });
       idx++;
     }

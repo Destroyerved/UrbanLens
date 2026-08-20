@@ -5,6 +5,7 @@ import { ChevronDown, Search, ScanEye, Check } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { CITIES, HOT_PICKS } from "@/config/city";
 import { useApp } from "@/lib/store";
+import { prefetchBootstrap } from "@/lib/dataset";
 import { ExpandingSearchDock } from "@/components/search/ExpandingSearchDock";
 import { LiquidMetalButton } from "@/components/ui/LiquidMetalButton";
 import ThemeToggle from "./ThemeToggle";
@@ -162,6 +163,7 @@ export default function TopBar() {
                           setFilterText("");
                           void setCity(c.id);
                         }}
+                        onMouseEnter={() => prefetchBootstrap(c.id)}
                         disabled={cityLoading}
                         className={cn(
                           "flex w-full items-center justify-between rounded-xl px-2.5 py-1.5 text-left transition-all cursor-pointer",

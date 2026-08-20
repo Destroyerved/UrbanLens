@@ -68,7 +68,7 @@ export default function ParcelDrawer() {
                 <div className="label-caps mb-0.5 font-bold">Parcel Intelligence</div>
                 <div className="num text-[17px] font-bold tracking-tight text-foreground">{parcel.id}</div>
                 <div className="mt-0.5 text-[11px] text-muted-foreground">
-                  {WARD_BY_ID.get(parcel.wardId)?.name} · Survey {parcel.surveyNumber}
+                  {WARD_BY_ID.get(parcel.wardId)?.name} · Ref {parcel.surveyNumber}
                 </div>
               </div>
               <button
@@ -114,7 +114,7 @@ export default function ParcelDrawer() {
 
           <div className="panel-scroll flex-1 overflow-y-auto px-4 py-3.5">
             {/* Attributes */}
-            <Section label="Registry Attributes">
+            <Section label="Parcel Attributes">
               <div className="glass-card grid grid-cols-3 gap-x-2 gap-y-3 rounded-2xl p-3.5 shadow-sm">
                 <Attr label="Area" value={`${parcel.areaHa} ha`} />
                 <Attr label="Zoning" value={parcel.zoning} />
@@ -131,7 +131,7 @@ export default function ParcelDrawer() {
             {/* Land use history */}
             <Section label="Land-Use History">
               <div className="flex items-center gap-1.5">
-                {([2018, 2022, 2026] as const).map((y, i) => (
+                {([2018, 2022, 2024] as const).map((y, i) => (
                   <div key={y} className="flex flex-1 items-center gap-1.5">
                     <div className="glass-card flex-1 rounded-xl px-2 py-2 text-center shadow-xs">
                       <div className="num text-[10px] font-bold text-muted-foreground">{y}</div>

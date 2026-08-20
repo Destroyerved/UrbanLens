@@ -91,13 +91,14 @@ function cellRing(col: number, row: number): LngLat[] {
 const SEEDED_WARDS: Ward[] = WARD_SEEDS.map((s) => {
   const ring = cellRing(s.col, s.row);
   const pop2022 = Math.round(s.pop2018 + (s.pop2026 - s.pop2018) * 0.55);
+  const pop2024 = Math.round(s.pop2018 + (s.pop2026 - s.pop2018) * 0.78);
   return {
     id: s.id,
     name: s.name,
     ring,
     centroid: ringCentroid(ring),
     areaKm2: ringAreaKm2(ring),
-    population: { 2018: s.pop2018, 2022: pop2022, 2026: s.pop2026 },
+    population: { 2018: s.pop2018, 2022: pop2022, 2024: pop2024, 2026: s.pop2026 },
   };
 });
 

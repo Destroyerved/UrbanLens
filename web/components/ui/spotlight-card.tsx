@@ -100,8 +100,15 @@ export const GlowCard: React.FC<GlowCardProps> = ({
   interactive = true,
   onClick,
   style,
+  // Accepted for call-site readability but consumed by CSS, not by this
+  // element. They must be pulled out of `props`: spreading them onto the div
+  // makes React warn about unknown DOM attributes on every card it renders.
+  borderGlowColor,
+  glowSize,
   ...props
 }) => {
+  void borderGlowColor;
+  void glowSize;
   const cardRef = useRef<HTMLDivElement>(null);
 
   const { base, spread } = colorNameOrCodeToBase(glowColor);
@@ -146,7 +153,14 @@ export const GlowCard: React.FC<GlowCardProps> = ({
       )}
       {...props}
     >
-      <div className="relative z-10">{children}</div>
+      {/* `h-full` matters: when the card is given a fixed height, a child that
+          sizes itself in percentages — Recharts' ResponsiveContainer at
+          height="100%" — resolves against this wrapper. Without it the wrapper
+          is auto-height, the percentage resolves to zero, and the chart renders
+          an empty box (the Built-Up Trajectory area chart did exactly that).
+          On an auto-height card `height: 100%` resolves to auto, so this is
+          inert everywhere else. */}
+      <div className="relative z-10 h-full">{children}</div>
     </div>
   );
 };

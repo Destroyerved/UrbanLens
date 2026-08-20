@@ -21,7 +21,9 @@ let status: ThermalStatus = EMPTY;
 let lastFetchedAt = 0;
 const listeners = new Set<() => void>();
 
-const POLL_MS = 60_000;
+// The LST scene changes at most once per satellite pass, so the poll only
+// exists to pick up a backend refresh — ten minutes is already generous.
+const POLL_MS = 10 * 60 * 1000;
 
 function emit() {
   for (const l of listeners) l();

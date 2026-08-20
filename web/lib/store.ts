@@ -1,7 +1,7 @@
 "use client";
 
 import { create } from "zustand";
-import { DEFAULT_CONSTRAINTS } from "@/types";
+import { DEFAULT_CONSTRAINTS, YEARS } from "@/types";
 import type {
   CopilotMessage,
   GapCategory,
@@ -27,9 +27,11 @@ import { setFacilities } from "@/data/facilities";
 import { setGrid } from "@/data/grid";
 import { setVegetation } from "@/data/vegetation";
 import { setGreenspace } from "@/data/greenspace";
-import { fetchCityDataset } from "@/lib/dataset";
-import { setApiCity } from "@/lib/api";
+import { fetchCityDataset, fetchOptionalCityLayers } from "@/lib/dataset";
+import { setApiCity, warmEngine } from "@/lib/api";
 import { cityById, DEFAULT_CITY, type CityConfig } from "@/config/city";
+import { getMapInstance } from "@/lib/mapref";
+import { m2 } from "@/lib/marks";
 
 /**
  * Global app state (zustand — chosen over Context to keep the always-mounted
@@ -198,14 +200,32 @@ export const useApp = create<AppState>((set, get) => ({
   },
 
   activeLayers: layersFromPreset("overview"),
-  toggleLayer: (id, on) =>
+  toggleLayer: (id, on) => {
+    const current = get();
+    const nextOn = on !== undefined ? on : !current.activeLayers[id];
     set((s) => ({
-      activeLayers: {
-        ...s.activeLayers,
-        [id]: on !== undefined ? on : !s.activeLayers[id],
-      },
-      ...(id === "prediction" && on !== undefined ? { predictionOn: on } : {}),
-    })),
+      activeLayers: { ...s.activeLayers, [id]: nextOn },
+      ...(id === "prediction" ? { predictionOn: nextOn } : {}),
+    }));
+
+    // Vegetation/greenspace are visually optional and used to block the whole
+    // city load. Fetch them only when somebody actually turns them on.
+    if (nextOn && (id === "ndvi-heat" || id === "greenspace")) {
+      const cityId = get().city.id;
+      void fetchOptionalCityLayers(cityId).then((layers) => {
+        if (get().city.id !== cityId) return;
+        setVegetation(layers.vegetation);
+        setGreenspace(layers.greenspace);
+        const map = getMapInstance();
+        const vegetation = map?.getSource("vegetation") as { setData: (d: unknown) => void } | undefined;
+        const greenspace = map?.getSource("greenspace") as { setData: (d: unknown) => void } | undefined;
+        vegetation?.setData(layers.vegetation);
+        greenspace?.setData(layers.greenspace);
+      }).catch(() => {
+        // Optional visual layers never make the core dashboard unavailable.
+      });
+    }
+  },
   layerOpacity: {
     population: 0.7,
     "growth-heat": 0.75,
@@ -219,8 +239,14 @@ export const useApp = create<AppState>((set, get) => ({
   setLayerOpacity: (id, v) =>
     set((s) => ({ layerOpacity: { ...s.layerOpacity, [id]: v } })),
 
-  year: 2026,
-  setYear: (year) => set({ year }),
+  // The Time Machine only displays observed Esri epochs. Keep its initial
+  // selection on the latest observation so the built-up layer is visible as
+  // soon as Growth mode opens.
+  year: 2024,
+  // 2026 remains a domain type for current parcel/population attributes, but
+  // it is not an Esri observation epoch. Never let a Time Machine action pick
+  // an epoch for which the observed built-up source does not exist.
+  setYear: (year) => set({ year: YEARS.includes(year) ? year : 2024 }),
   predictionOn: false,
   setPrediction: (on) =>
     set((s) => ({
@@ -246,6 +272,7 @@ export const useApp = create<AppState>((set, get) => ({
   cityLoading: false,
   cityError: null,
   setCity: async (id) => {
+    m2("store:start");
     const city = cityById(id);
     if (get().city.id === city.id && get().datasetVersion > 0) return;
     setApiCity(city.id);
@@ -261,6 +288,7 @@ export const useApp = create<AppState>((set, get) => ({
     });
     try {
       const d = await fetchCityDataset(city.id);
+      m2("store:fetched");
       // Wards first: facilities resolve their ward against them.
       setWards(d.wards);
       setParcels(d.parcels);
@@ -270,6 +298,13 @@ export const useApp = create<AppState>((set, get) => ({
       setVegetation(d.vegetation);
       setGreenspace(d.greenspace);
       set((st) => ({ datasetVersion: st.datasetVersion + 1, cityLoading: false }));
+      m2("store:done");
+      // The core dashboard is served from the static/CDN bootstrap. Wake a
+      // sleeping free-tier Python service only after the UI is interactive so
+      // later site-search/simulation actions do not pay as much cold-start cost.
+      if (typeof window !== "undefined") {
+        window.setTimeout(() => warmEngine(), 350);
+      }
     } catch (err) {
       set({
         cityLoading: false,
@@ -335,11 +370,15 @@ export const useApp = create<AppState>((set, get) => ({
     const { simTargetId, simProject } = get();
     if (!simTargetId) return;
     set({ simPhase: "running", simStep: 0, simResult: null });
+    // Start the real computation immediately. The old UI waited 2.08 seconds
+    // before even sending the request just to play progress copy. Keep a short
+    // progress animation, but overlap it with the backend call.
+    const resultPromise = runSimulation(simTargetId, simProject);
     for (let i = 0; i < SIM_STEPS.length; i++) {
       set({ simStep: i });
-      await new Promise((r) => setTimeout(r, 520));
+      await new Promise((r) => setTimeout(r, 90));
     }
-    const result = await runSimulation(simTargetId, simProject);
+    const result = await resultPromise;
     set({ simPhase: "done", simResult: result });
   },
   resetSim: () => set({ simPhase: "idle", simResult: null, simStep: 0 }),

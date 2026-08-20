@@ -28,7 +28,16 @@ mkdirSync(outDir, { recursive: true });
 
 // Third-party basemap tiles and webfonts are not this app's correctness, and a
 // tile 404 must not mask an app error. Everything else counts.
-const IGNORED_REQUEST_HOSTS = ["basemaps.cartocdn.com", "fonts.gstatic.com", "fonts.googleapis.com"];
+const IGNORED_REQUEST_HOSTS = [
+  "basemaps.cartocdn.com",
+  // The satellite/terrain basemaps come from Esri. Switching theme or basemap
+  // aborts tiles that are still in flight, which is normal map behaviour and
+  // not this app's correctness — the same reason cartocdn is excused.
+  "server.arcgisonline.com",
+  "services.arcgisonline.com",
+  "fonts.gstatic.com",
+  "fonts.googleapis.com",
+];
 const IGNORED_CONSOLE = [
   /Download the React DevTools/i,
   /\[Fast Refresh\]/i,
@@ -97,6 +106,12 @@ page.on("response", (r) => {
   else failedRequests.push(line);
 });
 
+// The product lives at /app (lib/landing/story.ts APP_ROUTE). It used to be a
+// `?app=1` flag on the landing route; leaving that stale here meant this script
+// only ever loaded the landing page and then timed out waiting for a panel, so
+// the one automated gate on the UI had been failing before its first assertion.
+const APP_PATH = "/app";
+
 const shot = (name) => page.screenshot({ path: `${outDir}/${name}.png` });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const panel = () => page.locator("[data-panel]");
@@ -118,11 +133,16 @@ async function openMode(ariaLabel, expectTitle) {
 step("Landing page");
 await page.goto(base, { waitUntil: "domcontentloaded", timeout: 60000 });
 await sleep(5000);
-check(await page.getByText("UrbanLens").first().isVisible(), "Landing renders");
+// Almost every string on this page is revealed by scroll position, so most of
+// them are legitimately `visibility: hidden` at rest and asserting that any
+// particular one is visible fails for the wrong reason. What the landing owes
+// the product is: it rendered its scenes, and it offers a way in.
+check(await page.locator("[data-scene]").count() > 0, "Landing scenes render");
+check(await page.locator(`a[href="${APP_PATH}"]`).count() > 0, "Landing offers the way into the app");
 await shot("00-landing");
 
 step("Enter the product");
-await page.goto(`${base}/?app=1`, { waitUntil: "domcontentloaded", timeout: 60000 });
+await page.goto(`${base}${APP_PATH}`, { waitUntil: "domcontentloaded", timeout: 60000 });
 await page.waitForSelector("[data-panel]", { timeout: 30000 });
 // Study area has to finish loading before any panel holds real figures.
 await page.waitForFunction(() => !document.body.innerText.includes("Loading "), { timeout: 60000 });
@@ -205,11 +225,14 @@ await shot("05-site-selection");
 
 step("Parcel Intelligence drawer");
 {
-  const open = page.getByText(/Open parcel|View parcel/i).first();
+  // Match on accessible name, not visible text: the control in the candidate
+  // card reads "Parcel" but is labelled "Open parcel <id>". Matching only the
+  // visible string meant this fell through to a `GJ-` button that no longer
+  // exists — the candidate rows are cards, not buttons.
+  const open = page.getByRole("button", { name: /open parcel|view parcel/i }).first();
   if (await open.count()) {
     await open.click();
   } else {
-    // Fall back to clicking the top-ranked candidate row.
     await panel().locator("button").filter({ hasText: /GJ-/ }).first().click();
   }
   await page.waitForSelector('[aria-label="Close parcel drawer"]', { timeout: 20000 });

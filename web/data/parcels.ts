@@ -86,7 +86,7 @@ function landUseHistory(
   const ruralUse = rngPick(rng, RURAL_USES);
   const jitter = rngRange(rng, 0.85, 1.15);
   const byYear = {} as Record<Year, LandUse>;
-  ([2018, 2022, 2026] as Year[]).forEach((y) => {
+  ([2018, 2022, 2024, 2026] as Year[]).forEach((y) => {
     byYear[y] = isUrbanized(centroid, y, jitter) ? urbanUse : ruralUse;
   });
   return { byYear, urbanUse, ruralUse };
@@ -240,7 +240,7 @@ function buildParcels(): Parcel[] {
     flagship(1028, [72.503, 23.107], 5.2, {
       zoning: "public",
       landUse: "vacant",
-      byYear: { 2018: "agriculture", 2022: "vacant", 2026: "vacant" },
+      byYear: { 2018: "agriculture", 2022: "vacant", 2024: "vacant", 2026: "vacant" },
       floodRisk: "low",
       infraReadiness: 92,
       envSensitivity: 8,
@@ -249,7 +249,7 @@ function buildParcels(): Parcel[] {
     flagship(3882, [72.556, 23.108], 4.6, {
       zoning: "residential",
       landUse: "vacant",
-      byYear: { 2018: "agriculture", 2022: "agriculture", 2026: "vacant" },
+      byYear: { 2018: "agriculture", 2022: "agriculture", 2024: "vacant", 2026: "vacant" },
       floodRisk: "medium", // Sabarmati floodplain fringe
       infraReadiness: 58,
       envSensitivity: 34,
@@ -258,7 +258,7 @@ function buildParcels(): Parcel[] {
     flagship(8291, [72.487, 23.005], 6.1, {
       zoning: "agriculture",
       landUse: "agriculture",
-      byYear: { 2018: "agriculture", 2022: "agriculture", 2026: "agriculture" },
+      byYear: { 2018: "agriculture", 2022: "agriculture", 2024: "agriculture", 2026: "agriculture" },
       floodRisk: "low",
       infraReadiness: 70,
       envSensitivity: 20,

@@ -14,6 +14,7 @@ from __future__ import annotations
 import re
 
 from app.gis.analysis import (
+    RAPID_CONVERSION_PTS,
     infrastructure_gaps,
     search_sites,
     suitability,
@@ -234,16 +235,18 @@ def route(city_id: str, query: str) -> dict:
     # 6 — land-use change
     if re.search(r"agricultur|conversion|converting|land[-\s]?use change|built[-\s]?up|urbanis|urbaniz", q):
         rows = [
-            (p, p.history.get(2026, 0) - p.history.get(2018, 0))
+            (p, p.history.get(2024, p.history.get(2026, 0)) - p.history.get(2018, 0))
             for p in get_parcels(city_id)
         ]
-        rows = sorted([r for r in rows if r[1] > 25], key=lambda r: -r[1])[:8]
+        rows = sorted(
+            [r for r in rows if r[1] > RAPID_CONVERSION_PTS], key=lambda r: -r[1]
+        )[:8]
         return {
             "tool": "land_use_change",
             "answer": (
                 f"{len(rows)} parcels show rapid conversion to built-up land since 2018"
                 + (f" (up to +{rows[0][1]} points)." if rows else ".")
-                + " Note the built-up history is modelled, not observed from satellite imagery."
+                + " Built-up history is observed from Esri satellite land-cover data (2018/2022/2024)."
             ),
             "items": [
                 {

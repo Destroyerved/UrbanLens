@@ -102,7 +102,17 @@ function useDirector() {
       window.addEventListener("scroll", compute, { passive: true });
     }
 
-    const ro = new ResizeObserver(measure);
+    // `measure` reads getBoundingClientRect on every scene, so it forces a full
+    // layout. Observing document.body fires it for any height change at all —
+    // including ones the scenes themselves cause — which is a layout-thrash
+    // loop during scroll. Only re-measure when the height genuinely moved.
+    let lastBodyHeight = -1;
+    const ro = new ResizeObserver((entries) => {
+      const h = entries[0]?.contentRect.height ?? -1;
+      if (Math.abs(h - lastBodyHeight) < 1) return;
+      lastBodyHeight = h;
+      measure();
+    });
     ro.observe(document.body);
     window.addEventListener("resize", measure);
     measure();
@@ -159,31 +169,35 @@ function Nav() {
   };
 
   useEffect(() => {
-    let lastY = 0;
+    let lastY = -1;
+    let lastCur = -1;
+    let hidden: boolean | null = null;
     let raf = 0;
 
     // Automatically hide navbar after 2.2s upon landing on the page
     const autoHideTimer = setTimeout(() => {
       if (bar.current && window.scrollY < 100) {
         bar.current.style.transform = "translateY(-130%)";
+        hidden = true;
       }
     }, 2200);
 
+    // This loop runs for the entire life of the landing page, so every branch
+    // in it has to be a no-op while the page is still. Previously it dispatched
+    // a setState and rewrote a style on all 60 frames a second even when
+    // nothing had moved.
     const loop = () => {
       raf = requestAnimationFrame(loop);
       const y = window.scrollY;
-      const diff = y - lastY;
 
+      if (lastY < 0) lastY = y;
+      const diff = y - lastY;
       if (Math.abs(diff) >= 3) {
-        if (diff > 0) {
-          // Scrolling DOWN -> hide navbar
+        const nextHidden = diff > 0; // down hides, up reveals
+        if (nextHidden !== hidden) {
+          hidden = nextHidden;
           if (bar.current) {
-            bar.current.style.transform = "translateY(-130%)";
-          }
-        } else if (diff < 0) {
-          // Scrolling UP -> reveal navbar
-          if (bar.current) {
-            bar.current.style.transform = "translateY(0)";
+            bar.current.style.transform = nextHidden ? "translateY(-130%)" : "translateY(0)";
           }
         }
         lastY = y;
@@ -199,7 +213,10 @@ function Nav() {
       else if (T >= 4) cur = 1; // GROWTH
       else cur = 0; // OVERVIEW
 
-      setActive((prev) => (prev !== cur ? cur : prev));
+      if (cur !== lastCur) {
+        lastCur = cur;
+        setActive(cur);
+      }
     };
     raf = requestAnimationFrame(loop);
     return () => {
@@ -281,10 +298,10 @@ function OpeningCurtain() {
 
   useEffect(() => {
     setMounted(true);
-    // Smoothly dissolve blur veil once WebGL & DOM initialization settle
+    // Never hold first content behind an artificial half-second delay.
     const t = setTimeout(() => {
       setReady(true);
-    }, 600);
+    }, 120);
     return () => clearTimeout(t);
   }, []);
 
@@ -294,7 +311,7 @@ function OpeningCurtain() {
     <div className={cn("ulc-opening-veil", ready && "ulc-veil-open")} aria-hidden="true">
       <div
         className={cn(
-          "flex flex-col items-center gap-3.5 transition-all duration-700",
+          "flex flex-col items-center gap-3.5 transition-all duration-300",
           ready ? "scale-95 opacity-0" : "scale-100 opacity-100"
         )}
       >
@@ -313,13 +330,43 @@ function OpeningCurtain() {
 
 export default function CinematicRoot() {
   useDirector();
+  const [visualsReady, setVisualsReady] = useState(false);
+  const [cityStageReady, setCityStageReady] = useState(false);
+
+  useEffect(() => {
+    // Let text/nav paint first; WebGL is loaded during the first idle slice.
+    const start = () => setVisualsReady(true);
+    if ("requestIdleCallback" in window) {
+      const id = window.requestIdleCallback(start, { timeout: 350 });
+      return () => window.cancelIdleCallback(id);
+    }
+    const id = window.setTimeout(start, 120);
+    return () => window.clearTimeout(id);
+  }, []);
+
+  useEffect(() => {
+    // The city MapLibre chapter is several screens down. Do not download or
+    // initialize a second WebGL engine while the hero globe is still visible.
+    const check = () => {
+      if (window.scrollY > window.innerHeight * 0.8) {
+        setCityStageReady(true);
+        // One-shot: the second WebGL engine never gets torn down again, so
+        // leaving this bound means a listener firing on every scroll event for
+        // the rest of the session to re-set a state that is already true.
+        window.removeEventListener("scroll", check);
+      }
+    };
+    check();
+    window.addEventListener("scroll", check, { passive: true });
+    return () => window.removeEventListener("scroll", check);
+  }, []);
 
   return (
     <div className="ulc relative">
       <OpeningCurtain />
-      <StarsBackground className="pointer-events-none fixed inset-0 z-0 bg-transparent" />
-      <EarthStage />
-      <CityStage />
+      {visualsReady && <StarsBackground className="pointer-events-none fixed inset-0 z-0 bg-transparent" />}
+      {visualsReady && <EarthStage />}
+      {cityStageReady && <CityStage />}
       <div className="ulc-vignette pointer-events-none fixed inset-0 z-[1]" aria-hidden />
 
       <Nav />

@@ -316,6 +316,10 @@ export default function SiteSelectionPanel() {
                     <button
                       type="button"
                       onClick={() => selectParcel(c.parcelId, true)}
+                      // "Parcel" alone says nothing about what the control
+                      // does, to a screen reader or to verify-ui.mjs, which
+                      // looks for this affordance by accessible name.
+                      aria-label={`Open parcel ${c.parcelId}`}
                       className="glass flex h-7 items-center justify-center rounded-lg text-[10.5px] font-semibold text-muted-foreground hover:text-foreground transition-all hover:scale-[1.02] active:scale-95 cursor-pointer"
                     >
                       Parcel

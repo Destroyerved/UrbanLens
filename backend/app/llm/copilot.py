@@ -125,14 +125,14 @@ def _run_tool(city_id: str, intent: dict, question: str) -> dict | None:
 
     if tool == "land_use_change":
         rows = sorted(
-            ((p, p.history.get(2026, 0) - p.history.get(2018, 0)) for p in get_parcels(city_id)),
+            ((p, p.history.get(2024, p.history.get(2026, 0)) - p.history.get(2018, 0)) for p in get_parcels(city_id)),
             key=lambda r: -r[1],
         )
         rows = [r for r in rows if r[1] > 25][:8]
         return {
             "tool": "land_use_change",
             "count": len(rows),
-            "caveat": "Built-up history is modelled, not observed from satellite imagery.",
+            "caveat": "Built-up history is observed from Esri satellite land-cover data (2018/2022/2024).",
             "items": [{"id": p.parcel_id, "label": p.parcel_id,
                        "sub": f"+{d} pts built-up · now {p.land_use}",
                        "centroid": list(p.centroid)} for p, d in rows],

@@ -39,14 +39,6 @@ function HeatmapLegendBar({
   );
 }
 
-const PREDICTION_STEPS = [
-  { color: "#64748b", label: "Very Low" },
-  { color: "#fbbf24", label: "Low" },
-  { color: "#fb923c", label: "Med" },
-  { color: "#f87171", label: "High" },
-  { color: "#dc2626", label: "V. High" },
-];
-
 export default function Legend() {
   const activeLayers = useApp((s) => s.activeLayers);
   const mode = useApp((s) => s.mode);
@@ -62,6 +54,8 @@ export default function Legend() {
   const showNdviHeat = !!activeLayers["ndvi-heat"];
   const showGreenspace = !!activeLayers["greenspace"];
   const showThermalHeat = !!activeLayers["thermal-heat"];
+  const showFloodRisk = !!activeLayers["flood-risk"];
+  const showBuiltup = !!activeLayers["builtup"];
 
   if (
     !showPrediction &&
@@ -73,7 +67,9 @@ export default function Legend() {
     !showGapHeat &&
     !showNdviHeat &&
     !showGreenspace &&
-    !showThermalHeat
+    !showThermalHeat &&
+    !showFloodRisk &&
+    !showBuiltup
   )
     return null;
 
@@ -140,30 +136,42 @@ export default function Legend() {
         )
       )}
 
-      {showPrediction && (
+      {showFloodRisk && (
         <div className="mb-2.5">
-          <div className="label-caps mb-1.5 font-bold">2030 Growth Probability</div>
-          <div className="flex gap-1">
-            {PREDICTION_STEPS.map((s) => (
-              <div key={s.label} className="flex-1">
-                <div
-                  className="h-2 rounded-full ring-1 ring-black/10 dark:ring-white/10"
-                  style={{ background: s.color }}
-                />
-                <div className="mt-1 text-center text-[8.5px] font-bold leading-tight text-foreground/80">
-                  {s.label}
-                </div>
-              </div>
-            ))}
+          <div className="label-caps mb-1 font-bold">Flood Risk</div>
+          <div className="space-y-1">
+            <Row color="#22c55e" label="Low" />
+            <Row color="#f59e0b" label="Moderate" />
+            <Row color="#ef4444" label="High" />
           </div>
         </div>
       )}
 
+      {showBuiltup && (
+        <HeatmapLegendBar
+          title="Observed Built-Up Intensity (Esri)"
+          minLabel="Low built-up share"
+          maxLabel="High built-up share"
+          gradient="linear-gradient(90deg, rgba(251,191,36,.15), rgba(245,158,11,.5), rgba(234,88,12,.75), rgba(154,52,18,.96))"
+        />
+      )}
+
+      {showPrediction && (
+        <HeatmapLegendBar
+          title="2030 Expansion Likelihood"
+          minLabel="Lower likelihood"
+          maxLabel="Higher likelihood"
+          gradient="linear-gradient(90deg, rgba(250,204,21,.18), rgba(251,146,60,.5), rgba(248,113,113,.78), rgba(220,38,38,.96))"
+        />
+      )}
+
       {showGap && (
-        <div className="mb-2.5">
-          <div className="label-caps mb-1 font-bold">Infrastructure Gap Grid</div>
-          <Row color="#ef4444" label="Pop >3.5km from hospital" />
-        </div>
+        <HeatmapLegendBar
+          title="Hospital Access Deficit"
+          minLabel="Lower unmet need"
+          maxLabel="Higher unmet need"
+          gradient="linear-gradient(90deg, rgba(251,146,60,.22), rgba(239,68,68,.58), rgba(185,28,28,.82), rgba(127,29,29,.98))"
+        />
       )}
 
       {showParcels && (

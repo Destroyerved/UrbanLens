@@ -195,7 +195,13 @@ def density_at(grid: PopulationGrid, lng: float, lat: float) -> float:
 
 
 class PointIndex:
-    """Nearest-neighbour over a point set, via shapely's STRtree."""
+    """Fast nearest-neighbour index for city-scale point sets.
+
+    scipy is already a dependency of scikit-learn in this project. cKDTree is
+    dramatically faster than constructing one Shapely Point per query,
+    especially for population grids and parcel enrichment. STRtree remains a
+    fallback for minimal installations.
+    """
 
     def __init__(self, coords: list[tuple[float, float]]):
         from shapely.geometry import Point
@@ -203,33 +209,46 @@ class PointIndex:
         self.coords = np.asarray(coords, dtype=float) if coords else np.zeros((0, 2))
         self._points = [Point(x, y) for x, y in coords]
         self._tree = STRtree(self._points) if self._points else None
+        try:
+            from scipy.spatial import cKDTree
+            self._kdtree = cKDTree(self.coords) if len(self.coords) else None
+        except Exception:  # pragma: no cover - fallback on tiny installs
+            self._kdtree = None
 
     def __len__(self) -> int:
-        return len(self._points)
+        return len(self.coords)
 
     def nearest_km(self, lng: float, lat: float) -> float:
-        if self._tree is None:
+        if len(self.coords) == 0:
             return float("inf")
-        from shapely.geometry import Point
-
-        idx = self._tree.nearest(Point(lng, lat))
-        x, y = self.coords[idx]
+        if self._kdtree is not None:
+            _dist, idx = self._kdtree.query([lng, lat], k=1)
+        else:
+            from shapely.geometry import Point
+            idx = self._tree.nearest(Point(lng, lat))
+        x, y = self.coords[int(idx)]
         return float(haversine_km(x, y, lng, lat))
 
     def nearest_km_many(self, lngs: np.ndarray, lats: np.ndarray) -> np.ndarray:
-        """Nearest distance for a whole array of query points."""
-        if self._tree is None:
+        """Nearest distance for a whole array of query points, vectorized."""
+        if len(self.coords) == 0:
             return np.full(lngs.shape, np.inf)
-        from shapely.geometry import Point
+        flat_lng = np.asarray(lngs, dtype=float).ravel()
+        flat_lat = np.asarray(lats, dtype=float).ravel()
+        if self._kdtree is not None:
+            query = np.column_stack((flat_lng, flat_lat))
+            _dist, idx = self._kdtree.query(query, k=1, workers=-1)
+            nearest = self.coords[np.asarray(idx, dtype=int)]
+            out = haversine_km(nearest[:, 0], nearest[:, 1], flat_lng, flat_lat)
+            return np.asarray(out, dtype=float).reshape(np.asarray(lngs).shape)
 
-        flat_lng = lngs.ravel()
-        flat_lat = lats.ravel()
+        from shapely.geometry import Point
         out = np.empty(flat_lng.size, dtype=float)
         for i in range(flat_lng.size):
             idx = self._tree.nearest(Point(flat_lng[i], flat_lat[i]))
             x, y = self.coords[idx]
             out[i] = haversine_km(x, y, flat_lng[i], flat_lat[i])
-        return out.reshape(lngs.shape)
+        return out.reshape(np.asarray(lngs).shape)
 
     def count_within_km(self, lng: float, lat: float, radius_km: float) -> int:
         if len(self.coords) == 0:

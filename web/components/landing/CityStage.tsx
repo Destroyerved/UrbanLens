@@ -35,7 +35,7 @@ import {
 } from "@/lib/landing/city-layers";
 
 const DARK = ["a", "b", "c"].map(
-  (s) => `https://${s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png`
+  (s) => `https://${s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png`
 );
 const SAT =
   "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";

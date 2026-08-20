@@ -285,8 +285,9 @@ def build_report_pdf(
         ("Tenure confirmed", _YES_NO[p.tenure_known]),
         ("Record source", _SOURCE.get(p.source, p.source)),
         ("Area", f"{p.area_sqm / 10_000:.2f} ha ({p.area_acres:.1f} acres)"),
-        ("Built-up trend", "2018 " + str(p.history.get(2018, 0)) + "% → 2022 "
-                            + str(p.history.get(2022, 0)) + "% → 2026 " + str(p.history.get(2026, 0)) + "%"),
+        ("Observed built-up trend", "2018 " + str(p.history.get(2018, 0)) + "% → 2022 "
+                                     + str(p.history.get(2022, 0)) + "% → 2024 "
+                                     + str(p.history.get(2024, p.history.get(2026, 0))) + "%"),
         ("Vegetation / water", f"{p.vegetation_percent}% / {p.water_percent}%"),
         ("Flood risk", _FLOOD[p.flood_risk]),
         ("Elevation", f"{p.elevation_m} m"),

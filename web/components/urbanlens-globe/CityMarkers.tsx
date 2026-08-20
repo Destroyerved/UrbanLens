@@ -1,141 +1,158 @@
 "use client";
 
 import { useMemo, useRef } from "react";
-import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
 import { Html } from "@react-three/drei";
-import { CITIES, GUJARAT_CENTER, latLonToVec3, type City } from "./lib/geo";
-import { scrollState } from "./lib/scroll";
+import * as THREE from "three";
+import { GUJARAT_CITIES, type GlobeCity } from "./data/gujaratCities";
+import { latLngToVec3 } from "./lib/geo";
+import { layersForProgress } from "./lib/stage";
+import { globeState } from "./lib/store";
 
-const Z = new THREE.Vector3(0, 0, 1);
+export interface CityMarkersProps {
+  cities?: GlobeCity[];
+  accent?: string;
+  showLabels?: boolean;
+  /** on small screens only tier-1 nodes are labelled */
+  compact?: boolean;
+}
 
-export type CityMarkersProps = {
-  cities?: City[];
-  accentColor?: string;
-  forceVisible?: boolean;
-};
-
+/**
+ * GIS-style urban nodes: a small dot, a fixed reticle ring and a slow radar
+ * pulse. Labels are real DOM (drei <Html>) so they stay crisp and selectable.
+ */
 export default function CityMarkers({
-  cities = CITIES,
-  accentColor = "#16D9F5",
-  forceVisible = false,
+  cities = GUJARAT_CITIES,
+  accent = "#16D9F5",
+  showLabels = true,
+  compact = false,
 }: CityMarkersProps) {
-  const group = useRef<THREE.Group>(null!);
-  const ringMats = useRef<THREE.MeshBasicMaterial[]>([]);
-  const ringMeshes = useRef<THREE.Mesh[]>([]);
-  const labelEls = useRef<(HTMLDivElement | null)[]>([]);
-  const scanMat = useRef<THREE.MeshBasicMaterial>(null!);
-  const scanMesh = useRef<THREE.Mesh>(null!);
+  const group = useRef<THREE.Group>(null);
+  const pulses = useRef<THREE.Mesh[]>([]);
+  const dots = useRef<THREE.Mesh[]>([]);
+  const rings = useRef<THREE.Mesh[]>([]);
+  const labels = useRef<(HTMLDivElement | null)[]>([]);
 
-  const dotMat = useMemo(
+  const placed = useMemo(
     () =>
-      new THREE.MeshBasicMaterial({
-        color: accentColor,
-        transparent: true,
-        opacity: 0,
-        depthWrite: false,
-      }),
-    [accentColor]
-  );
-
-  const markers = useMemo(
-    () =>
-      cities.map((c) => {
-        const pos = latLonToVec3(c.lat, c.lon, 1.006);
-        const q = new THREE.Quaternion().setFromUnitVectors(Z, pos.clone().normalize());
-        return { ...c, pos, q };
-      }),
+      cities.map((c) => ({
+        city: c,
+        position: latLngToVec3(c.coord[1], c.coord[0], 1.004),
+      })),
     [cities]
   );
 
-  const scan = useMemo(() => {
-    const pos = latLonToVec3(GUJARAT_CENTER.lat, GUJARAT_CENTER.lon, 1.005);
-    const q = new THREE.Quaternion().setFromUnitVectors(Z, pos.clone().normalize());
-    return { pos, q };
-  }, []);
+  useFrame(({ clock }) => {
+    const layers = layersForProgress(globeState.progress);
+    const t = clock.elapsedTime;
+    const reduce = globeState.reducedMotion;
 
-  useFrame((state) => {
-    const o = forceVisible ? 1 : scrollState.markers;
-    group.current.visible = o > 0.01;
-    if (!group.current.visible) return;
+    const setOpacity = (m: THREE.Mesh | undefined, value: number) => {
+      if (!m) return;
+      const mat = m.material as THREE.Material & { opacity: number };
+      mat.opacity = value;
+      m.visible = value > 0.005;
+    };
 
-    dotMat.opacity = o;
-    const t = state.clock.elapsedTime;
+    placed.forEach((_, i) => {
+      const tierBoost = placed[i].city.tier === 1 ? 1 : 0.75;
+      setOpacity(dots.current[i], layers.cities * tierBoost);
+      setOpacity(rings.current[i], layers.cities * 0.55 * tierBoost);
 
-    ringMeshes.current.forEach((mesh, i) => {
-      if (!mesh) return;
-      const ph = (t * 0.42 + i * 0.21) % 1;
-      mesh.scale.setScalar(1 + ph * 2.4);
-      const m = ringMats.current[i];
-      if (m) m.opacity = (1 - ph) * (1 - ph) * 0.4 * o;
-    });
+      const pulse = pulses.current[i];
+      if (pulse) {
+        const phase = reduce ? 0.4 : ((t * 0.42 + i * 0.17) % 1);
+        pulse.scale.setScalar(0.6 + phase * 1.7);
+        setOpacity(pulse, layers.cities * (1 - phase) * 0.45 * tierBoost);
+      }
 
-    // Slow scan pulse across the state region
-    if (scanMesh.current && scanMat.current) {
-      const sp = (t * 0.3) % 1;
-      scanMesh.current.scale.setScalar(0.7 + sp * 1.1);
-      scanMat.current.opacity = (1 - sp) * 0.16 * o;
-    }
-
-    labelEls.current.forEach((el) => {
-      if (el) el.style.opacity = String(o);
+      const label = labels.current[i];
+      if (label) {
+        const visible = showLabels ? layers.labels : 0;
+        label.style.opacity = String(visible * (placed[i].city.tier === 1 ? 1 : 0.72));
+      }
     });
   });
 
   return (
-    <group ref={group} visible={false}>
-      {markers.map((m, i) => (
-        <group key={m.name} position={m.pos} quaternion={m.q}>
-          <mesh material={dotMat}>
-            <circleGeometry args={[m.major ? 0.0075 : 0.0055, 24]} />
-          </mesh>
-          <mesh
-            ref={(el) => {
-              if (el) ringMeshes.current[i] = el;
-            }}
-          >
-            <ringGeometry args={[0.0105, 0.012, 32]} />
-            <meshBasicMaterial
+    <group ref={group}>
+      {placed.map(({ city, position }, i) => {
+        const outward = position.clone().multiplyScalar(2);
+        return (
+          <group key={city.id} position={position}>
+            <mesh
               ref={(el) => {
-                if (el) ringMats.current[i] = el;
+                if (el) dots.current[i] = el;
               }}
-              color={accentColor}
-              transparent
-              opacity={0}
-              depthWrite={false}
-              side={THREE.DoubleSide}
-            />
-          </mesh>
-          <Html center zIndexRange={[30, 0]} style={{ pointerEvents: "none" }}>
-            <div
-              ref={(el) => {
-                labelEls.current[i] = el;
-              }}
-              className={`city-label${m.major ? " city-label--major" : ""}`}
-              style={{
-                opacity: 0,
-                transform: `translate(${m.dx * 16}px, ${m.dy * 16 - 14}px)`,
-              }}
+              visible={false}
             >
-              {m.name}
-            </div>
-          </Html>
-        </group>
-      ))}
+              <sphereGeometry args={[city.tier === 1 ? 0.0055 : 0.004, 12, 12]} />
+              <meshBasicMaterial color={accent} transparent opacity={0} />
+            </mesh>
 
-      <group position={scan.pos} quaternion={scan.q}>
-        <mesh ref={scanMesh}>
-          <ringGeometry args={[0.085, 0.0865, 48]} />
-          <meshBasicMaterial
-            ref={scanMat}
-            color={accentColor}
-            transparent
-            opacity={0}
-            depthWrite={false}
-            side={THREE.DoubleSide}
-          />
-        </mesh>
-      </group>
+            <mesh
+              ref={(el) => {
+                if (el) rings.current[i] = el;
+              }}
+              onUpdate={(self) => self.lookAt(outward)}
+              visible={false}
+            >
+              <ringGeometry args={[0.011, 0.0128, 40]} />
+              <meshBasicMaterial
+                color={accent}
+                transparent
+                opacity={0}
+                side={THREE.DoubleSide}
+                depthWrite={false}
+                blending={THREE.AdditiveBlending}
+              />
+            </mesh>
+
+            <mesh
+              ref={(el) => {
+                if (el) pulses.current[i] = el;
+              }}
+              onUpdate={(self) => self.lookAt(outward)}
+              visible={false}
+            >
+              <ringGeometry args={[0.013, 0.0145, 48]} />
+              <meshBasicMaterial
+                color={accent}
+                transparent
+                opacity={0}
+                side={THREE.DoubleSide}
+                depthWrite={false}
+                blending={THREE.AdditiveBlending}
+              />
+            </mesh>
+
+            {showLabels && city.tier === 1 && (
+              <Html
+                center={false}
+                distanceFactor={0.62}
+                position={[
+                  city.labelOffset?.[0] ?? 0.012,
+                  city.labelOffset?.[1] ?? 0.01,
+                  0.004,
+                ]}
+                zIndexRange={[20, 0]}
+                style={{ pointerEvents: "none" }}
+                occlude={false}
+              >
+                <div
+                  ref={(el) => {
+                    labels.current[i] = el;
+                  }}
+                  className="ulg-city-label"
+                  style={{ opacity: 0 }}
+                >
+                  {city.name}
+                </div>
+              </Html>
+            )}
+          </group>
+        );
+      })}
     </group>
   );
 }

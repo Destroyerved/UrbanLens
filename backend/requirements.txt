@@ -9,6 +9,13 @@ pydantic>=2.7
 shapely>=2.0
 pyproj>=3.6
 
+# Raster. The Copernicus DEM tiles ship in datasets/dem and app/gis/flood.py
+# reads them; without rasterio the flood model silently falls back to the old
+# distance-to-water heuristic. scipy is listed explicitly rather than relied on
+# as a scikit-learn transitive: flood.py imports scipy.ndimage directly.
+rasterio>=1.3
+scipy>=1.11
+
 # Analysis + ML
 numpy>=1.26
 pandas>=2.2
@@ -17,3 +24,13 @@ xgboost>=2.0
 
 # Report generation (POST /api/report -> PDF)
 reportlab>=4.0
+
+# Fast JSON serialization + local vector similarity search
+orjson>=3.10
+faiss-cpu>=1.8
+
+# Tests. backend/tests/test_fast_stack.py drives the app through
+# fastapi.testclient, which refuses to import without httpx installed, so
+# `pytest` failed at collection on a clean setup.
+pytest>=8.0
+httpx>=0.27

@@ -28,18 +28,45 @@ const STAR_PALETTE = [
   "rgba(215, 236, 255, 0.85)",
 ];
 
-function generateStars(count: number, fallbackColor = "#d7ecff") {
-  const shadows: string[] = [];
-  for (let i = 0; i < count; i++) {
-    const x = Math.floor(Math.random() * 4000) - 2000;
-    const y = Math.floor(Math.random() * 4000) - 2000;
-    const color =
-      Math.random() > 0.35
-        ? STAR_PALETTE[Math.floor(Math.random() * STAR_PALETTE.length)]
-        : fallbackColor;
-    shadows.push(`${x}px ${y}px ${color}`);
-  }
-  return shadows.join(", ");
+/**
+ * The star field is baked into a tileable image once, not into `box-shadow`.
+ *
+ * The previous implementation gave one 1px div a box-shadow list holding every
+ * star — 850, 360 and 160 across the three layers, each list applied to two
+ * divs, so ~2,700 shadows in total. Shadows are painted, not composited, and
+ * these particular elements are animated forever (`y: [0, -2000]`,
+ * `repeat: Infinity`) inside a wrapper whose opacity also animates forever.
+ * That is a full repaint of thousands of shadows every frame, for the whole
+ * life of the landing page, underneath a WebGL globe and a MapLibre canvas.
+ *
+ * A repeating background image animated by transform stays on the compositor:
+ * same star field, no per-frame paint.
+ */
+const TILE = 1000; // divides the 2000px layer height, so the wrap seam is exact
+
+function useStarTile(count: number, size: number, fallbackColor: string) {
+  const [url, setUrl] = React.useState<string>("");
+
+  React.useEffect(() => {
+    // Preserve the original density: `count` stars scattered over 4000×4000.
+    const n = Math.max(1, Math.round((count * TILE * TILE) / (4000 * 4000)));
+    const canvas = document.createElement("canvas");
+    canvas.width = TILE;
+    canvas.height = TILE;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    for (let i = 0; i < n; i++) {
+      ctx.fillStyle =
+        Math.random() > 0.35
+          ? STAR_PALETTE[Math.floor(Math.random() * STAR_PALETTE.length)]
+          : fallbackColor;
+      ctx.fillRect(Math.random() * TILE, Math.random() * TILE, size, size);
+    }
+    setUrl(canvas.toDataURL("image/png"));
+  }, [count, size, fallbackColor]);
+
+  return url;
 }
 
 function StarLayer({
@@ -51,11 +78,12 @@ function StarLayer({
   className,
   ...props
 }: StarLayerProps) {
-  const [boxShadow, setBoxShadow] = React.useState<string>("");
-
-  React.useEffect(() => {
-    setBoxShadow(generateStars(count, starColor));
-  }, [count, starColor]);
+  const tile = useStarTile(count, size, starColor);
+  const fill: React.CSSProperties = {
+    backgroundImage: tile ? `url(${tile})` : undefined,
+    backgroundRepeat: "repeat",
+    backgroundSize: `${TILE}px ${TILE}px`,
+  };
 
   return (
     <motion.div
@@ -68,22 +96,8 @@ function StarLayer({
       className={cn("absolute top-0 left-0 w-full h-[2000px]", className)}
       {...props}
     >
-      <div
-        className="absolute bg-transparent rounded-full"
-        style={{
-          width: `${size}px`,
-          height: `${size}px`,
-          boxShadow: boxShadow,
-        }}
-      />
-      <div
-        className="absolute bg-transparent rounded-full top-[2000px]"
-        style={{
-          width: `${size}px`,
-          height: `${size}px`,
-          boxShadow: boxShadow,
-        }}
-      />
+      <div className="absolute top-0 left-0 h-[2000px] w-full" style={fill} />
+      <div className="absolute top-[2000px] left-0 h-[2000px] w-full" style={fill} />
     </motion.div>
   );
 }

@@ -6,12 +6,13 @@ Every route takes `?city=` and defaults to Ahmedabad.
 from __future__ import annotations
 
 import numpy as np
-from fastapi import APIRouter, HTTPException, Query, Response
+from fastapi import APIRouter, HTTPException, Query, Response, Request
 from pydantic import BaseModel, Field
 
 from app.core.config import CITIES, get_city
 from app.data.loader import (
     FACILITY_TYPES,
+    ACTIVE_DB_PATH,
     get_dataset,
     get_flood,
     get_greenspace,
@@ -121,28 +122,47 @@ def _find_parcel(city_id: str, parcel_id: str):
 
 
 @router.get("/health")
-def health(city: str | None = Query(default=None)) -> dict:
-    ds = _dataset(city)
+def health(
+    city: str | None = Query(default=None),
+    deep: bool = Query(default=False, description="Include dataset/parcel-derived checks"),
+) -> dict:
+    """Constant-time liveness by default; dataset diagnostics only on demand.
+
+    Free hosts may call health endpoints repeatedly. Loading wards/roads and
+    building spatial indexes just to answer a liveness probe burns CPU and can
+    make a real user's first request contend with the probe.
+    """
+    from app.data.database import db_status
+
+    cfg = get_city(city)
+    base = {
+        "ok": True,
+        "engine": "python",
+        "city": cfg.id,
+        "city_name": cfg.name,
+        "database": db_status(ACTIVE_DB_PATH),
+        "deep": deep,
+    }
+    if not deep:
+        return base
+
+    ds = _dataset(cfg.id)
     by_type: dict[str, int] = {}
     for f in ds.facilities:
         t = f["properties"].get("facility_type", "?")
         by_type[t] = by_type.get(t, 0) + 1
     return {
-        "ok": True,
-        "engine": "python",
-        "city": ds.city.id,
-        "city_name": ds.city.name,
+        **base,
         "counts": {
             "wards": len(ds.wards),
-            "parcels": len(get_parcels(ds.city.id)),
             "land_polygons": len(ds.land),
             "facilities": len(ds.facilities),
             "roads": len(ds.roads),
             "population_cells": ds.grid.populated_cells,
+            "parcels": len(get_parcels(ds.city.id)),
         },
         "population_total": ds.population,
         "facilities_by_type": by_type,
-        "sources": _sources(ds),
         "grid": {"cell_size_m": 250, "rows": ds.grid.rows, "cols": ds.grid.cols},
     }
 
@@ -211,7 +231,41 @@ def _sources(ds) -> dict:
             "label": "OpenStreetMap + AMC",
             "detail": "Green-space polygons from OSM landuse/greenspace and AMC park records.",
         },
+        "derived": {
+            "source": "derived",
+            "label": "Copernicus DEM 30 m + water layer",
+            "detail": "Flood susceptibility modelled per 30 m cell from elevation and distance "
+                      "to mapped water, thresholded into low/medium/high. Not an official "
+                      "flood-hazard map.",
+        },
     }
+
+
+
+
+@router.get("/bootstrap", response_class=Response)
+def ui_bootstrap(request: Request, city: str | None = Query(default=None)) -> Response:
+    """One pre-gzipped, ETagged payload for the interactive map UI.
+
+    It replaces eight blocking GeoJSON requests in the browser. The public
+    layer endpoints remain unchanged for debugging/integrations.
+    """
+    from app.api.fast_bootstrap import get_bootstrap_payload
+
+    cfg = get_city(city)
+    raw, gz, etag = get_bootstrap_payload(cfg.id)
+    headers = {
+        "ETag": etag,
+        "Cache-Control": "public, max-age=3600, stale-while-revalidate=86400",
+        "Vary": "Accept-Encoding",
+        "X-UrbanLens-Fast-Path": "bootstrap-v4",
+    }
+    if request.headers.get("if-none-match") == etag:
+        return Response(status_code=304, headers=headers)
+    if "gzip" in request.headers.get("accept-encoding", "").lower():
+        headers["Content-Encoding"] = "gzip"
+        return Response(content=gz, media_type="application/json", headers=headers)
+    return Response(content=raw, media_type="application/json", headers=headers)
 
 
 @router.get("/cities")
@@ -274,10 +328,16 @@ def layers(city: str | None = Query(default=None)) -> dict:
 
 
 @router.get("/wards")
-def wards(city: str | None = Query(default=None)) -> dict:
+def wards(
+    city: str | None = Query(default=None),
+    metrics: bool = Query(default=False, description="Attach infrastructure/livability metrics"),
+) -> dict:
     ds = _dataset(city)
-    gaps = {g["ward_code"]: g for g in analysis.infrastructure_gaps(ds.city.id)}
-    live = {l["ward_code"]: l for l in analysis.livability(ds.city.id)}
+    gaps: dict[str, dict] = {}
+    live: dict[str, dict] = {}
+    if metrics:
+        gaps = {g["ward_code"]: g for g in analysis.infrastructure_gaps(ds.city.id)}
+        live = {l["ward_code"]: l for l in analysis.livability(ds.city.id)}
     return {
         "type": "FeatureCollection",
         "features": [
@@ -286,9 +346,14 @@ def wards(city: str | None = Query(default=None)) -> dict:
                 "geometry": w["geometry"],
                 "properties": {
                     **w["properties"],
-                    "infrastructure_score": gaps.get(w["properties"]["ward_code"], {}).get("overall"),
-                    "livability_score": live.get(w["properties"]["ward_code"], {}).get("score"),
-                    "priority": gaps.get(w["properties"]["ward_code"], {}).get("priority", 0),
+                    **(
+                        {
+                            "infrastructure_score": gaps.get(w["properties"]["ward_code"], {}).get("overall"),
+                            "livability_score": live.get(w["properties"]["ward_code"], {}).get("score"),
+                            "priority": gaps.get(w["properties"]["ward_code"], {}).get("priority", 0),
+                        }
+                        if metrics else {}
+                    ),
                 },
             }
             for w in ds.wards
@@ -457,7 +522,7 @@ def parcels(
                     "development_potential": round(p.scores["development_potential"]),
                     "zoning_conflict": bool(analysis.classify_zoning_conflict(p)[0]),
                     "h2018": p.history.get(2018, 0), "h2022": p.history.get(2022, 0),
-                    "h2026": p.history.get(2026, 0),
+                    "h2024": p.history.get(2024, p.history.get(2026, 0)),
                     **(
                         {
                             "survey_number": p.survey_number,
@@ -517,6 +582,37 @@ def parcel_detail(parcel_id: str, city: str | None = Query(default=None)) -> dic
             "transit": round(p.scores["transit"]),
         },
         "recommended_uses": recommended,
+    }
+
+
+@router.get("/parcels/{parcel_id}/similar")
+def parcel_similarity(
+    parcel_id: str,
+    city: str | None = Query(default=None),
+    limit: int = Query(default=10, ge=1, le=50),
+) -> dict:
+    """Find parcels with a similar multidimensional planning profile via FAISS."""
+    from app.vector.search import similar_parcels
+
+    ds = _dataset(city)
+    try:
+        return similar_parcels(ds.city.id, parcel_id, limit)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=f"Parcel {parcel_id} not found") from exc
+
+
+@router.get("/vector/status")
+def vector_status(city: str | None = Query(default=None)) -> dict:
+    from app.vector.search import FEATURE_NAMES, get_vector_index
+
+    ds = _dataset(city)
+    idx = get_vector_index(ds.city.id)
+    return {
+        "city": ds.city.id,
+        "backend": idx.backend,
+        "dimensions": len(FEATURE_NAMES),
+        "indexed_parcels": len(idx.ids),
+        "feature_names": list(FEATURE_NAMES),
     }
 
 

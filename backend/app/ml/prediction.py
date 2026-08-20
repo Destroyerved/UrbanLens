@@ -22,7 +22,8 @@ from shapely.prepared import prep
 from shapely.strtree import STRtree
 
 from app.core.config import MODEL_DIR
-from app.data.loader import get_dataset
+from app.core.cache import singleflight
+from app.data.loader import data_signature, get_dataset
 from app.gis.parcels import _nearest_core
 from app.gis.raster import PointIndex, density_at, population_within_km
 
@@ -64,8 +65,8 @@ def _model(city_id: str):
     return booster
 
 
-@lru_cache(maxsize=4)
-def growth_grid(city_id: str) -> dict:
+@lru_cache(maxsize=8)
+def _growth_grid_cached(city_id: str, source_signature: str) -> dict:
     """Score a grid of cells clipped to the municipal outline."""
     from app.ml.development_model import BUILT_UP, FEATURE_NAMES
 
@@ -168,3 +169,23 @@ def growth_grid(city_id: str) -> dict:
         },
         "features": features,
     }
+
+
+def growth_grid(city_id: str) -> dict:
+    from app.data.database import load_json_cache, store_json_cache
+    from app.data.loader import ACTIVE_DB_PATH
+
+    signature = data_signature(city_id)
+    if ACTIVE_DB_PATH is not None:
+        persisted = load_json_cache(ACTIVE_DB_PATH, "growth-grid", city_id, signature)
+        if isinstance(persisted, dict):
+            return persisted
+    with singleflight(("growth-grid", city_id, signature)):
+        if ACTIVE_DB_PATH is not None:
+            persisted = load_json_cache(ACTIVE_DB_PATH, "growth-grid", city_id, signature)
+            if isinstance(persisted, dict):
+                return persisted
+        result = _growth_grid_cached(city_id, signature)
+        if ACTIVE_DB_PATH is not None:
+            store_json_cache(ACTIVE_DB_PATH, "growth-grid", city_id, signature, result)
+        return result

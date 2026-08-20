@@ -1,3 +1,5 @@
+import { OBSERVED_KM2 } from "@/data/observed";
+
 /**
  * UrbanLens — cinematic landing narrative.
  *
@@ -39,12 +41,19 @@ export const PROBLEM = {
 
 /* ───────────────────────── 02 · METRICS ────────────────────────── */
 
+/**
+ * Headline figures. These read as factual claims, so they must agree with what
+ * the engine reports for Ahmedabad — a judge who sees "+35%" here and "+24%" in
+ * the dashboard has found a contradiction, not a rounding difference.
+ * Cross-check against GET /api/overview after any data rebuild:
+ *   urban_growth_pct · total_parcels · vacant_government_area_ha
+ */
 export const METRICS = [
-  { value: "+35%", label: "BUILT-UP GROWTH SINCE 2018" },
+  { value: "+20%", label: "OBSERVED BUILT-UP GROWTH SINCE 2018" },
   { value: "70.4M", label: "GUJARAT POPULATION" },
   { value: "1.0M", label: "RESIDENTS BEYOND IDEAL HOSPITAL REACH" },
-  { value: "2,567", label: "GLIS PARCELS ANALYZED" },
-  { value: "19 ha", label: "VACANT GOVERNMENT LAND IDENTIFIED" },
+  { value: "3,980", label: "GLIS PARCELS ANALYZED" },
+  { value: "1,673 ha", label: "VACANT GOVERNMENT LAND IDENTIFIED" },
 ] as const;
 
 /* ────────────────────────── 03 · LOCATE ────────────────────────── */
@@ -61,11 +70,18 @@ export const OBSERVE = {
   chapter: "01 · OBSERVE",
   headline: ["SEE HOW", "THE CITY", "HAS CHANGED"],
   copy: "UrbanLens combines land records and satellite observations to reveal urban expansion over time.",
-  years: [2018, 2022, 2026] as const,
-  builtUpKm2: { 2018: 321, 2022: 378, 2026: 426 } as Record<number, number>,
-  growth: "+32.7%",
+  years: [2018, 2022, 2024] as const,
+  // Esri 10 m annual land cover, aggregated from the checked-in Ahmedabad
+  // observation pass. Keeping this import shared with the map prevents the
+  // landing narrative and the Time Machine from drifting to synthetic values.
+  builtUpKm2: {
+    2018: OBSERVED_KM2["2018"],
+    2022: OBSERVED_KM2["2022"],
+    2024: OBSERVED_KM2["2024"],
+  } as Record<number, number>,
+  growth: "+20.1%",
   growthLabel: "BUILT-UP AREA GROWTH",
-  growthRange: "2018 → 2026",
+  growthRange: "2018 → 2024",
   /** wireframe → texture resolve order (PRD §38) */
   resolve: ["GEOGRAPHIC GRID", "ROADS", "WARDS", "PARCELS", "SATELLITE"],
 };

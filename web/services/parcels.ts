@@ -106,3 +106,26 @@ export async function fetchParcelIntel(parcelId: string): Promise<ParcelIntel> {
     development: detail.scores.development_potential,
   };
 }
+
+
+export interface SimilarParcel {
+  parcel_id: string;
+  similarity: number;
+  centroid: [number, number];
+  area_acres: number;
+  land_use: string;
+  ownership: string;
+  flood_risk: string;
+  development_potential: number;
+}
+
+/** FAISS-backed nearest-neighbour search over the selected parcel's planning profile. */
+export async function fetchSimilarParcels(parcelId: string, limit = 10) {
+  return apiGet<{
+    backend: string;
+    dimensions: number;
+    feature_names: string[];
+    indexed_parcels: number;
+    results: SimilarParcel[];
+  }>(`/api/parcels/${encodeURIComponent(parcelId)}/similar`, { limit });
+}

@@ -1,5 +1,5 @@
 import type { FeatureCollection } from "geojson";
-import type { LandUse, Year } from "@/types";
+import type { GridCell, LandUse, Year } from "@/types";
 import { PARCELS } from "@/data/parcels";
 import { WARDS } from "@/data/wards";
 import { ROADS } from "@/data/roads";
@@ -46,6 +46,7 @@ const build_parcelsFC = memo((src: typeof PARCELS): FeatureCollection => ({
       use2026: p.landUseByYear[2026],
       conflict: p.zoningConflict,
       government: p.ownership === "government",
+      floodRisk: p.floodRisk,
     },
     geometry: { type: "Polygon", coordinates: [p.ring] },
   })),
@@ -84,25 +85,75 @@ const build_facilitiesFC = memo((src: typeof FACILITIES): FeatureCollection => (
 export const facilitiesFC = (): FeatureCollection => build_facilitiesFC(FACILITIES);
 
 export function builtupFC(year: Year): FeatureCollection {
+  // The bootstrap carries one observed built-up share per display-grid cell.
+  // Publish cell centres as weighted points rather than cell polygons so the
+  // map can render a continuous intensity field, not a chessboard of squares.
+  const observed = GRID.filter(
+    (c) => (c.built?.[year] ?? 0) >= 0.01 && c.built?.[year] !== undefined,
+  );
+  if (observed.length > 0) {
+    return {
+      type: "FeatureCollection",
+      features: observed.map((c) => ({
+        type: "Feature",
+        properties: {
+          year,
+          // `amount` drives the MapLibre heatmap's opacity/intensity.
+          amount: Math.round((c.built?.[year] ?? 0) * 1000) / 1000,
+        },
+        geometry: { type: "Point", coordinates: c.center },
+      })),
+    };
+  }
+  // Fresh clones without the observed pass still receive a soft, illustrative
+  // centre rather than an incompatible polygon source.
   return {
     type: "FeatureCollection",
     features: [
       {
         type: "Feature",
-        properties: { year },
-        geometry: { type: "Polygon", coordinates: [BUILTUP_RINGS[year]] },
+        properties: { year, amount: 1 },
+        geometry: { type: "Point", coordinates: BUILTUP_RINGS[year][0] },
       },
     ],
   };
 }
 
+/**
+ * A bounded 2030 expansion-likelihood score. The prebuilt pressure model is
+ * strengthened by measured Esri built-up change (2018–2024), then reduced on
+ * land that was already built in 2024. It is intentionally a likelihood
+ * surface, rather than claiming a calibrated parcel-level forecast.
+ */
+export function growthLikelihood(cell: GridCell): number {
+  const pressure = Math.max(0, Math.min(1, cell.growthProb));
+  const observed = cell.built;
+  if (!observed) return pressure;
+
+  const b18 = observed[2018] ?? 0;
+  const b22 = observed[2022] ?? b18;
+  const b24 = observed[2024] ?? b22;
+  const longTermGrowth = Math.max(0, Math.min(1, (b24 - b18) / 0.3));
+  const recentGrowth = Math.max(0, Math.min(1, (b24 - b22) / 0.18));
+  const availableLand = Math.max(0, Math.min(1, 1 - b24));
+
+  return Math.max(
+    0,
+    Math.min(1, availableLand * (pressure * 0.48 + longTermGrowth * 0.32 + recentGrowth * 0.2)),
+  );
+}
+
 const build_predictionFC = memo((src: typeof GRID): FeatureCollection => ({
   type: "FeatureCollection",
-  features: src.filter((c) => c.inCity && c.growthProb > 0.16).map((c) => ({
-    type: "Feature",
-    properties: { p: Math.round(c.growthProb * 100) / 100 },
-    geometry: { type: "Polygon", coordinates: [c.ring] },
-  })),
+  // Centred, weighted points let MapLibre render a continuous likelihood
+  // field instead of exposing the display grid as square prediction cells.
+  features: src.map((c) => ({ cell: c, p: growthLikelihood(c) }))
+    .filter(({ cell, p }) => cell.inCity && p > 0.035)
+    .map(({ cell, p }) => ({
+      type: "Feature",
+      properties: { p: Math.round(p * 1000) / 1000 },
+      geometry: { type: "Point", coordinates: cell.center },
+    })),
 }));
 export const predictionFC = (): FeatureCollection => build_predictionFC(GRID);
 
@@ -116,26 +167,39 @@ const build_populationFC = memo((src: typeof GRID): FeatureCollection => ({
 }));
 export const populationFC = (): FeatureCollection => build_populationFC(GRID);
 
-/** Cells with meaningful population that sit beyond hospital service reach. */
+/** Population-weighted hospital-access deficit, normalised for map opacity. */
+export function infrastructureGapScore(cell: GridCell): number {
+  const accessShortfall = Math.max(0, Math.min(1, (cell.hospitalDistKm - 3.5) / 6.5));
+  const peopleAffected = Math.max(0, Math.min(1, (cell.population - 1500) / 18500));
+  return accessShortfall * Math.sqrt(peopleAffected);
+}
+
+/** Population with a meaningful hospital-access deficit. */
 const build_gapFC = memo((src: typeof GRID): FeatureCollection => ({
   type: "FeatureCollection",
-  features: src.filter((c) => c.inCity && c.population > 1500 && c.hospitalDistKm > 3.5).map(
-    (c) => ({
+  features: src.map((c) => ({ cell: c, score: infrastructureGapScore(c) }))
+    .filter(({ cell, score }) => cell.inCity && score > 0.025)
+    .map(({ cell, score }) => ({
       type: "Feature",
-      properties: { pop: c.population, dist: Math.round(c.hospitalDistKm * 10) / 10 },
-      geometry: { type: "Polygon", coordinates: [c.ring] },
-    })
-  ),
+      properties: {
+        score: Math.round(score * 1000) / 1000,
+        pop: cell.population,
+        dist: Math.round(cell.hospitalDistKm * 10) / 10,
+      },
+      geometry: { type: "Point", coordinates: cell.center },
+    })),
 }));
 export const gapFC = (): FeatureCollection => build_gapFC(GRID);
 
 /** Continuous 2030 Growth Pressure Heatmap source */
 const build_growthHeatFC = memo((src: typeof GRID): FeatureCollection => ({
   type: "FeatureCollection",
-  features: src.filter((c) => c.inCity && c.growthProb > 0.05).map((c) => ({
+  features: src.map((c) => ({ cell: c, p: growthLikelihood(c) }))
+    .filter(({ cell, p }) => cell.inCity && p > 0.035)
+    .map(({ cell, p }) => ({
     type: "Feature",
-    properties: { weight: c.growthProb },
-    geometry: { type: "Point", coordinates: c.center },
+    properties: { weight: p },
+    geometry: { type: "Point", coordinates: cell.center },
   })),
 }));
 export const growthHeatFC = (): FeatureCollection => build_growthHeatFC(GRID);

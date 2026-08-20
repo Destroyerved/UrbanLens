@@ -16,8 +16,9 @@ export const MODES = [
 
 export type Mode = (typeof MODES)[number];
 
-export type Year = 2018 | 2022 | 2026;
-export const YEARS: Year[] = [2018, 2022, 2026];
+/** Scrubber years are the observed satellite epochs; 2026 is the projection year. */
+export type Year = 2018 | 2022 | 2024 | 2026;
+export const YEARS: Year[] = [2018, 2022, 2024];
 
 export type LandUse =
   | "agriculture"
@@ -111,6 +112,8 @@ export interface GridCell {
   growthProb: number;
   hospitalDistKm: number;
   inCity: boolean;
+  /** Observed built-up fraction (0–1) per satellite epoch, when available. */
+  built?: Partial<Record<Year, number>>;
 }
 
 export type ProjectType =

@@ -42,11 +42,11 @@ const DEMO_BEATS: DemoBeat[] = [
   {
     step: 2,
     title: "2 · Growth Time Machine",
-    subtitle: "Historical expansion 2018 → 2026 (+23.7% built-up extent).",
+    subtitle: "Observed Esri satellite built-up extent, 2018 → 2024.",
     actionLabel: "Show Historical Growth",
     run: (s) => {
       s.setMode("growth");
-      s.setYear(2026);
+      s.setYear(2024);
       s.setPrediction(false);
       s.setPanelOpen(true);
     },

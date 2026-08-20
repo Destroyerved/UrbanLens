@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import { AnimatePresence, motion } from "framer-motion";
 import { ChevronLeft } from "lucide-react";
 import { useApp } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import MapCanvas from "@/components/map/MapCanvas";
 import MapControls from "@/components/map/MapControls";
 import LayerPanel from "@/components/map/LayerPanel";
 import BasemapSelector from "@/components/map/BasemapSelector";
@@ -13,18 +13,23 @@ import Legend from "@/components/map/Legend";
 import TopBar from "./TopBar";
 import ModeRail from "./ModeRail";
 import CommandPalette from "@/components/search/CommandPalette";
-import ParcelDrawer from "@/components/parcels/ParcelDrawer";
-import CopilotDrawer from "@/components/copilot/CopilotDrawer";
-import OverviewPanel from "@/components/panels/OverviewPanel";
-import GrowthPanel from "@/components/panels/GrowthPanel";
-import InfrastructurePanel from "@/components/panels/InfrastructurePanel";
-import LandPanel from "@/components/panels/LandPanel";
-import SiteSelectionPanel from "@/components/panels/SiteSelectionPanel";
-import SimulatorPanel from "@/components/panels/SimulatorPanel";
-import CompareCandidatesPanel from "@/components/panels/CompareCandidatesPanel";
 import CityLoadingOverlay from "@/components/shared/CityLoadingOverlay";
-import { GlassFilter } from "@/components/ui/GlassFilter";
 import { GlobalSpotlight } from "@/components/ui/spotlight-card";
+
+
+// Split the heavyweight map/panel code. The default overview/map chunks start
+// immediately, while growth/simulator/copilot code is not downloaded until the
+// user opens it.
+const MapCanvas = dynamic(() => import("@/components/map/MapCanvas"), { ssr: false });
+const ParcelDrawer = dynamic(() => import("@/components/parcels/ParcelDrawer"), { ssr: false });
+const CopilotDrawer = dynamic(() => import("@/components/copilot/CopilotDrawer"), { ssr: false });
+const OverviewPanel = dynamic(() => import("@/components/panels/OverviewPanel"), { ssr: false });
+const GrowthPanel = dynamic(() => import("@/components/panels/GrowthPanel"), { ssr: false });
+const InfrastructurePanel = dynamic(() => import("@/components/panels/InfrastructurePanel"), { ssr: false });
+const LandPanel = dynamic(() => import("@/components/panels/LandPanel"), { ssr: false });
+const SiteSelectionPanel = dynamic(() => import("@/components/panels/SiteSelectionPanel"), { ssr: false });
+const SimulatorPanel = dynamic(() => import("@/components/panels/SimulatorPanel"), { ssr: false });
+const CompareCandidatesPanel = dynamic(() => import("@/components/panels/CompareCandidatesPanel"), { ssr: false });
 
 export default function AppShell() {
   const mode = useApp((s) => s.mode);
@@ -59,15 +64,12 @@ export default function AppShell() {
       {/* Global continuous pointer tracker for specular glass border highlights */}
       <GlobalSpotlight />
 
-      {/* SVG liquid glass distortion filter definition */}
-      <GlassFilter />
-
       {/* Main website content layer — applies aesthetic optical blur, depth scale and saturation when city is loading */}
       <div
         className={cn(
           "absolute inset-0 transition-all duration-500 ease-out",
           (cityLoading || datasetVersion === 0) &&
-            "blur-[10px] scale-[0.99] brightness-[0.90] saturate-[1.2] pointer-events-none select-none"
+            "opacity-70 brightness-[0.90] pointer-events-none select-none"
         )}
       >
         {/* Base: the map never unmounts */}

@@ -1,37 +1,108 @@
 import * as THREE from "three";
 
+const DEG = Math.PI / 180;
+
 /**
- * Standard Three.js equirectangular mapping:
- *   x =  r · cos(lat) · cos(lon)
- *   y =  r · sin(lat)
- *   z = −r · cos(lat) · sin(lon)
+ * Longitude/latitude → a point on a unit sphere, using the convention that
+ * matches three.js SphereGeometry UVs (so equirectangular Earth textures line
+ * up with these coordinates without any offset hacks).
  */
-export function latLonToVec3(lat: number, lon: number, r = 1): THREE.Vector3 {
-  const la = THREE.MathUtils.degToRad(lat);
-  const lo = THREE.MathUtils.degToRad(lon);
+export function latLngToVec3(lat: number, lng: number, radius = 1): THREE.Vector3 {
+  const phi = (90 - lat) * DEG;
+  const theta = (lng + 180) * DEG;
   return new THREE.Vector3(
-    r * Math.cos(la) * Math.cos(lo),
-    r * Math.sin(la),
-    -r * Math.cos(la) * Math.sin(lo)
+    -radius * Math.sin(phi) * Math.cos(theta),
+    radius * Math.cos(phi),
+    radius * Math.sin(phi) * Math.sin(theta)
   );
 }
 
-export const GUJARAT_CENTER = { lat: 22.6, lon: 71.6 };
+/** Rotation (x, y) that brings a lng/lat to face the camera at +Z. */
+export function faceRotation(lat: number, lng: number): { x: number; y: number } {
+  const p = latLngToVec3(lat, lng, 1);
+  const y = -Math.atan2(p.x, p.z);
+  const rotated = p.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), y);
+  const x = Math.atan2(rotated.y, rotated.z);
+  return { x, y };
+}
 
-export type City = {
-  name: string;
-  lat: number;
-  lon: number;
-  major?: boolean;
-  /** label screen offset direction */
-  dx: number;
-  dy: number;
-};
+/** Great-circle arc between two lng/lat points, lifted off the surface. */
+export function arcPoints(
+  a: [number, number],
+  b: [number, number],
+  segments = 48,
+  lift = 0.06
+): THREE.Vector3[] {
+  const from = latLngToVec3(a[1], a[0], 1);
+  const to = latLngToVec3(b[1], b[0], 1);
+  const angle = from.angleTo(to);
+  const out: THREE.Vector3[] = [];
+  for (let i = 0; i <= segments; i++) {
+    const t = i / segments;
+    const point = from.clone().lerp(to, t).normalize();
+    // a gentle parabolic lift, scaled by how far apart the two nodes are
+    const h = 1 + Math.sin(t * Math.PI) * lift * (0.4 + angle);
+    out.push(point.multiplyScalar(h));
+  }
+  return out;
+}
 
-export const CITIES: City[] = [
-  { name: "Ahmedabad",   lat: 23.0225, lon: 72.5714, major: true, dx: -1, dy: -1 },
-  { name: "Gandhinagar", lat: 23.2156, lon: 72.6369,             dx:  1, dy: -1 },
-  { name: "Surat",       lat: 21.1702, lon: 72.8311, major: true, dx:  1, dy:  1 },
-  { name: "Vadodara",    lat: 22.3072, lon: 73.1812,             dx:  1, dy:  0 },
-  { name: "Rajkot",      lat: 22.3039, lon: 70.8022,             dx: -1, dy:  0 },
-];
+export const clamp = (v: number, lo = 0, hi = 1) => (v < lo ? lo : v > hi ? hi : v);
+export const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+
+export function smoothstep(edge0: number, edge1: number, x: number) {
+  const t = clamp((x - edge0) / (edge1 - edge0 || 1e-6));
+  return t * t * (3 - 2 * t);
+}
+
+/** Shortest signed angular difference, so the globe never spins the long way. */
+export function shortestAngle(from: number, to: number) {
+  return ((to - from + Math.PI) % (Math.PI * 2)) - Math.PI;
+}
+
+/**
+ * Builds a flat ribbon that hugs the sphere along a lng/lat path.
+ *
+ * Used instead of a fat-line implementation so the boundary has real,
+ * predictable thickness in world units on every GPU, with no dependency on
+ * line-width support or renderer resolution.
+ */
+export function sphereRibbon(
+  path: [number, number][],
+  widthRadians: number,
+  radius = 1.004
+): THREE.BufferGeometry {
+  const pts = path.map(([lng, lat]) => latLngToVec3(lat, lng, radius));
+  const positions: number[] = [];
+  const indices: number[] = [];
+  const half = widthRadians / 2;
+
+  for (let i = 0; i < pts.length; i++) {
+    const prev = pts[Math.max(0, i - 1)];
+    const next = pts[Math.min(pts.length - 1, i + 1)];
+    const p = pts[i];
+
+    const tangent = next.clone().sub(prev).normalize();
+    const outward = p.clone().normalize();
+    const side = new THREE.Vector3().crossVectors(outward, tangent).normalize();
+
+    const a = p.clone().addScaledVector(side, half);
+    const b = p.clone().addScaledVector(side, -half);
+    // keep both edges on the sphere so the ribbon never floats at the limb
+    a.setLength(radius);
+    b.setLength(radius);
+
+    positions.push(a.x, a.y, a.z, b.x, b.y, b.z);
+
+    if (i < pts.length - 1) {
+      const o = i * 2;
+      indices.push(o, o + 1, o + 2, o + 1, o + 3, o + 2);
+    }
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  return geometry;
+}

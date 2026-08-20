@@ -82,6 +82,8 @@ export default function CopilotDrawer() {
   return (
     <motion.aside
       key="copilot-drawer"
+      // Test hook for web/scripts/verify-ui.mjs — see the note in PanelShell.
+      data-copilot
       initial={{ opacity: 0, x: 30 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: 30 }}

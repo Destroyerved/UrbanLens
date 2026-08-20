@@ -26,19 +26,20 @@ import {
   FACILITY_COLORS,
   FACILITY_LABELS,
 } from "@/lib/mapdata";
-import { circleRing } from "@/lib/geo";
+import { circleRing, ringsBounds } from "@/lib/geo";
+import { WARDS } from "@/data/wards";
 import { setMapInstance } from "@/lib/mapref";
-import { initThermalStatus, refreshThermalStatus, useThermalStatus } from "@/data/thermal";
+import { refreshThermalStatus, useThermalStatus } from "@/data/thermal";
 import type { Year } from "@/types";
-
-const YEARS: Year[] = [2018, 2022, 2026];
+import { m2 } from "@/lib/marks";
+import { YEARS } from "@/types";
 
 const CARTO_ATTRIB =
   '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>';
 
 function rasterTiles(style: "dark_all" | "light_all"): string[] {
   return ["a", "b", "c", "d"].map(
-    (s) => `https://${s}.basemaps.cartocdn.com/${style}/{z}/{x}/{y}@2x.png`
+    (s) => `https://${s}.basemaps.cartocdn.com/${style}/{z}/{x}/{y}.png`
   );
 }
 
@@ -60,6 +61,42 @@ interface TooltipState {
   lines: string[];
 }
 
+/** Clears the left ModeRail and the right Intelligence Panel. */
+const FRAME_PADDING = { top: 80, bottom: 80, left: 100, right: 390 };
+
+/**
+ * Point the camera at the study area.
+ *
+ * Prefers the extent of the wards actually loaded. The city config's `center`,
+ * `zoom` and `bounds` describe the whole *district* envelope, not the study
+ * area: for Ahmedabad that centre sits 37 km south-west of the AMC wards, and
+ * fitting those bounds lands around zoom 7.6 where the wards span 26 km and
+ * need ~12.7. Every city was framed 2-5 zoom levels too far out, which is why
+ * the map opened on half of Gujarat with the parcels as a coloured speck.
+ *
+ * The config values remain the fallback for the moment before a city's data has
+ * loaded, and for anything that has no ward geometry.
+ */
+function frameStudyArea(map: MLMap, city: typeof ACTIVE_CITY, duration: number): void {
+  const bounds = ringsBounds(WARDS.map((w) => w.ring)) ?? (
+    city.bounds && city.bounds.length === 2 ? city.bounds : null
+  );
+  if (bounds) {
+    try {
+      map.fitBounds(bounds, { padding: FRAME_PADDING, maxZoom: 14, duration, essential: true });
+      return;
+    } catch {
+      // Non-standard bounds — fall through to the centre/zoom below.
+    }
+  }
+  map.flyTo({
+    center: city.growthCenter ?? city.center,
+    zoom: 12.4,
+    duration,
+    essential: true,
+  });
+}
+
 export default function MapCanvas() {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MLMap | null>(null);
@@ -69,6 +106,13 @@ export default function MapCanvas() {
   const simMarkerRef = useRef<Marker | null>(null);
   const rafRef = useRef<number>(0);
   const thermalUrlRef = useRef<string | null>(null);
+  // Version each expensive GeoJSON source so invisible layers are not parsed by
+  // MapLibre until somebody actually turns them on.
+  const sourceVersionRef = useRef<Record<string, number>>({});
+  // The swap effect must run once per loaded dataset. `city` changes identity
+  // twice per switch (before and after its data arrives); only the second
+  // commit has fresh arrays, so gate on the applied data version.
+  const appliedDatasetVersionRef = useRef(0);
 
   const { resolvedTheme } = useTheme();
   const basemap = useApp((s) => s.basemap);
@@ -91,9 +135,7 @@ export default function MapCanvas() {
   const thermal = useThermalStatus();
 
   /* ------------------------- thermal status ------------------------- */
-  useEffect(() => {
-    initThermalStatus();
-  }, []);
+  // Thermal data is lazy: do not wake the Python service on normal dashboard load.
 
   // Refresh whenever the UHI layer is switched on, and re-point the raster at
   // the committed file (cache-busted by updated_at) once we know the date.
@@ -154,9 +196,9 @@ export default function MapCanvas() {
           "carto-voyager": {
             type: "raster",
             tiles: [
-              "https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png",
-              "https://b.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png",
-              "https://c.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png",
+              "https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png",
+              "https://b.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png",
+              "https://c.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png",
             ],
             tileSize: 256,
             attribution: CARTO_ATTRIB,
@@ -195,25 +237,31 @@ export default function MapCanvas() {
 
     map.on("load", () => {
       /* ---- sources ---- */
+      // Sources start empty. The real CDN bootstrap is pushed exactly once by
+      // the datasetVersion effect; parsing the synthetic fallback here would
+      // duplicate MapLibre worker work during startup.
       map.addSource("parcels", {
         type: "geojson",
-        data: parcelsFC(),
+        data: { type: "FeatureCollection", features: [] },
         promoteId: "id",
       });
-      map.addSource("wards", { type: "geojson", data: wardsFC(), promoteId: "id" });
-      map.addSource("roads", { type: "geojson", data: roadsFC() });
-      map.addSource("facilities", { type: "geojson", data: facilitiesFC() });
+      map.addSource("wards", { type: "geojson", data: { type: "FeatureCollection", features: [] }, promoteId: "id" });
+      map.addSource("roads", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+      map.addSource("facilities", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
       for (const y of YEARS)
-        map.addSource(`builtup-${y}`, { type: "geojson", data: builtupFC(y) });
-      map.addSource("prediction", { type: "geojson", data: predictionFC() });
-      map.addSource("population", { type: "geojson", data: populationFC() });
-      map.addSource("growth-heat", { type: "geojson", data: growthHeatFC() });
-      map.addSource("gap-heat", { type: "geojson", data: gapHeatFC() });
+        map.addSource(`builtup-${y}`, { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+      map.addSource("prediction", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+      map.addSource("population", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+      map.addSource("growth-heat", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+      map.addSource("gap-heat", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
       map.addSource("vegetation", { type: "geojson", data: vegetationFC(), promoteId: "id" });
       map.addSource("greenspace", { type: "geojson", data: greenspaceFC() });
       map.addSource("thermal-raster", {
         type: "image",
-        url: thermalRasterURL(),
+        // MapLibre's image source decoder does not support GIFs. A tiny
+        // transparent PNG keeps the source valid until a real LST raster is
+        // requested, without an eager /static/thermal request.
+        url: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL5nAAAAABJRU5ErkJggg==",
         coordinates: thermalCorners(),
       });
       // Swallow maplibre's ErrorEvent logging: updateImage() aborts the
@@ -223,7 +271,7 @@ export default function MapCanvas() {
         "error",
         () => {}
       );
-      map.addSource("gap", { type: "geojson", data: gapFC() });
+      map.addSource("gap", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
       map.addSource("sim-coverage", {
         type: "geojson",
         data: { type: "FeatureCollection", features: [] },
@@ -233,58 +281,150 @@ export default function MapCanvas() {
       for (const y of YEARS) {
         map.addLayer({
           id: `builtup-${y}`,
-          type: "fill",
+          // ESRI's fractional observations are drawn as a continuous field.
+          // This deliberately avoids exposing the coarse display-grid cells as
+          // boxes: opacity and colour density now represent built-up share.
+          type: "heatmap",
           source: `builtup-${y}`,
-          paint: { "fill-color": "#d97706", "fill-opacity": 0 },
+          paint: {
+            "heatmap-weight": [
+              "interpolate",
+              ["linear"],
+              ["get", "amount"],
+              0,
+              0,
+              0.15,
+              0.08,
+              1,
+              1,
+            ] as never,
+            // Radius scales with zoom so adjacent sampled cells blend into a
+            // fluid urban spread at every useful planning scale.
+            "heatmap-radius": [
+              "interpolate",
+              ["linear"],
+              ["zoom"],
+              8,
+              22,
+              11,
+              48,
+              13,
+              96,
+              15,
+              180,
+            ] as never,
+            "heatmap-intensity": 1.1,
+            "heatmap-color": [
+              "interpolate",
+              ["linear"],
+              ["heatmap-density"],
+              0,
+              "rgba(245, 158, 11, 0)",
+              0.16,
+              "rgba(251, 191, 36, 0.16)",
+              0.42,
+              "rgba(245, 158, 11, 0.48)",
+              0.7,
+              "rgba(234, 88, 12, 0.75)",
+              1,
+              "rgba(154, 52, 18, 0.96)",
+            ] as never,
+            "heatmap-opacity": 0,
+          },
           layout: { visibility: "none" },
         });
-        map.setPaintProperty(`builtup-${y}`, "fill-opacity-transition", {
+        map.setPaintProperty(`builtup-${y}`, "heatmap-opacity-transition", {
           duration: 650,
         } as never);
       }
       map.addLayer({
         id: "prediction",
-        type: "fill",
+        // A weighted heatmap communicates gradual expansion likelihood without
+        // revealing the coarse analysis grid as hard-edged boxes.
+        type: "heatmap",
         source: "prediction",
         paint: {
-          "fill-color": [
-            "step",
-            ["get", "p"],
-            "#64748b",
-            0.2,
-            "#fbbf24",
-            0.4,
-            "#fb923c",
-            0.6,
-            "#f87171",
-            0.8,
-            "#dc2626",
+          "heatmap-weight": ["get", "p"] as never,
+          "heatmap-intensity": 1.15,
+          "heatmap-radius": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            8,
+            20,
+            11,
+            44,
+            13,
+            84,
+            15,
+            160,
           ] as never,
-          "fill-opacity": 0,
+          "heatmap-color": [
+            "interpolate",
+            ["linear"],
+            ["heatmap-density"],
+            0,
+            "rgba(251, 191, 36, 0)",
+            0.14,
+            "rgba(250, 204, 21, 0.18)",
+            0.34,
+            "rgba(251, 146, 60, 0.5)",
+            0.58,
+            "rgba(248, 113, 113, 0.78)",
+            0.82,
+            "rgba(220, 38, 38, 0.96)",
+          ] as never,
+          "heatmap-opacity": 0,
         },
         layout: { visibility: "none" },
       });
-      map.setPaintProperty("prediction", "fill-opacity-transition", {
-        duration: 500,
+      map.setPaintProperty("prediction", "heatmap-opacity-transition", {
+        duration: 650,
       } as never);
       map.addLayer({
         id: "gap",
-        type: "fill",
+        // Weighted points make service deficits read as a continuous area of
+        // need, instead of the underlying analysis cells.
+        type: "heatmap",
         source: "gap",
         paint: {
-          "fill-color": "#ef4444",
-          "fill-opacity": [
+          "heatmap-weight": ["get", "score"] as never,
+          "heatmap-intensity": 1.2,
+          "heatmap-radius": [
             "interpolate",
             ["linear"],
-            ["get", "pop"],
-            1500,
-            0.08,
-            20000,
-            0.55,
+            ["zoom"],
+            8,
+            20,
+            11,
+            44,
+            13,
+            88,
+            15,
+            168,
           ] as never,
+          "heatmap-color": [
+            "interpolate",
+            ["linear"],
+            ["heatmap-density"],
+            0,
+            "rgba(251, 146, 60, 0)",
+            0.16,
+            "rgba(251, 146, 60, 0.22)",
+            0.4,
+            "rgba(239, 68, 68, 0.58)",
+            0.68,
+            "rgba(185, 28, 28, 0.82)",
+            1,
+            "rgba(127, 29, 29, 0.98)",
+          ] as never,
+          "heatmap-opacity": 0,
         },
         layout: { visibility: "none" },
       });
+      map.setPaintProperty("gap", "heatmap-opacity-transition", {
+        duration: 650,
+      } as never);
 
       /* ---- HEATMAP LAYERS ---- */
       // 1. Population Density Heatmap
@@ -565,6 +705,25 @@ export default function MapCanvas() {
           "line-dasharray": [2, 1.4] as never,
         },
       });
+      map.addLayer({
+        id: "flood-risk",
+        type: "fill",
+        source: "parcels",
+        paint: {
+          "fill-color": [
+            "match",
+            ["get", "floodRisk"],
+            "high",
+            "#ef4444",
+            "medium",
+            "#f59e0b",
+            "low",
+            "#22c55e",
+            "rgba(0,0,0,0)",
+          ] as never,
+          "fill-opacity": 0.5,
+        },
+      });
 
       /* ---- candidates + selection ---- */
       map.addLayer({
@@ -761,27 +920,58 @@ export default function MapCanvas() {
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready || datasetVersion === 0) return;
+    m2("map:eff:start");
+    if (appliedDatasetVersionRef.current === datasetVersion) return;
 
     const push = (id: string, data: FeatureCollection) => {
       const src = map.getSource(id) as maplibregl.GeoJSONSource | undefined;
       src?.setData(data);
     };
+    // Core Overview only. Expensive analytical sources are populated lazily
+    // below when their layer becomes visible.
     push("parcels", parcelsFC());
     push("wards", wardsFC());
     push("roads", roadsFC());
     push("facilities", facilitiesFC());
-    push("prediction", predictionFC());
-    push("population", populationFC());
-    push("growth-heat", growthHeatFC());
-    push("gap-heat", gapHeatFC());
+    sourceVersionRef.current = {
+      parcels: datasetVersion, wards: datasetVersion, roads: datasetVersion, facilities: datasetVersion,
+    };
     push("vegetation", vegetationFC());
     push("greenspace", greenspaceFC());
-    push("gap", gapFC());
-    for (const y of YEARS) push(`builtup-${y}`, builtupFC(y));
     push("sim-coverage", { type: "FeatureCollection", features: [] });
+    try {
+      if (typeof window !== "undefined" && (window as any).__M2) (window as any).__map = map;
+    } catch {}
 
-    map.easeTo({ center: city.center, zoom: city.zoom, duration: 900 });
+    // Authoritative framing: the wards that were actually loaded.
+    frameStudyArea(map, city, 450);
+    appliedDatasetVersionRef.current = datasetVersion;
+    m2("map:eff:done");
   }, [datasetVersion, ready, city]);
+
+  /* ---------------- lazy intelligence source population ---------------- */
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready || datasetVersion === 0) return;
+    m2("map:ensure:start");
+    const ensure = (id: string, build: () => FeatureCollection) => {
+      if (sourceVersionRef.current[id] === datasetVersion) return;
+      const src = map.getSource(id) as maplibregl.GeoJSONSource | undefined;
+      if (!src) return;
+      src.setData(build());
+      sourceVersionRef.current[id] = datasetVersion;
+    };
+
+    if (activeLayers["prediction"]) ensure("prediction", predictionFC);
+    if (activeLayers["population"]) ensure("population", populationFC);
+    if (activeLayers["growth-heat"]) ensure("growth-heat", growthHeatFC);
+    if (activeLayers["gap-heat"]) ensure("gap-heat", gapHeatFC);
+    if (activeLayers["gap"]) ensure("gap", gapFC);
+    if (activeLayers["builtup"]) {
+      for (const y of YEARS) ensure(`builtup-${y}`, () => builtupFC(y));
+    }
+    m2("map:ensure:done");
+  }, [activeLayers, datasetVersion, ready]);
 
   /* ------------------------- basemap switching -------------------------- */
   useEffect(() => {
@@ -839,6 +1029,7 @@ export default function MapCanvas() {
     setV("parcels-line", !!L["parcels"]);
     setV("govt-land", !!L["govt-land"]);
     setV("zoning-conflicts", !!L["zoning-conflicts"]);
+    setV("flood-risk", !!L["flood-risk"]);
     setV("roads", !!L["roads"]);
     setV("roads-casing", !!L["roads"]);
     setV("facilities-circle", !!L["facilities"]);
@@ -860,22 +1051,14 @@ export default function MapCanvas() {
     if (map.getLayer("prediction"))
       map.setPaintProperty(
         "prediction",
-        "fill-opacity",
+        "heatmap-opacity",
         L["prediction"] ? layerOpacity["prediction"] ?? 0.62 : 0
       );
 
     // opacity sliders for heatmaps and intelligence surfaces
-    const gapO = layerOpacity["gap"] ?? 0.55;
+    const gapO = layerOpacity["gap"] ?? 0.62;
     if (map.getLayer("gap"))
-      map.setPaintProperty("gap", "fill-opacity", [
-        "interpolate",
-        ["linear"],
-        ["get", "pop"],
-        1500,
-        gapO * 0.15,
-        20000,
-        gapO,
-      ] as never);
+      map.setPaintProperty("gap", "heatmap-opacity", L["gap"] ? gapO : 0);
 
     if (map.getLayer("population"))
       map.setPaintProperty("population", "heatmap-opacity", layerOpacity["population"] ?? 0.7);
@@ -889,9 +1072,11 @@ export default function MapCanvas() {
       map.setPaintProperty("thermal-heat", "raster-opacity", layerOpacity["thermal-heat"] ?? 0.7);
     if (map.getLayer("greenspace"))
       map.setPaintProperty("greenspace", "fill-opacity", layerOpacity["greenspace"] ?? 0.45);
+    if (map.getLayer("flood-risk"))
+      map.setPaintProperty("flood-risk", "fill-opacity", layerOpacity["flood-risk"] ?? 0.5);
   }, [activeLayers, ready, layerOpacity, thermal]);
 
-  /* --------------------- year crossfade (builtup) ------------------- */
+  /* --------------------- year crossfade (fluid builtup) -------------- */
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return;
@@ -899,7 +1084,7 @@ export default function MapCanvas() {
       if (!map.getLayer(`builtup-${y}`)) continue;
       map.setPaintProperty(
         `builtup-${y}`,
-        "fill-opacity",
+        "heatmap-opacity",
         activeLayers["builtup"] && y === year ? layerOpacity["builtup"] ?? 0.5 : 0
       );
     }
@@ -1084,44 +1269,12 @@ export default function MapCanvas() {
     });
   }, [flyTarget]);
 
-  /* Center the study area perfectly in viewport whenever city changes */
+  /* Provisional framing the moment the city changes, before its data lands.
+     The dataset effect above re-frames authoritatively once WARDS is current. */
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return;
-
-    // Viewport padding clears the left ModeRail and right Intelligence Panel
-    const padding = {
-      top: 80,
-      bottom: 80,
-      left: 100, // clears ModeRail (left-4 + width)
-      right: 390, // clears Right Panel (right-4 + width 360px)
-    };
-
-    if (city.bounds && city.bounds.length === 2) {
-      try {
-        map.fitBounds(city.bounds, {
-          padding,
-          maxZoom: 12.6,
-          bearing: 0,
-          pitch: 0,
-          duration: 1500,
-          essential: true,
-        });
-        return;
-      } catch {
-        // Fallback to flyTo below if fitBounds encounters non-standard bounds
-      }
-    }
-
-    map.flyTo({
-      center: city.growthCenter ?? city.center,
-      zoom: 12.4,
-      bearing: 0,
-      pitch: 0,
-      padding,
-      duration: 1500,
-      essential: true,
-    });
+    frameStudyArea(map, city, 1500);
   }, [city.id, ready]);
 
   return (

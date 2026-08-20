@@ -16,6 +16,7 @@ import {
   Flame,
   Leaf,
   Activity,
+  Waves,
 } from "lucide-react";
 import { LAYERS, type LayerCategory, type LayerId } from "@/config/layers";
 import { useApp } from "@/lib/store";
@@ -27,6 +28,7 @@ const ICONS: Record<LayerId, React.ReactNode> = {
   parcels: <Grid2x2 size={14} />,
   "govt-land": <Landmark size={14} />,
   "zoning-conflicts": <ShieldAlert size={14} />,
+  "flood-risk": <Waves size={14} />,
   wards: <MapIcon size={14} />,
   roads: <Route size={14} />,
   facilities: <Hospital size={14} />,

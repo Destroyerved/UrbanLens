@@ -12,7 +12,11 @@
  * without shipping four cities' geometry to everyone who opens the page.
  */
 
-const BASE = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000").replace(/\/$/, "");
+const CONFIGURED_BASE = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/$/, "");
+// In production, default to same-origin /api so a Vercel rewrite can proxy the
+// engine. Local dev still falls back to :8000. This avoids accidentally asking
+// an end user's own localhost when NEXT_PUBLIC_API_URL was not configured.
+const BASE = CONFIGURED_BASE || (process.env.NODE_ENV === "development" ? "http://localhost:8000" : "");
 
 export const API_BASE = BASE;
 
@@ -38,7 +42,9 @@ export class ApiError extends Error {
 }
 
 function url(path: string, params?: Record<string, string | number | boolean | undefined>) {
-  const u = new URL(BASE + path);
+  const target = BASE + path;
+  const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost:3000";
+  const u = new URL(target, origin);
   u.searchParams.set("city", currentCity);
   for (const [k, v] of Object.entries(params ?? {})) {
     if (v !== undefined) u.searchParams.set(k, String(v));
@@ -107,4 +113,17 @@ export async function engineAvailable(): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+
+/** Wake a sleeping free-tier backend without blocking the already-static UI. */
+export function warmEngine(): void {
+  if (typeof window === "undefined") return;
+  void fetch(url("/api/health", { deep: true }), {
+    method: "GET",
+    cache: "no-store",
+    keepalive: true,
+  }).catch(() => {
+    // Best-effort only: the dashboard itself is already usable from static data.
+  });
 }

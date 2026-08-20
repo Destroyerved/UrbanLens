@@ -26,6 +26,10 @@ export function PanelShell({
   return (
     <motion.div
       data-glow
+      // Test hook for web/scripts/verify-ui.mjs, which reads the active
+      // panel's text to assert that every figure on screen came from the
+      // engine. Renaming or dropping it silently disables that whole gate.
+      data-panel
       initial={{ opacity: 0, x: 16 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: 16 }}

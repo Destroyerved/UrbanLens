@@ -1,5 +1,6 @@
 import type { AccessibilityReport, GapCategory, LngLat, WardGap } from "@/types";
-import { apiGet } from "@/lib/api";
+import { apiGet, getApiCity } from "@/lib/api";
+import { getFastAnalytics } from "@/lib/dataset";
 
 /**
  * Infrastructure, accessibility and city KPIs — served by the Python engine.
@@ -29,24 +30,45 @@ export interface CoverageNote {
   note: string;
 }
 
-let gapsCache: { wards: WardGap[]; coverage: CoverageNote[] } | null = null;
+const gapsCache = new Map<string, Promise<{ wards: WardGap[]; coverage: CoverageNote[] }>>();
 
 export async function fetchGapsWithCoverage(): Promise<{ wards: WardGap[]; coverage: CoverageNote[] }> {
-  if (gapsCache) return gapsCache;
-  const res = await apiGet<{ wards: ApiWardGap[]; coverage: CoverageNote[] }>("/api/infrastructure/gaps");
-  gapsCache = {
+  const city = getApiCity();
+  const cached = gapsCache.get(city);
+  if (cached) return cached;
+
+  const normalize = (res: { wards: ApiWardGap[]; coverage: CoverageNote[] }) => ({
     wards: res.wards.map((w) => ({
       wardId: w.ward_code,
       wardName: w.name,
       population: w.population,
-      scores: w.scores,
+      scores: {
+        healthcare: w.scores.healthcare ?? 0,
+        education: w.scores.education ?? 0,
+        parks: w.scores.parks ?? 0,
+        transport: (w.scores as Record<string, number>).transportation ?? 0,
+        safety: (w.scores as Record<string, number>).safety ??
+          (w.scores as Record<string, number>).road_connectivity ?? 0,
+      },
       overall: w.overall,
-      // The engine calls this `priority`: population weighted by unmet need.
       affectedPopulation: w.priority,
     })),
     coverage: res.coverage,
-  };
-  return gapsCache;
+  });
+
+  const fast = getFastAnalytics(city);
+  const pending = fast?.i
+    ? Promise.resolve(normalize(fast.i as { wards: ApiWardGap[]; coverage: CoverageNote[] }))
+    : apiGet<{ wards: ApiWardGap[]; coverage: CoverageNote[] }>(
+        "/api/infrastructure/gaps",
+        { city },
+      ).then(normalize)
+    .catch((err) => {
+      gapsCache.delete(city);
+      throw err;
+    });
+  gapsCache.set(city, pending);
+  return pending;
 }
 
 export async function fetchWardGaps(): Promise<WardGap[]> {
@@ -88,26 +110,29 @@ export async function fetchLivability(wardId: string) {
 }
 
 export async function fetchCityKpis() {
-  const [overview, gaps, growth] = await Promise.all([
-    apiGet<{
-      population: number;
-      urban_growth_pct: number;
-      total_parcels: number;
-      government_parcels: number;
-      vacant_government_area_ha: number;
-      infrastructure_deficit_wards: number;
-      zoning_conflicts: number;
-    }>("/api/overview"),
-    fetchGapsWithCoverage(),
-    apiGet<{
-      corridors: {
-        name: string;
-        risk: string;
-        predicted_growth_pct: number;
-        population: number;
-      }[];
-    }>("/api/growth"),
-  ]);
+  const city = getApiCity();
+  const fast = getFastAnalytics(city);
+  const [overview, gaps, growth] = fast
+    ? await Promise.all([Promise.resolve(fast.o as any), fetchGapsWithCoverage(), Promise.resolve(fast.gr as any)])
+    : await Promise.all([
+        apiGet<{
+          population: number;
+          urban_growth_pct: number;
+          total_parcels: number;
+          government_parcels: number;
+          vacant_government_area_ha: number;
+          infrastructure_deficit_wards: number;
+          zoning_conflicts: number;
+        }>("/api/overview"),
+        fetchGapsWithCoverage(),
+        apiGet<{
+          corridors: {
+            name: string;
+            predicted_growth_pct: number;
+            population: number;
+          }[];
+        }>("/api/growth"),
+      ]);
 
   // The strongest growth corridor, named by the engine for this study area —
   // the headline signal must not keep naming Ahmedabad localities when the
@@ -135,7 +160,6 @@ export async function fetchCityKpis() {
       ? {
           name: topCorridor.name,
           growthPct: topCorridor.predicted_growth_pct,
-          risk: topCorridor.risk,
           population: topCorridor.population,
         }
       : null,

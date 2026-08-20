@@ -27,7 +27,10 @@
 
   /* Liquid Glass — Ultra Translucent Light */
   --glass-bg: rgba(255, 255, 255, 0.28);
-  --glass-bg-strong: rgba(255, 255, 255, 0.38);
+  /* The intelligence panel floats over the parcel layer. Below ~0.75 the
+     high-chroma fills read through and panel text sits on a mottled,
+     unpredictable ground. */
+  --glass-bg-strong: rgba(255, 255, 255, 0.80);
   --glass-card-bg: rgba(255, 255, 255, 0.22);
   --glass-border: rgba(255, 255, 255, 0.75);
   --glass-border-subtle: rgba(255, 255, 255, 0.50);
@@ -72,7 +75,10 @@
 
   /* Liquid Glass — Ultra Translucent Dark Glassmorphism */
   --glass-bg: rgba(10, 15, 28, 0.42);
-  --glass-bg-strong: rgba(8, 12, 24, 0.52);
+  /* The intelligence panel floats over the parcel layer. Below ~0.75 the
+     high-chroma fills read through and panel text sits on a mottled,
+     unpredictable ground. */
+  --glass-bg-strong: rgba(8, 12, 24, 0.82);
   --glass-card-bg: rgba(255, 255, 255, 0.06);
   --glass-border: rgba(255, 255, 255, 0.22);
   --glass-border-subtle: rgba(255, 255, 255, 0.12);
@@ -102,7 +108,10 @@
 
   /* Liquid Glass — Ultra Translucent Dim */
   --glass-bg: rgba(18, 12, 30, 0.42);
-  --glass-bg-strong: rgba(15, 10, 26, 0.52);
+  /* The intelligence panel floats over the parcel layer. Below ~0.75 the
+     high-chroma fills read through and panel text sits on a mottled,
+     unpredictable ground. */
+  --glass-bg-strong: rgba(15, 10, 26, 0.82);
   --glass-card-bg: rgba(255, 255, 255, 0.07);
   --glass-border: rgba(192, 132, 252, 0.30);
   --glass-border-subtle: rgba(192, 132, 252, 0.16);
@@ -160,8 +169,8 @@ body {
 ::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.22);
   border-radius: 9999px;
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
   border: 1px solid rgba(255, 255, 255, 0.1);
   transition: background-color 0.2s ease;
 }
@@ -195,24 +204,31 @@ body {
 
 .glass {
   background: var(--glass-bg);
-  -webkit-backdrop-filter: blur(24px) saturate(190%);
-  backdrop-filter: blur(24px) saturate(190%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+  backdrop-filter: blur(12px) saturate(150%);
   border: 1px solid var(--glass-border);
   box-shadow: var(--glass-shadow), var(--glass-inset-1), var(--glass-inset-2);
 }
 
 .glass-strong {
   background: var(--glass-bg-strong);
-  -webkit-backdrop-filter: blur(28px) saturate(200%);
-  backdrop-filter: blur(28px) saturate(200%);
+  /* No saturation boost.
+     This panel floats over the parcel layer, whose fills are deliberately
+     high-chroma (orange residential, purple commercial, green vegetation).
+     Blurring those and then multiplying saturation by 1.5 turned the whole
+     panel into a prismatic wash the moment the map flew somewhere dense —
+     which is every time Site Selection returns a result. More blur mixes the
+     colours toward neutral instead of amplifying them. */
+  -webkit-backdrop-filter: blur(20px) saturate(102%);
+  backdrop-filter: blur(20px) saturate(102%);
   border: 1px solid var(--glass-border);
   box-shadow: var(--glass-shadow-strong), var(--glass-inset-1), var(--glass-inset-2);
 }
 
 .glass-card {
   background: var(--glass-card-bg);
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
-  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(6px) saturate(145%);
+  backdrop-filter: blur(6px) saturate(145%);
   border: 1px solid var(--glass-border-subtle);
   box-shadow: var(--shadow-1), var(--glass-inset-1), var(--glass-inset-2);
   transition: transform 150ms ease;
@@ -220,8 +236,8 @@ body {
 
 .glass-glow-card {
   background: var(--glass-card-bg);
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
-  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(6px) saturate(145%);
+  backdrop-filter: blur(6px) saturate(145%);
   border: 1px solid var(--glass-border-subtle);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15), var(--glass-inset-1);
 }
@@ -280,8 +296,8 @@ button,
   border-radius: 9999px;
   border: 1px solid var(--glass-border);
   background: var(--glass-bg);
-  -webkit-backdrop-filter: blur(16px) saturate(200%);
-  backdrop-filter: blur(16px) saturate(200%);
+  -webkit-backdrop-filter: blur(6px) saturate(150%);
+  backdrop-filter: blur(6px) saturate(150%);
   box-shadow: var(--glass-shadow), var(--glass-inset-1), var(--glass-inset-2);
   margin: 0;
 }
@@ -496,10 +512,33 @@ button,
   border: 1px solid rgba(255, 255, 255, 0.14);
 }
 
+/* The specular border.
+ *
+ * PERFORMANCE — read before widening these selectors.
+ * Each pseudo-element is a viewport-sized (100vw × 100vh), fixed-attachment
+ * gradient behind a composite mask. `background-attachment: fixed` opts the
+ * element out of ordinary layer caching, so every one of these repaints
+ * whenever --x/--y changes, i.e. on every pointer move. The gradient itself is
+ * only ~240px across, so a card that is not under the cursor repaints two
+ * full-viewport masked layers to show nothing at all. With ~20 KPI cards on the
+ * Overview that was 40 such repaints per mouse move, competing with MapLibre
+ * for the same frame.
+ *
+ * The glow is therefore painted only on the card the cursor is actually over.
+ * `opacity: 0` alone is not enough — it still costs paint — so the layers stay
+ * `content: none` until hover creates them.
+ */
 [data-glow]::before,
 [data-glow]::after,
 .glass-glow-card::before,
 .glass-glow-card::after {
+  content: none;
+}
+
+[data-glow]:hover::before,
+[data-glow]:hover::after,
+.glass-glow-card:hover::before,
+.glass-glow-card:hover::after {
   pointer-events: none;
   content: "";
   position: absolute;
@@ -519,8 +558,8 @@ button,
 }
 
 /* Bright, vibrant colored specular hue ONLY directly where the cursor moves */
-[data-glow]::before,
-.glass-glow-card::before {
+[data-glow]:hover::before,
+.glass-glow-card:hover::before {
   background-image: radial-gradient(
     calc(var(--spotlight-size, 260px) * 0.75) calc(var(--spotlight-size, 260px) * 0.75) at
     calc(var(--x, -5000) * 1px)
@@ -534,8 +573,8 @@ button,
 }
 
 /* Ultra-crisp diamond-white specular apex highlight ONLY directly at the cursor point */
-[data-glow]::after,
-.glass-glow-card::after {
+[data-glow]:hover::after,
+.glass-glow-card:hover::after {
   background-image: radial-gradient(
     calc(var(--spotlight-size, 260px) * 0.4) calc(var(--spotlight-size, 260px) * 0.4) at
     calc(var(--x, -5000) * 1px)

@@ -9,6 +9,8 @@ OpenStreetMap land and infrastructure, and a census-grounded population raster.
 from __future__ import annotations
 
 import logging
+from contextlib import asynccontextmanager
+import os
 import subprocess
 import sys
 import threading
@@ -16,11 +18,13 @@ import time
 from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.responses import ORJSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.api import routes
-from app.core.config import CITIES, DEFAULT_CITY
+from app.core.config import DEFAULT_CITY
 from app.thermal import refresh as refresh_thermal
 
 # uvicorn configures "uvicorn.error" with a handler at INFO; a fresh logger of
@@ -28,22 +32,36 @@ from app.thermal import refresh as refresh_thermal
 # below it, which would make the failure path here invisible.
 log = logging.getLogger("uvicorn.error")
 
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    startup_tasks()
+    yield
+
+
 app = FastAPI(
     title="UrbanLens Spatial Engine",
+    lifespan=lifespan,
     version="0.1.0",
+    default_response_class=ORJSONResponse,
     description=(
         "Urban planning intelligence over real municipal boundaries, "
         "OpenStreetMap land and infrastructure, and a census-grounded population raster."
     ),
 )
 
-# The Next.js app runs on another port in development.
+# Deployment-safe CORS. For a private deployment set URBANLENS_CORS_ORIGINS
+# to a comma-separated allowlist; public read-only demos can keep the default *.
+_cors_raw = os.environ.get("URBANLENS_CORS_ORIGINS", "*")
+_cors_origins = [x.strip() for x in _cors_raw.split(",") if x.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
-    allow_methods=["GET", "POST"],
+    allow_origins=_cors_origins or ["*"],
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
 )
+app.add_middleware(GZipMiddleware, minimum_size=1024, compresslevel=3)
 
 app.include_router(routes.router, prefix="/api")
 
@@ -139,38 +157,54 @@ def _warm_all(cities: list[str], label: str, fn) -> None:
         list(pool.map(safe, cities))
 
 
-@app.on_event("startup")
-def prewarm() -> None:
-    """Build the study areas in the background so the first request is not the
-    one that pays for them.
+def startup_tasks() -> None:
+    """Initialise storage and do only bounded, opt-in warm-up work.
 
-    Everything downstream is `lru_cache`d, so the cost of an area is paid once —
-    but it was being paid by whoever asked first. For the metro region that is
-    ~15 s of enrichment across 4,274 parcels, during which the UI can only show
-    "Loading Ahmedabad Metro Region…". A planner switching study areas mid-demo
-    reads that as a hang.
-
-    Warming is two-phase so the UI is usable everywhere quickly:
-      1. base datasets (wards/facilities/roads/grid/indexes) for every district,
-         in parallel — the eager endpoints all share this build;
-      2. parcels + DEM risk rasters, also in parallel.
-
-    A daemon thread keeps startup instant and the server answering throughout;
-    warming is strictly an optimisation, so a failure here is logged and
-    dropped rather than taking the process down — the route would rebuild the
-    dataset itself anyway.
+    The previous implementation spawned four workers across every Gujarat
+    district and built parcels during startup. On small free hosts that created
+    CPU/RAM contention with the first real user.
     """
+    from app.data.database import has_city_layers, import_layers
+    from app.data.loader import ACTIVE_DB_PATH
 
-    def run() -> None:
-        cities = [DEFAULT_CITY.id, *(c for c in CITIES if c != DEFAULT_CITY.id)]
-        _warm_all(cities, "base", _warm_base)
-        log.info("warmed base dataset for %d districts", len(cities))
-        _warm_all(cities, "parcels", _warm_parcels)
-        log.info("warmed parcels for %d districts", len(cities))
+    if ACTIVE_DB_PATH is not None:
+        # SqliteSource already creates/upgrades the schema during import. Seed
+        # only the default city if the DB is empty/partial; other cities safely
+        # fall back to engine files through HybridSource.
+        if os.environ.get("URBANLENS_DB_AUTO_SEED", "1") == "1" and not has_city_layers(
+            ACTIVE_DB_PATH, DEFAULT_CITY.id
+        ):
+            try:
+                imported = import_layers(ACTIVE_DB_PATH, [DEFAULT_CITY.id])
+                log.info("seeded SQLite for %s: %s", DEFAULT_CITY.id, imported.get(DEFAULT_CITY.id, []))
+            except Exception:
+                log.exception("SQLite auto-seed failed; filesystem fallback remains available")
+
+    def warm_default() -> None:
+        try:
+            if os.environ.get("URBANLENS_PREWARM_BASE", "0") == "1":
+                _warm_base(DEFAULT_CITY.id)
+                log.info("warmed default base dataset (%s)", DEFAULT_CITY.id)
+            if os.environ.get("URBANLENS_PREWARM_PARCELS", "0") == "1":
+                _warm_parcels(DEFAULT_CITY.id)
+                log.info("warmed default parcels (%s)", DEFAULT_CITY.id)
+        except Exception:
+            log.exception("default warmup failed")
         _register_windows_task()
 
-    threading.Thread(target=run, name="urbanlens-warmup", daemon=True).start()
-    threading.Thread(target=_thermal_loop, name="urbanlens-thermal", daemon=True).start()
+    threading.Thread(target=warm_default, name="urbanlens-warmup", daemon=True).start()
+    if os.environ.get("URBANLENS_THERMAL_REFRESH", "0") == "1":
+        threading.Thread(target=_thermal_loop, name="urbanlens-thermal", daemon=True).start()
+
+
+@app.middleware("http")
+async def cache_headers(request, call_next):
+    response = await call_next(request)
+    if request.method == "GET" and response.status_code == 200:
+        path = request.url.path
+        if path.startswith("/api/") and path not in {"/api/health", "/api/thermal/status"}:
+            response.headers.setdefault("Cache-Control", "public, max-age=60, stale-while-revalidate=300")
+    return response
 
 
 @app.get("/", include_in_schema=False)

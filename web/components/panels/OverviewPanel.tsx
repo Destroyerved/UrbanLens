@@ -16,11 +16,13 @@ function Kpi({
   value,
   format,
   accent,
+  note,
 }: {
   label: string;
   value: number;
   format?: (n: number) => string;
   accent?: "good" | "warning" | "critical" | "gov" | "accent";
+  note?: string;
 }) {
   const color =
     accent === "good"
@@ -68,6 +70,11 @@ function Kpi({
         <AnimatedNumber value={value} format={format ?? ((n) => `${Math.round(n)}`)} />
       </div>
       <div className="mt-1.5 text-[10.5px] font-medium leading-tight text-muted-foreground">{label}</div>
+      {note && (
+        <div className="mt-0.5 text-[9.5px] leading-tight text-muted-foreground/70" title={note}>
+          {note}
+        </div>
+      )}
     </GlowCard>
   );
 }
@@ -81,7 +88,7 @@ export default function OverviewPanel() {
   const setCopilotOpen = useApp((s) => s.setCopilotOpen);
 
   useEffect(() => {
-    if (datasetVersion === 0 && !city?.id) return;
+    if (datasetVersion === 0) return;
     fetchCityKpis()
       .then(setKpis)
       .catch(() => setError(true));
@@ -100,12 +107,13 @@ export default function OverviewPanel() {
         <>
           <Section label="City Pulse">
             <div className="grid grid-cols-2 gap-2">
-              <Kpi label="Population (2026)" value={kpis.population} format={formatCompact} />
+              <Kpi label="Est. population (2026)" value={kpis.population} format={formatCompact} note="Census 2011 × growth · model-split" />
               <Kpi
-                label="Built-up growth since 2018"
+                label="Observed built-up growth since 2018"
                 value={kpis.growthPct}
                 format={(n) => `+${Math.round(n)}%`}
                 accent="accent"
+                note="Esri satellite land cover · 2018–2024"
               />
               <Kpi
                 label="Healthcare coverage"

@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import GlobeCanvas from "@/components/urbanlens-globe/GlobeCanvas";
-import { scrollState } from "@/components/urbanlens-globe/lib/scroll";
+import { setProgress } from "@/components/urbanlens-globe/lib/store";
 import { clamp, stage, stageOpacity } from "@/lib/landing/timeline";
 
 export default function EarthStage() {
   const host = useRef<HTMLDivElement>(null);
+  const [renderGlobe, setRenderGlobe] = useState(true);
+  const renderGlobeRef = useRef(true);
 
   useEffect(() => {
     let raf = 0;
@@ -15,13 +17,14 @@ export default function EarthStage() {
     const loop = () => {
       raf = requestAnimationFrame(loop);
       const T = stage.T;
-      // Opening narrative (T 0..3.8) -> progress 0..1
-      if (T <= 4.0) {
-        scrollState.progress = clamp(T / 3.8);
-      } else if (T >= 11.6) {
-        // Outro & finale (T >= 11.6) -> return to wide planet view
-        scrollState.progress = 0;
+      const shouldRender = T < 4.25;
+      if (shouldRender !== renderGlobeRef.current) {
+        renderGlobeRef.current = shouldRender;
+        setRenderGlobe(shouldRender);
       }
+      // Map stage.T (0 -> 3.8) to globe progress (0 -> 1)
+      const progress = clamp(T / 3.8);
+      setProgress(progress);
 
       const { earth: opacity } = stageOpacity(T);
       if (Math.abs(opacity - lastOpacity) > 0.003) {
@@ -44,12 +47,18 @@ export default function EarthStage() {
       style={{ opacity: 0 }}
       aria-hidden="true"
     >
-      <GlobeCanvas
-        showMarkers={true}
-        showOutline={true}
-        showStars={true}
-        className="size-full"
-      />
+      {renderGlobe && (
+        <GlobeCanvas
+          texturePath="/textures"
+          accent="#16D9F5"
+          atmosphereColor="#7ABEFF"
+          showCities={false}
+          showCityLabels={false}
+          showGrid={true}
+          quality="low"
+          className="size-full"
+        />
+      )}
     </div>
   );
 }

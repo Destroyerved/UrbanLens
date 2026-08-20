@@ -15,13 +15,13 @@ export const GUJARAT_DISTRICTS: CityConfig[] = [
     name: "Ahmedabad",
     state: "Gujarat",
     blurb: "Ahmedabad district · AMC wards + talukas",
-    center: [72.5714, 23.0225] as LngLat,
-    zoom: 12.2,
+    center: [72.2441, 22.8994] as LngLat,
+    zoom: 7.6,
     bounds: [
-      [72.4193, 22.8839] as LngLat,
-      [72.7315, 23.1705] as LngLat,
+      [71.84, 21.9825] as LngLat,
+      [72.8426, 23.5088] as LngLat,
     ],
-    growthCenter: [72.5714, 23.0225] as LngLat,
+    growthCenter: [72.2441, 22.8994] as LngLat,
   },
   {
     id: "amreli",

@@ -1,6 +1,7 @@
 import type { Facility, GridCell, LandUse, LngLat, Parcel, Road, Ward, Year } from "@/types";
 import type { FeatureCollection } from "geojson";
 import { apiGet, ApiError } from "@/lib/api";
+import { m2 } from "@/lib/marks";
 
 /**
  * The active study area's map layers.
@@ -90,13 +91,18 @@ const snap = (ring: LngLat[]): LngLat[] =>
  * and no more than the engine itself claims.
  */
 function landUseByYear(
-  props: { h2018: number; h2022: number },
+  props: { h2018: number; h2022: number; h2024: number },
   current: LandUse,
 ): Record<Year, LandUse> {
   const undeveloped: LandUse =
     current === "water" || current === "vegetation" ? current : "vacant";
   const at = (built: number) => (built >= 25 ? current : undeveloped);
-  return { 2018: at(props.h2018), 2022: at(props.h2022), 2026: current };
+  return {
+    2018: at(props.h2018),
+    2022: at(props.h2022),
+    2024: at(props.h2024),
+    2026: current,
+  };
 }
 
 /** Cell edge in degrees at the sampling step the population route is asked for. */
@@ -161,6 +167,7 @@ interface ParcelProps {
   zoning_conflict?: boolean;
   h2018: number;
   h2022: number;
+  h2024: number;
 }
 interface FacilityProps {
   id: string;
@@ -173,155 +180,231 @@ interface RoadProps {
   road_type: string;
 }
 
-export async function fetchCityDataset(cityId: string): Promise<CityDataset> {
-  const q = { city: cityId };
-  const [wardsFC, parcelsFC, facFC, roadsFC, popFC, predFC, vegFC, greenFC] = await Promise.all([
-    apiGet<FC<WardProps>>("/api/wards", q),
-    apiGet<FC<ParcelProps>>("/api/parcels", { ...q, detail: "full" }),
-    apiGet<FC<FacilityProps>>("/api/facilities", q),
-    apiGet<FC<RoadProps>>("/api/roads", q),
-    apiGet<FC<{ population: number }>>("/api/population", { ...q, step: POP_STEP }),
-    apiGet<FC<{ growth_probability: number }>>("/api/growth/prediction", q),
-    fetchOptional<FC<unknown>>("/api/vegetation", q),
-    fetchOptional<FC<unknown>>("/api/greenspace", q),
-  ]);
+interface FastBootstrap {
+  v: number;
+  c: string;
+  cell: number;
+  /** [id,name,ring,centroid,areaKm2,population] */
+  w: [string, string, LngLat[], LngLat, number, number][];
+  /** Compact parcel transport tuple; decoded below. */
+  p: any[][];
+  /** [id,name,engineFacilityType,lng,lat] */
+  f: [string, string, string, number, number][];
+  /** [id,name,path] */
+  r: [string, string, LngLat[]][];
+  /** [lng,lat,population,growthProbability,hospitalKm,b18,b22,b24] */
+  g: [number, number, number, number, number, number, number, number][];
+  /** Precomputed overview/infrastructure/growth summaries. */
+  a?: FastAnalytics;
+}
 
-  const wards: Ward[] = wardsFC.features.map((f) => {
-    const p = f.properties;
-    const pop = p.population;
-    return {
-      id: p.ward_code,
-      name: p.name,
-      ring: snap(outerRing(f.geometry)),
-      centroid: p.centroid,
-      areaKm2: round(p.area_sqm / 1e6, 2),
-      // The engine carries one current figure per ward. Earlier years are
-      // back-projected with the same municipal growth factor used to produce it,
-      // rather than invented per ward.
-      population: {
-        2018: Math.round(pop / 1.18),
-        2022: Math.round(pop / 1.08),
-        2026: pop,
-      },
-    } as Ward;
-  });
+export interface FastAnalytics {
+  o: Record<string, any>;
+  i: { wards: any[]; coverage: any[] };
+  gr: Record<string, any>;
+}
 
-  const parcels: Parcel[] = parcelsFC.features.map((f) => {
-    const p = f.properties;
-    const landUse = LAND_USE[p.land_use] ?? "vacant";
+const fastAnalyticsCache = new Map<string, FastAnalytics>();
+export const getFastAnalytics = (cityId: string) => fastAnalyticsCache.get(cityId) ?? null;
+
+const EMPTY_FC: FeatureCollection = { type: "FeatureCollection", features: [] };
+
+async function fetchStaticGzipJson<T>(path: string): Promise<T | null> {
+  if (typeof window === "undefined") return null;
+  try {
+    const res = await fetch(path, { cache: "force-cache" });
+    if (!res.ok || !res.body) return null;
+    if ((res.headers.get("content-encoding") ?? "").toLowerCase().includes("gzip")) {
+      return (await res.json()) as T;
+    }
+    if (!("DecompressionStream" in window)) return null;
+    const stream = res.body.pipeThrough(new DecompressionStream("gzip"));
+    return (await new Response(stream).json()) as T;
+  } catch {
+    return null;
+  }
+}
+
+/** Try the prebuilt Vercel/static-CDN payload before waking the Python host. */
+async function fetchStaticBootstrap(cityId: string): Promise<FastBootstrap | null> {
+  return fetchStaticGzipJson<FastBootstrap>(
+    `/data/bootstrap/${encodeURIComponent(cityId)}.json.gz`,
+  );
+}
+
+/**
+ * One request replaces the old eight-request city waterfall. The backend
+ * already returns UI-oriented compact tuples and has combined population,
+ * growth and healthcare reach, so there is no O(grid × prediction) loop here.
+ */
+async function loadCityDataset(cityId: string): Promise<CityDataset> {
+  m2("ds:start");
+  const b =
+    (await fetchStaticBootstrap(cityId)) ??
+    (await apiGet<FastBootstrap>("/api/bootstrap", { city: cityId }));
+  m2("ds:fetched");
+  if (b.v < 5) throw new Error(`Unsupported UrbanLens bootstrap v${b.v}`);
+  if (b.a) fastAnalyticsCache.set(cityId, b.a);
+
+  const wards: Ward[] = b.w.map(([id, name, ring, centroid, areaKm2, pop]) => ({
+    id,
+    name,
+    ring,
+    centroid,
+    areaKm2,
+    population: {
+      2018: Math.round(pop / 1.18),
+      2022: Math.round(pop / 1.08),
+      2024: Math.round(pop / 1.04),
+      2026: pop,
+    },
+  }));
+
+  const parcels: Parcel[] = b.p.map((r) => {
+    const landUse = LAND_USE[r[8]] ?? "vacant";
     return {
-      id: p.parcel_id,
-      surveyNumber: p.survey_number ?? "—",
-      wardId: p.ward,
-      centroid: p.centroid,
-      ring: snap(outerRing(f.geometry)),
-      areaHa: round(p.area_sqm / 10_000, 2),
-      ownership: p.ownership,
-      zoning: ZONING[p.zoning] ?? "mixed",
+      id: r[0],
+      surveyNumber: r[1] ?? "—",
+      wardId: r[2],
+      centroid: r[3] as LngLat,
+      ring: r[4] as LngLat[],
+      areaHa: r[5],
+      ownership: r[6],
+      zoning: ZONING[r[7]] ?? "mixed",
       landUse,
-      landUseByYear: landUseByYear(p, landUse),
-      builtUpPct: p.built_up_percent,
-      vegetationPct: p.vegetation_percent ?? 0,
-      roadDistKm: p.road_km ?? 0,
-      hospitalDistKm: p.hospital_km ?? 0,
-      schoolDistKm: p.school_km ?? 0,
-      parkDistKm: p.park_km ?? 0,
-      transitDistKm: p.transit_km ?? 0,
-      population3km: p.population_3km ?? 0,
-      floodRisk: p.flood_risk,
-      infraReadiness: p.infrastructure_readiness ?? 0,
-      envSensitivity: p.environmental_sensitivity ?? 0,
-      developmentPotential: p.development_potential ?? 0,
-      zoningConflict: Boolean(p.zoning_conflict),
+      landUseByYear: landUseByYear(
+        { h2018: r[9], h2022: r[10], h2024: r[11] },
+        landUse,
+      ),
+      builtUpPct: r[12],
+      vegetationPct: r[13],
+      roadDistKm: r[14],
+      hospitalDistKm: r[15],
+      schoolDistKm: r[16],
+      parkDistKm: r[17],
+      transitDistKm: r[18],
+      population3km: r[19],
+      floodRisk: r[20],
+      infraReadiness: r[21],
+      envSensitivity: r[22],
+      developmentPotential: r[23],
+      zoningConflict: Boolean(r[24]),
     } as Parcel;
   });
 
-  const facilities: Facility[] = facFC.features
-    .map((f) => {
-      const type = FACILITY[f.properties.facility_type];
+  const facilities: Facility[] = b.f
+    .map(([id, name, rawType, lng, lat]) => {
+      const type = FACILITY[rawType];
       if (!type) return null;
-      const [lng, lat] = f.geometry.coordinates as number[];
-      return {
-        id: f.properties.id,
-        name: f.properties.name,
-        type,
-        coord: [round(lng, 6), round(lat, 6)] as LngLat,
-      };
+      return { id, name, type, coord: [lng, lat] as LngLat };
     })
     .filter(Boolean) as Facility[];
 
-  const roads: Road[] = roadsFC.features
-    .filter((f) => f.properties.road_type !== "river")
-    .map((f: any) => ({
-      id: f.properties.id,
-      name: f.properties.name,
-      path: snap(f.geometry.coordinates as unknown as LngLat[]),
-    })) as Road[];
+  const roads: Road[] = b.r.map(([id, name, path]) => ({ id, name, path })) as Road[];
 
-  // 2030 growth probability, taken from the nearest prediction cell.
-  const predPts = predFC.features.map((f) => {
-    const ring = (f.geometry.coordinates as number[][][])[0];
-    let x = 0;
-    let y = 0;
-    for (const c of ring) {
-      x += c[0];
-      y += c[1];
-    }
-    return { lng: x / ring.length, lat: y / ring.length, p: f.properties.growth_probability };
-  });
-  const nearestGrowth = (lng: number, lat: number) => {
-    let best = 0;
-    let bd = Infinity;
-    for (const q2 of predPts) {
-      const dd = d2(lng, lat, q2.lng, q2.lat);
-      if (dd < bd) {
-        bd = dd;
-        best = q2.p;
-      }
-    }
-    return best;
-  };
-
-  const hospitals = facilities.filter((f) => f.type === "hospital").map((f) => f.coord);
-  const h = CELL_DEG / 2;
-  const grid: GridCell[] = popFC.features.map((f, i) => {
-    const [lng, lat] = f.geometry.coordinates as number[];
-    return {
+  const half = b.cell / 2;
+  const grid: GridCell[] = b.g.map(
+    ([lng, lat, population, growthProb, hospitalDistKm, b18, b22, b24], i) => ({
       id: `cell-${i}`,
       center: [lng, lat] as LngLat,
       ring: [
-        [lng - h, lat - h],
-        [lng + h, lat - h],
-        [lng + h, lat + h],
-        [lng - h, lat + h],
-        [lng - h, lat - h],
+        [lng - half, lat - half],
+        [lng + half, lat - half],
+        [lng + half, lat + half],
+        [lng - half, lat + half],
+        [lng - half, lat - half],
       ] as LngLat[],
-      // Each sampled cell stands in for a POP_STEP × POP_STEP block of raster
-      // cells, so it carries that block's population — otherwise the grid holds
-      // only a fraction of the city and every coverage figure is wrong.
-      population: Math.round(f.properties.population * POP_STEP * POP_STEP),
-      wardId: wards[0]?.id ?? "",
-      growthProb: round(nearestGrowth(lng, lat), 3),
-      hospitalDistKm: round(nearestKm(lng, lat, hospitals), 2),
+      population,
+      wardId: "",
+      growthProb,
+      hospitalDistKm,
       inCity: true,
-    } as GridCell;
-  });
+      built:
+        b18 !== undefined ? { 2018: b18, 2022: b22, 2024: b24 } : undefined,
+    }),
+  );
 
+  m2("ds:decoded");
   return {
-    cityId,
+    cityId: b.c,
     parcels,
     wards,
     roads,
     facilities,
     grid,
-    vegetation: (vegFC as FeatureCollection | null) ?? { type: "FeatureCollection", features: [] },
-    greenspace: (greenFC as FeatureCollection | null) ?? { type: "FeatureCollection", features: [] },
+    vegetation: EMPTY_FC,
+    greenspace: EMPTY_FC,
   };
 }
 
+const optionalLayerCache = new Map<
+  string,
+  Promise<{ vegetation: FeatureCollection; greenspace: FeatureCollection }>
+>();
+
+/** Non-critical satellite/green polygons load after the map is interactive. */
+export function fetchOptionalCityLayers(cityId: string) {
+  const cached = optionalLayerCache.get(cityId);
+  if (cached) return cached;
+  const pending = (async () => {
+    const staticLayers = await fetchStaticGzipJson<{ v: FeatureCollection; g: FeatureCollection }>(
+      `/data/optional/${encodeURIComponent(cityId)}.json.gz`,
+    );
+    if (staticLayers) {
+      return { vegetation: staticLayers.v ?? EMPTY_FC, greenspace: staticLayers.g ?? EMPTY_FC };
+    }
+    const [vegetation, greenspace] = await Promise.all([
+      fetchOptional<FC<unknown>>("/api/vegetation", { city: cityId }),
+      fetchOptional<FC<unknown>>("/api/greenspace", { city: cityId }),
+    ]);
+    return {
+      vegetation: (vegetation as FeatureCollection | null) ?? EMPTY_FC,
+      greenspace: (greenspace as FeatureCollection | null) ?? EMPTY_FC,
+    };
+  })().catch((err) => {
+    optionalLayerCache.delete(cityId);
+    throw err;
+  });
+  optionalLayerCache.set(cityId, pending);
+  return pending;
+}
+
+const cityDatasetCache = new Map<string, Promise<CityDataset>>();
+
+/** Cache complete city datasets in the browser so A → B → A does not redownload
+ * several megabytes of stable GIS layers. Concurrent callers also share one promise. */
+export function fetchCityDataset(cityId: string): Promise<CityDataset> {
+  const cached = cityDatasetCache.get(cityId);
+  if (cached) return cached;
+  const pending = loadCityDataset(cityId).catch((err) => {
+    cityDatasetCache.delete(cityId);
+    throw err;
+  });
+  cityDatasetCache.set(cityId, pending);
+  return pending;
+}
+
+/** Target cities' bootstraps are prefetched on hover in the switcher so the
+ * switch's own fetch no longer sits on the critical path. The cache here makes
+ * repeat hovers no-ops. */
+const prefetched = new Set<string>();
+export function prefetchBootstrap(cityId: string): void {
+  if (prefetched.has(cityId) || typeof window === "undefined") return;
+  prefetched.add(cityId);
+  try {
+    const link = document.createElement("link");
+    link.rel = "prefetch";
+    link.as = "fetch";
+    link.href = `/data/bootstrap/${encodeURIComponent(cityId)}.json.gz`;
+    document.head.appendChild(link);
+  } catch {
+    prefetched.delete(cityId);
+  }
+}
+
 /**
- * Like apiGet but tolerates 404 — composite study areas (`ahmedabad-gandhinagar`,
- * `ahmedabad-metro`) have no vegetation/greenspace engine file, so those fetches
+ * Like apiGet but tolerates 404 — composite study areas (`gujarat`) have no
+ * vegetation/greenspace engine file, so those fetches
  * legitimately 404 and the caller should get `null` rather than an error that
  * blanks the whole dashboard.
  */

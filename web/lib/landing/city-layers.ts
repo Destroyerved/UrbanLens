@@ -144,9 +144,9 @@ export const gridFC = fc(
   })
 );
 
-/** Built-up expansion 2018 → 2026, from the engine's own urbanisation model. */
+/** Built-up expansion 2018 → 2024, from the observed satellite land cover. */
 export const builtUpFC = fc(
-  GRID.filter((c) => isUrbanized(c.center, 2026 as Year)).map((c) => {
+  GRID.filter((c) => isUrbanized(c.center, 2024 as Year)).map((c) => {
     const t = isUrbanized(c.center, 2018 as Year)
       ? 0
       : isUrbanized(c.center, 2022 as Year)

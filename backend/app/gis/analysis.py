@@ -11,8 +11,9 @@ from functools import lru_cache
 
 import numpy as np
 
-from app.data.loader import get_dataset
-from app.gis.parcels import Parcel, get_parcels
+from app.core.cache import singleflight
+from app.data.loader import data_signature, get_dataset
+from app.gis.parcels import Parcel, _observed_for, get_parcels
 from app.gis.raster import (
     density_at,
     haversine_km,
@@ -298,8 +299,8 @@ def _ward_sample_points(ds, ward_index: int, max_samples: int = 12) -> list[tupl
     return [((float(x), float(y)), float(w)) for x, y, w in zip(lngs, lats, weights)]
 
 
-@lru_cache(maxsize=8)
-def infrastructure_gaps(city_id: str) -> list[dict]:
+@lru_cache(maxsize=16)
+def _infrastructure_gaps_cached(city_id: str, source_signature: str) -> list[dict]:
     ds = get_dataset(city_id)
     out: list[dict] = []
     for i, w in enumerate(ds.wards):
@@ -349,13 +350,33 @@ def infrastructure_gaps(city_id: str) -> list[dict]:
     return out
 
 
+def infrastructure_gaps(city_id: str) -> list[dict]:
+    from app.data.database import load_json_cache, store_json_cache
+    from app.data.loader import ACTIVE_DB_PATH
+
+    signature = data_signature(city_id)
+    if ACTIVE_DB_PATH is not None:
+        persisted = load_json_cache(ACTIVE_DB_PATH, "infrastructure-gaps", city_id, signature)
+        if isinstance(persisted, list):
+            return persisted
+    with singleflight(("infrastructure-gaps", city_id, signature)):
+        if ACTIVE_DB_PATH is not None:
+            persisted = load_json_cache(ACTIVE_DB_PATH, "infrastructure-gaps", city_id, signature)
+            if isinstance(persisted, list):
+                return persisted
+        result = _infrastructure_gaps_cached(city_id, signature)
+        if ACTIVE_DB_PATH is not None:
+            store_json_cache(ACTIVE_DB_PATH, "infrastructure-gaps", city_id, signature, result)
+        return result
+
+
 # ---------------------------------------------------------------------------
 # Livability (PRD §15)
 # ---------------------------------------------------------------------------
 
 
-@lru_cache(maxsize=8)
-def livability(city_id: str) -> list[dict]:
+@lru_cache(maxsize=16)
+def _livability_cached(city_id: str, source_signature: str) -> list[dict]:
     ds = get_dataset(city_id)
     parcels = get_parcels(city_id)
     gaps = {g["ward_code"]: g for g in infrastructure_gaps(city_id)}
@@ -410,6 +431,26 @@ def livability(city_id: str) -> list[dict]:
         })
     out.sort(key=lambda w: -w["score"])
     return out
+
+
+def livability(city_id: str) -> list[dict]:
+    from app.data.database import load_json_cache, store_json_cache
+    from app.data.loader import ACTIVE_DB_PATH
+
+    signature = data_signature(city_id)
+    if ACTIVE_DB_PATH is not None:
+        persisted = load_json_cache(ACTIVE_DB_PATH, "livability", city_id, signature)
+        if isinstance(persisted, list):
+            return persisted
+    with singleflight(("livability", city_id, signature)):
+        if ACTIVE_DB_PATH is not None:
+            persisted = load_json_cache(ACTIVE_DB_PATH, "livability", city_id, signature)
+            if isinstance(persisted, list):
+                return persisted
+        result = _livability_cached(city_id, signature)
+        if ACTIVE_DB_PATH is not None:
+            store_json_cache(ACTIVE_DB_PATH, "livability", city_id, signature, result)
+        return result
 
 
 # ---------------------------------------------------------------------------
@@ -632,40 +673,62 @@ def zoning_conflicts(city_id: str) -> list[dict]:
     return out
 
 
+# Built-up percentage-point gain, 2018 → 2026, above which a parcel counts as
+# rapidly converting.
+#
+# This was 25, which no parcel could ever reach: the modelled history moves a
+# parcel by +3.9 points on average and +14 at the very most, so
+# `parcels_urbanising` and `agri_to_built` were structurally zero and the
+# copilot answered "0 parcels show rapid conversion to built-up land" for every
+# city. 10 points is ~2.6x the mean gain and selects the top ~1% of parcels
+# (48 of 3,980 in Ahmedabad), which is what "rapid" is meant to pick out.
+# Re-check this against the distribution if the history model is ever retrained.
+RAPID_CONVERSION_PTS = 10
+
+
 def growth_summary(city_id: str) -> dict:
     ds = get_dataset(city_id)
     parcels = get_parcels(city_id)
-    years = (2018, 2022, 2026)
+    years = (2018, 2022, 2024)
 
-    # Built-up AREA is estimated at ward resolution: mean built-up % of the
-    # parcels in a ward × the ward's full area, so the figure reflects the whole
-    # city rather than only the mapped parcel footprint.
-    ward_area = {w["properties"]["ward_code"]: w["properties"]["area_sqm"] for w in ds.wards}
-    agg: dict[str, list[float]] = {}
+    # Observed satellite-derived built-up area takes priority when
+    # web/scripts/build-observed.py has run; otherwise the ward-aggregated
+    # estimate below is used.
+    obs = _observed_for(city_id)
+    if obs and obs.get("km2"):
+        km2 = {y: round(float(obs["km2"].get(str(y), 0))) for y in years}
+        growth_pct = round((km2[2024] - km2[2018]) / max(km2[2018], 1) * 100, 1)
+    else:
+        # Built-up AREA is estimated at ward resolution: mean built-up % of the
+        # parcels in a ward × the ward's full area, so the figure reflects the
+        # whole city rather than only the mapped parcel footprint.
+        ward_area = {w["properties"]["ward_code"]: w["properties"]["area_sqm"] for w in ds.wards}
+        agg: dict[str, list[float]] = {}
+        for p in parcels:
+            a = agg.setdefault(p.ward, [0.0, 0.0, 0.0, 0.0])
+            for i, y in enumerate(years):
+                a[i] += p.history.get(y, 0)
+            a[3] += 1
+        built = {y: 0.0 for y in years}
+        for ward, a in agg.items():
+            if not a[3] or ward not in ward_area:
+                continue
+            for i, y in enumerate(years):
+                built[y] += ward_area[ward] * (a[i] / a[3]) / 100
+        km2 = {y: round(built[y] / 1e6) for y in years}
+        growth_pct = round((km2[2024] - km2[2018]) / max(km2[2018], 1) * 100, 1)
+
     urbanising = agri_to_built = 0
     for p in parcels:
-        a = agg.setdefault(p.ward, [0.0, 0.0, 0.0, 0.0])
-        for i, y in enumerate(years):
-            a[i] += p.history.get(y, 0)
-        a[3] += 1
-        delta = p.history.get(2026, 0) - p.history.get(2018, 0)
-        if delta > 25:
+        delta = p.history.get(2024, p.history.get(2026, 0)) - p.history.get(2018, 0)
+        if delta > RAPID_CONVERSION_PTS:
             urbanising += 1
             if p.land_use in ("residential", "mixed"):
                 agri_to_built += 1
 
-    built = {y: 0.0 for y in years}
-    for ward, a in agg.items():
-        if not a[3] or ward not in ward_area:
-            continue
-        for i, y in enumerate(years):
-            built[y] += ward_area[ward] * (a[i] / a[3]) / 100
-    km2 = {y: round(built[y] / 1e6) for y in years}
-    growth_pct = round((km2[2026] - km2[2018]) / max(km2[2018], 1) * 100, 1)
-
     return {
         "built_up_km2": km2,
-        "growth_pct_2018_2026": growth_pct,
+        "growth_pct_2018_2024": growth_pct,
         "parcels_urbanising": urbanising,
         "agri_to_built": agri_to_built,
         "corridors": _corridors(ds, parcels),
@@ -714,14 +777,14 @@ def _corridors(ds, parcels: list[Parcel]) -> list[dict]:
         for p in parcels:
             if _ang_diff(_bearing(origin, p.centroid), c.bearing) > 35:
                 continue
-            hist += p.history.get(2026, 0) - p.history.get(2018, 0)
+            hist += p.history.get(2024, p.history.get(2026, 0)) - p.history.get(2018, 0)
             n += 1
         for w in ds.wards:
             if _ang_diff(_bearing(origin, tuple(w["properties"]["centroid"])), c.bearing) <= 35:
                 pop += w["properties"]["population"]
         in_corridor = [p for b, p in cells if _ang_diff(b, c.bearing) <= 35]
         out.append({
-            "name": c.name, "risk": c.risk,
+            "name": c.name,
             "historical_growth_pts": round(hist / n) if n else 0,
             "predicted_growth_pct": round(100 * sum(in_corridor) / len(in_corridor)) if in_corridor else 0,
             "population": pop,
@@ -765,8 +828,8 @@ def city_overview(city_id: str) -> dict:
         "private_parcels": len(parcels) - govt,
         "vacant_government_parcels": vacant_govt,
         "vacant_government_area_ha": round(vacant_area / 10_000),
-        "built_up_area_km2": growth["built_up_km2"][2026],
-        "urban_growth_pct": growth["growth_pct_2018_2026"],
+        "built_up_area_km2": growth["built_up_km2"][2024],
+        "urban_growth_pct": growth["growth_pct_2018_2024"],
         "infrastructure_deficit_wards": sum(1 for g in gaps if g["overall"] < 50),
         "high_potential_parcels": high_potential,
         "zoning_conflicts": len(conflicts),

@@ -1,5 +1,6 @@
 import type { LandUse, Year } from "@/types";
-import { apiGet } from "@/lib/api";
+import { apiGet, getApiCity } from "@/lib/api";
+import { getFastAnalytics } from "@/lib/dataset";
 import { PARCELS } from "@/data/parcels";
 
 /**
@@ -14,41 +15,47 @@ export async function fetchGrowthSummary(): Promise<{
   builtUpKm2: Record<Year, number>;
   growthPct: number;
 }> {
-  const res = await apiGet<{
+  const fast = getFastAnalytics(getApiCity());
+  const res = fast?.gr ?? await apiGet<{
     built_up_km2: Record<string, number>;
-    growth_pct_2018_2026: number;
+    growth_pct_2018_2024: number;
   }>("/api/growth");
   return {
     builtUpKm2: {
       2018: res.built_up_km2["2018"],
       2022: res.built_up_km2["2022"],
-      2026: res.built_up_km2["2026"],
+      2024: res.built_up_km2["2024"],
     } as Record<Year, number>,
-    growthPct: res.growth_pct_2018_2026,
+    growthPct: res.growth_pct_2018_2024,
   };
 }
 
 export interface Corridor {
   name: string;
-  risk: string;
   historicalGrowthPts: number;
   predictedGrowthPct: number;
   population: number;
 }
 
+/** Engine shape for GET /api/growth, also carried inline on the bootstrap. */
+interface GrowthCorridorsResponse {
+  corridors: {
+    name: string;
+    historical_growth_pts: number;
+    predicted_growth_pct: number;
+    population: number;
+  }[];
+}
+
 export async function fetchCorridors(): Promise<Corridor[]> {
-  const res = await apiGet<{
-    corridors: {
-      name: string;
-      risk: string;
-      historical_growth_pts: number;
-      predicted_growth_pct: number;
-      population: number;
-    }[];
-  }>("/api/growth");
+  const fast = getFastAnalytics(getApiCity());
+  // The bootstrap-inlined copy is untyped, so annotate the union or everything
+  // downstream silently degrades to `any`.
+  const res: GrowthCorridorsResponse =
+    (fast?.gr as GrowthCorridorsResponse | undefined) ??
+    (await apiGet<GrowthCorridorsResponse>("/api/growth"));
   return res.corridors.map((c) => ({
     name: c.name,
-    risk: c.risk,
     historicalGrowthPts: c.historical_growth_pts,
     predictedGrowthPct: c.predicted_growth_pct,
     population: c.population,
@@ -76,34 +83,38 @@ export async function fetchTransitions(
 }
 
 export async function fetchGrowthExplanation(wardId: string): Promise<string[]> {
-  const [growth, gaps] = await Promise.all([
-    apiGet<{
-      growth_pct_2018_2026: number;
-      parcels_urbanising: number;
-      corridors: { name: string; risk: string; predicted_growth_pct: number }[];
-    }>("/api/growth"),
-    apiGet<{ wards: { ward_code: string; name: string; population: number }[] }>(
-      "/api/infrastructure/gaps",
-    ),
-  ]);
+  const fast = getFastAnalytics(getApiCity());
+  type GrowthExplain = {
+    growth_pct_2018_2024: number;
+    parcels_urbanising: number;
+    corridors: { name: string; predicted_growth_pct: number }[];
+  };
+  type GapsExplain = { wards: { ward_code: string; name: string; population: number }[] };
+
+  const [growth, gaps]: [GrowthExplain, GapsExplain] = fast
+    ? [fast.gr as GrowthExplain, fast.i as GapsExplain]
+    : await Promise.all([
+        apiGet<GrowthExplain>("/api/growth"),
+        apiGet<GapsExplain>("/api/infrastructure/gaps"),
+      ]);
   const ward = gaps.wards.find((w) => w.ward_code === wardId);
   const top = [...growth.corridors].sort(
     (a, b) => b.predicted_growth_pct - a.predicted_growth_pct,
   )[0];
 
   const lines = [
-    `Built-up area grew ${growth.growth_pct_2018_2026}% across the city between 2018 and 2026.`,
+    `Built-up area grew ${growth.growth_pct_2018_2024}% across the city between 2018 and 2024.`,
     `${growth.parcels_urbanising.toLocaleString("en-IN")} parcels show rapid conversion to built-up land.`,
   ];
   if (top) {
     lines.push(
-      `${top.name} carries the strongest signal at ${top.predicted_growth_pct}% modelled development pressure (${top.risk.toLowerCase()} risk).`,
+      `${top.name} carries the strongest signal at ${top.predicted_growth_pct}% modelled development pressure.`,
     );
   }
   if (ward) {
     lines.push(`${ward.name} holds ${ward.population.toLocaleString("en-IN")} residents.`);
   }
   // Say it plainly wherever growth is quoted.
-  lines.push("Built-up history is modelled, not observed from satellite imagery.");
+  lines.push("Built-up history is observed from Esri satellite land-cover data (2018/2022/2024).");
   return lines;
 }

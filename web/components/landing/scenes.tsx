@@ -8,10 +8,10 @@
  * re-acquire the page while the globe and the city move behind it.
  */
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { At, Copy, Counter, Display, Meter, Readout, Scene } from "./kit";
 import { clamp, stage } from "@/lib/landing/timeline";
-import { filterCounts, FLAGSHIP, CITY_STATS } from "@/lib/landing/city-layers";
+import { LANDING_CITY_STATS, LANDING_FILTER_COUNTS, LANDING_FLAGSHIP } from "@/lib/landing/story-stats";
 import {
   APP_ROUTE,
   EXPLAIN,
@@ -295,8 +295,8 @@ export function UnderstandScene() {
 
             <At scene={6} at={0.62} className="mt-8">
               <span className="ulc-tech-sm">
-                SERVICE RADIUS {UNDERSTAND.radiusKm} KM · {CITY_STATS.facilities} FACILITIES ·{" "}
-                {CITY_STATS.cells} POPULATION CELLS
+                SERVICE RADIUS {UNDERSTAND.radiusKm} KM · {LANDING_CITY_STATS.facilities} FACILITIES ·{" "}
+                {LANDING_CITY_STATS.cells} POPULATION CELLS
               </span>
             </At>
           </div>
@@ -309,7 +309,7 @@ export function UnderstandScene() {
 /* ════════════════════════ 07 · IDENTIFY ════════════════════════ */
 
 function FilterCascade() {
-  const { counts } = useMemo(() => filterCounts(), []);
+  const counts = LANDING_FILTER_COUNTS;
   const rows = useRef<(HTMLDivElement | null)[]>([]);
   const total = useRef<HTMLSpanElement>(null);
 
@@ -415,8 +415,8 @@ export function RecommendScene() {
                 </span>
               </div>
               <div className="ulc-tech-sm mt-4">
-                {FLAGSHIP.areaHa.toFixed(1)} HA · GOVERNMENT · FLOOD RISK{" "}
-                {FLAGSHIP.floodRisk.toUpperCase()}
+                {LANDING_FLAGSHIP.areaHa.toFixed(1)} HA · GOVERNMENT · FLOOD RISK{" "}
+                {LANDING_FLAGSHIP.floodRisk.toUpperCase()}
               </div>
             </At>
           </div>

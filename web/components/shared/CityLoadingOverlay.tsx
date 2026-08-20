@@ -19,7 +19,7 @@ export default function CityLoadingOverlay() {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.3, ease: "easeInOut" }}
-          className="fixed inset-0 z-[120] flex items-center justify-center bg-black/45 dark:bg-black/65 backdrop-blur-2xl pointer-events-auto"
+          className="fixed inset-0 z-[120] flex items-center justify-center bg-black/70 dark:bg-black/80 pointer-events-auto"
         >
           {/* Ambient Background Spotlight */}
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(56,189,248,0.2),transparent_60%)] pointer-events-none" />
@@ -30,7 +30,7 @@ export default function CityLoadingOverlay() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 8 }}
             transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-            className="glass-strong relative flex flex-col items-center justify-center px-10 py-7 rounded-3xl shadow-2xl border border-white/30 dark:border-white/15 text-center backdrop-blur-2xl bg-white/15 dark:bg-black/40"
+            className="glass-strong relative flex flex-col items-center justify-center px-10 py-7 rounded-3xl shadow-2xl border border-white/30 dark:border-white/15 text-center backdrop-blur-md bg-white/15 dark:bg-black/50"
           >
             {/* Animated Glowing Brand Icon */}
             <div className="relative mb-3 flex items-center justify-center">

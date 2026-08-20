@@ -26,11 +26,32 @@ raw/osm/*_log.txt
 # Run logs
 logs/
 *.log
+*.err
+*.out
 backend/err.log
 backend/out.log
 
-# Runtime artifacts (regenerable, never commit)
-backend/urbanlens.db
+# Prebuilt demo DB is intentionally included for fast/free deployment.
+# Rebuild with: python scripts/build-fast-cache.py --city ahmedabad
+
+# Raw multi-date built-up rasters (GHSL + Esri) — rebuilt by scripts/fetch_*.py
+datasets/ghsl/
+datasets/esri/
+
+# Large local data and generated runtime artefacts. The frontend runs from the
+# prebuilt payloads in web/public/data; only the lightweight Gujarat config is
+# retained from the engine directory.
+datasets/
+backend/urbanlens.db*
+backend/cache/
+backend/.cache/
+backend/models/
+web/data/engine/*
+!web/data/engine/gujarat_config.json
+
+# Local delivery archives and temporary package staging directories.
+*.zip
+package-staging-*/
 
 # Secrets — never commit credentials
 *.cdse_token
@@ -44,6 +65,3 @@ credentials.json
 # Temporary / test folders
 landing-delivery/
 landing-page/
-
-# Archives
-*.zip

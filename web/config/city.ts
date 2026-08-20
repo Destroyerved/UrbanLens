@@ -14,9 +14,7 @@ import { GUJARAT_DISTRICTS } from "@/config/gujarat";
  * (web/data/engine/gujarat_config.json). The Gujarat composite stays in the
  * generated file (the thermal/boundary engine uses its extent) but is not
  * offered as a selectable area. Composites are views: the backend resolves them
- * by merging member districts in memory, so no layer is ever stored twice. The
- * two legacy composites below (twin cities, metro) remain as views over the
- * same district data.
+ * by merging member districts in memory, so no layer is ever stored twice.
  */
 export interface CityConfig {
   id: string;
@@ -31,39 +29,13 @@ export interface CityConfig {
   growthCenter: LngLat;
 }
 
-export const AHMEDABAD_GANDHINAGAR: CityConfig = {
-  id: "ahmedabad-gandhinagar",
-  name: "Ahmedabad–Gandhinagar",
-  state: "Gujarat",
-  blurb: "Twin cities · composite view",
-  center: [72.58, 23.11],
-  zoom: 10.2,
-  bounds: [
-    [72.40, 22.90],
-    [72.76, 23.32],
-  ],
-  growthCenter: [72.578, 23.025],
-};
-
-export const AHMEDABAD_METRO: CityConfig = {
-  id: "ahmedabad-metro",
-  name: "Ahmedabad Metro Region",
-  state: "Gujarat",
-  blurb: "Peri-urban region · composite view",
-  center: [72.55, 23.08],
-  zoom: 9.3,
-  bounds: [
-    [72.20, 22.70],
-    [72.95, 23.45],
-  ],
-  growthCenter: [72.578, 23.025],
-};
-
-export const CITIES: CityConfig[] = GUJARAT_DISTRICTS.filter((c) => c.id !== "gujarat");
+export const CITIES: CityConfig[] = [
+  ...GUJARAT_DISTRICTS.filter((c) => c.id !== "gujarat"),
+];
 
 /**
  * Quick picks shown in the city switcher. Gujarat's big districts; the search
- * box covers the remaining 29 + the composite views.
+ * box covers the remaining 29.
  */
 export const HOT_PICKS: string[] = [
   "ahmedabad",

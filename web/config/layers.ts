@@ -5,6 +5,7 @@ export type LayerId =
   | "parcels"
   | "govt-land"
   | "zoning-conflicts"
+  | "flood-risk"
   | "roads"
   | "facilities"
   | "population"
@@ -93,18 +94,19 @@ export const LAYERS: LayerDef[] = [
   { id: "parcels", label: "GLIS Parcels", category: "Land", description: "Land parcels coloured by current use" },
   { id: "govt-land", label: "Government Land", category: "Land", description: "Government-owned parcels highlighted" },
   { id: "zoning-conflicts", label: "Zoning Conflicts", category: "Land", description: "Official designation vs detected use" },
+  { id: "flood-risk", label: "Flood Risk", category: "Intelligence", description: "Modelled flood susceptibility (DEM + water proximity)", hasOpacity: true },
   { id: "wards", label: "Ward Boundaries", category: "Land", description: "Administrative planning zones" },
   { id: "roads", label: "Road Network", category: "Infrastructure", description: "Arterial roads & highways" },
   { id: "facilities", label: "Public Facilities", category: "Infrastructure", description: "Hospitals, schools, parks, transit…" },
   { id: "population", label: "Population Density Heatmap", category: "Heatmaps", description: "Continuous population distribution", hasOpacity: true },
-  { id: "growth-heat", label: "2030 Growth Pressure Heatmap", category: "Heatmaps", description: "Predicted urban expansion hotspots", hasOpacity: true },
+  { id: "growth-heat", label: "2030 Growth Pressure Heatmap", category: "Heatmaps", description: "Observed-growth-informed expansion hotspots", hasOpacity: true },
   { id: "gap-heat", label: "Healthcare Gap Heatmap", category: "Heatmaps", description: "Underserved population deficit intensity", hasOpacity: true },
   { id: "ndvi-heat", label: "Vegetation & NDVI Canopy", category: "Heatmaps", description: "Green cover & ecological corridors", hasOpacity: true },
   { id: "greenspace", label: "Green Space", category: "Heatmaps", description: "Parks & green land parcels", hasOpacity: true },
   { id: "thermal-heat", label: "Urban Heat Island (UHI)", category: "Heatmaps", description: "Surface thermal stress intensity", hasOpacity: true },
-  { id: "builtup", label: "Built-Up Extent", category: "Intelligence", description: "Historical urban footprint by year", hasOpacity: true },
-  { id: "prediction", label: "2030 Growth Probability", category: "Intelligence", description: "Predicted urbanization pressure grid", hasOpacity: true },
-  { id: "gap", label: "Infrastructure Gap Grid", category: "Intelligence", description: "Population beyond service reach", hasOpacity: true },
+  { id: "builtup", label: "Built-Up Spread", category: "Intelligence", description: "Fluid Esri built-up intensity (2018, 2022, 2024)", hasOpacity: true },
+  { id: "prediction", label: "2030 Expansion Likelihood", category: "Intelligence", description: "Fluid likelihood from Esri growth and development pressure", hasOpacity: true },
+  { id: "gap", label: "Infrastructure Gap Intensity", category: "Intelligence", description: "Fluid population-weighted hospital access deficit", hasOpacity: true },
   { id: "candidates", label: "Site Candidates", category: "Intelligence", description: "Ranked recommendation results" },
 ];
 

@@ -30,16 +30,13 @@ class Corridor:
     bearing: float  # degrees, 0 = N
     width: float  # angular half-width for falloff
     reach_km: float
-    risk: str
 
 
 DEFAULT_CORRIDORS: list[Corridor] = [
-    Corridor("North-West Corridor", 320, 40, 12.5, "Very High"),
-    Corridor("SP Ring Road South", 190, 38, 11.0, "High"),
-    Corridor("Eastern Industrial Corridor", 95, 34, 11.0, "High"),
+    Corridor("North-West Corridor", 320, 40, 12.5),
+    Corridor("SP Ring Road South", 190, 38, 11.0),
+    Corridor("Eastern Industrial Corridor", 95, 34, 11.0),
 ]
-
-GANDHINAGAR_AXIS = Corridor("Gandhinagar Corridor", 8, 26, 26.0, "Very High")
 
 
 @dataclass(frozen=True)
@@ -94,6 +91,23 @@ def _cities_from_config() -> dict[str, City]:
             population=d["population"],
             zoom=d.get("zoom", 8.0),
             kind=d.get("kind", "district"),
+        )
+
+    # The Gujarat composite is a view over every district.
+    if "gujarat" in cfg:
+        g = cfg["gujarat"]
+        cities["gujarat"] = City(
+            id=g["id"],
+            name=g["name"],
+            state="Gujarat",
+            code=g.get("code", "GJT"),
+            center=tuple(g["center"]),
+            bbox=tuple(g["bbox"]),
+            radius_km=250,
+            population=g["population"],
+            zoom=g.get("zoom", 6.8),
+            kind="composite",
+            composite_of=tuple(g.get("composite_of", list(cities))),
         )
 
     return cities

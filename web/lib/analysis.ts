@@ -513,7 +513,7 @@ export function computeTransitions(from: Year, to: Year): { from: LandUse; to: L
 export function growthSummary() {
   return {
     builtUpKm2: BUILTUP_KM2,
-    growthPct: Math.round(((BUILTUP_KM2[2026] - BUILTUP_KM2[2018]) / BUILTUP_KM2[2018]) * 100),
+    growthPct: Math.round(((BUILTUP_KM2[2024] - BUILTUP_KM2[2018]) / BUILTUP_KM2[2018]) * 100),
   };
 }
 

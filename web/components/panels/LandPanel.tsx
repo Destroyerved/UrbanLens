@@ -134,7 +134,7 @@ export default function LandPanel() {
                   </Badge>
                 </div>
                 <div className="mt-1 flex items-center gap-1.5 text-[11px] capitalize text-muted-foreground">
-                  <span>Official: {c.official}</span>
+                  <span>Zoning: {c.official}</span>
                   <MoveRight size={11} />
                   <span className="font-medium text-foreground">Detected: {c.detected}</span>
                 </div>

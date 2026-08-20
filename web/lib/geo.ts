@@ -123,3 +123,29 @@ export function ringCentroid(ring: LngLat[]): LngLat {
   }
   return [x / n, y / n];
 }
+
+/**
+ * Bounding box over a set of rings, as MapLibre's [[west, south], [east, north]].
+ *
+ * Used to frame the map on the study area actually loaded rather than on a
+ * hard-coded centre/zoom: the city config carries district-envelope values,
+ * which for Ahmedabad sit 37 km from the AMC wards at a zoom five levels too
+ * far out. Deriving the camera from the data keeps the two in step when either
+ * changes.
+ */
+export function ringsBounds(rings: LngLat[][]): [LngLat, LngLat] | null {
+  let w = Infinity,
+    s = Infinity,
+    e = -Infinity,
+    n = -Infinity;
+  for (const ring of rings) {
+    for (const [x, y] of ring) {
+      if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+      if (x < w) w = x;
+      if (x > e) e = x;
+      if (y < s) s = y;
+      if (y > n) n = y;
+    }
+  }
+  return w <= e && s <= n ? [[w, s], [e, n]] : null;
+}

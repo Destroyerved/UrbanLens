@@ -16,11 +16,18 @@ import { Switch } from "@/components/ui/switch";
 import { AnimatedNumber } from "@/components/shared/AnimatedNumber";
 import { GlowCard } from "@/components/ui/spotlight-card";
 import { useApp } from "@/lib/store";
-import { fetchGrowthSummary, fetchTransitions, fetchGrowthExplanation } from "@/services/growth";
+import { fetchGrowthSummary, fetchTransitions } from "@/services/growth";
 import { LANDUSE_COLORS } from "@/lib/mapdata";
 import type { LandUse, Year } from "@/types";
 import { YEARS } from "@/types";
 import { cn } from "@/lib/utils";
+
+const LIKELIHOOD_FACTORS = [
+  "Observed built-up change between 2018 and 2024 (Esri land cover)",
+  "Recent 2022–2024 expansion momentum",
+  "Road, population and urban-frontier development pressure",
+  "Lower likelihood where land was already built-up in 2024",
+];
 
 export default function GrowthPanel() {
   const year = useApp((s) => s.year);
@@ -28,17 +35,28 @@ export default function GrowthPanel() {
   const predictionOn = useApp((s) => s.predictionOn);
   const setPrediction = useApp((s) => s.setPrediction);
   const setMode = useApp((s) => s.setMode);
-  const highlightWards = useApp((s) => s.highlightWards);
-  const flyTo = useApp((s) => s.flyTo);
+  const cityId = useApp((s) => s.city.id);
+  const datasetVersion = useApp((s) => s.datasetVersion);
 
   const [summary, setSummary] = useState<{ builtUpKm2: Record<Year, number>; growthPct: number } | null>(null);
   const [transitions, setTransitions] = useState<{ from: LandUse; to: LandUse; areaHa: number }[]>([]);
-  const [why, setWhy] = useState<string[]>([]);
 
   useEffect(() => {
-    fetchGrowthSummary().then(setSummary);
-    fetchGrowthExplanation("w-gota").then(setWhy);
-  }, []);
+    let current = true;
+    setSummary(null);
+    void fetchGrowthSummary().then((nextSummary) => {
+      if (!current) return;
+      setSummary(nextSummary);
+    }).catch(() => {
+      // The map remains usable from its bootstrap payload if an optional
+      // explanatory request is unavailable.
+      if (!current) return;
+      setSummary(null);
+    });
+    return () => {
+      current = false;
+    };
+  }, [cityId, datasetVersion]);
 
   useEffect(() => {
     const from: Year = year === 2018 ? 2018 : year === 2022 ? 2018 : 2022;
@@ -60,7 +78,7 @@ export default function GrowthPanel() {
   return (
     <PanelShell
       title="Urban Time Machine"
-      caption="Historical expansion · land-use change · 2030 outlook"
+      caption="Observed expansion · land-use change · 2030 outlook"
     >
       {/* Year scrubber */}
       <Section label="Observation Year">
@@ -102,7 +120,7 @@ export default function GrowthPanel() {
           label="Built-Up Trajectory"
           right={
             <span className="num rounded-md bg-accent/15 px-1.5 py-0.5 text-[10px] font-bold text-accent">
-              +{summary.growthPct}% since 2018
+              +{summary.growthPct}% since 2018 (observed)
             </span>
           }
         >
@@ -185,8 +203,8 @@ export default function GrowthPanel() {
         )}
       </Section>
 
-      {/* 2030 prediction */}
-      <Section label="2030 Growth Probability">
+      {/* 2030 outlook */}
+      <Section label="2030 Expansion Likelihood">
         <GlowCard
           glowColor="rgba(56, 189, 248, 0.2)"
           borderGlowColor="rgba(56, 189, 248, 0.5)"
@@ -195,9 +213,9 @@ export default function GrowthPanel() {
         >
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-[12.5px] font-semibold text-foreground">Prediction overlay</div>
+              <div className="text-[12.5px] font-semibold text-foreground">Likelihood overlay</div>
               <div className="text-[10.5px] text-muted-foreground">
-                Explainable frontier + road + momentum model
+                Esri 2018–2024 growth + network pressure
               </div>
             </div>
             <Switch checked={predictionOn} onCheckedChange={setPrediction} />
@@ -209,18 +227,11 @@ export default function GrowthPanel() {
               className="overflow-hidden"
             >
               <div className="mt-3 border-t border-border/70 pt-2.5">
-                <button
-                  type="button"
-                  onClick={() => {
-                    highlightWards(["w-gota", "w-chandkheda"]);
-                    flyTo([72.52, 23.1], 12);
-                  }}
-                  className="mb-2 flex items-center gap-1.5 text-[11.5px] font-semibold text-accent hover:underline cursor-pointer"
-                >
-                  <TrendingUp size={12} /> Why is the NW corridor predicted to grow?
-                </button>
+                <div className="mb-2 flex items-center gap-1.5 text-[11.5px] font-semibold text-accent">
+                  <TrendingUp size={12} /> Why are these areas more likely to expand?
+                </div>
                 <ul className="space-y-1">
-                  {why.map((w) => (
+                  {LIKELIHOOD_FACTORS.map((w) => (
                     <li key={w} className="flex gap-1.5 text-[11px] text-muted-foreground">
                       <span className="mt-0.5 text-accent font-bold">•</span>
                       {w}
