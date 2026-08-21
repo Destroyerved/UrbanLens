@@ -13,6 +13,7 @@
     "start": "npm run start --prefix web",
     "lint": "npm run lint --prefix web",
     "demo": "node web/scripts/demo-run.mjs",
+    "demo:host": "node scripts/demo-host.mjs",
     "verify:ui": "node web/scripts/verify-ui.mjs"
   }
 }
