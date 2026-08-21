@@ -1,0 +1,12 @@
+# Hugging Face rejects non-LFS files over 10 MB, and this repo carries 13 of
+# them — the OSM street layers run to 29 MB each, plus the DEM tiles and the
+# prebuilt bootstrap payloads. Track them here so a Space push succeeds.
+#
+# NOTE: this only governs files added from now on. Blobs already in history
+# stay as they are; see docs/HF_SPACES.md for the one-time migration.
+*.tif filter=lfs diff=lfs merge=lfs -text
+*.tiff filter=lfs diff=lfs merge=lfs -text
+*.json.gz filter=lfs diff=lfs merge=lfs -text
+*.pkl.gz filter=lfs diff=lfs merge=lfs -text
+web/data/engine/*_streets.json filter=lfs diff=lfs merge=lfs -text
+web/data/engine/*_buildings.json filter=lfs diff=lfs merge=lfs -text

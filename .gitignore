@@ -45,3 +45,8 @@ Thumbs.db
 # Editor
 .vscode/
 .idea/
+
+# SQLite write-ahead transients. These belong to whichever process has the DB
+# open; committing them ships a snapshot that contradicts the DB itself.
+backend/urbanlens.db-shm
+backend/urbanlens.db-wal

@@ -1,0 +1,33 @@
+# Keep the build context to source and data. Everything here is either rebuilt
+# inside the image, regenerated at runtime, or irrelevant to the container.
+.git
+.github
+.agents
+.claude
+.pytest_cache
+.ruff_cache
+
+node_modules
+web/node_modules
+web/.next
+web/out
+
+__pycache__
+**/__pycache__
+*.pyc
+.venv
+venv
+
+# Regenerable at runtime. The parcel pickles and the FAISS index rebuild on
+# first request, and shipping a stale one only risks it disagreeing with the
+# source layers baked into the image.
+backend/.cache
+backend/cache
+backend/urbanlens.db
+backend/urbanlens.db-shm
+backend/urbanlens.db-wal
+
+# Local scratch and docs that the running app never reads.
+preview
+prd.md
+*.log
