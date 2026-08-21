@@ -1,9 +1,0 @@
-{
-  "fetchedAt": "2026-08-15T09:41:26.467Z",
-  "bbox": "72.4493,22.9139,72.7015,23.3113",
-  "source": "OpenStreetMap via Overpass API (merged from Ahmedabad + Gandhinagar)",
-  "composedFrom": [
-    "ahmedabad",
-    "gandhinagar"
-  ]
-}

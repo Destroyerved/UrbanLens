@@ -5,6 +5,7 @@ import { Users } from "lucide-react";
 import { PanelShell, Section, LoadingBlock } from "./PanelShell";
 import { GlowCard } from "@/components/ui/spotlight-card";
 import { useApp } from "@/lib/store";
+import { withRetry } from "@/lib/api";
 import { fetchEquity, SERVICE_LABEL, type EquityReport } from "@/services/equity";
 import { cn, formatCompact } from "@/lib/utils";
 
@@ -23,7 +24,7 @@ export default function EquityPanel() {
   const highlightWards = useApp((s) => s.highlightWards);
 
   useEffect(() => {
-    fetchEquity().then(setData).catch(() => setFailed(true));
+    withRetry(fetchEquity).then(setData).catch(() => setFailed(true));
   }, []);
 
   if (failed)

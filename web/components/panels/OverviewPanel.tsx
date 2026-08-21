@@ -85,15 +85,35 @@ export default function OverviewPanel() {
   const [error, setError] = useState(false);
   const setMode = useApp((s) => s.setMode);
   const datasetVersion = useApp((s) => s.datasetVersion);
+  const cityLoading = useApp((s) => s.cityLoading);
   const city = useApp((s) => s.city);
   const setCopilotOpen = useApp((s) => s.setCopilotOpen);
 
   useEffect(() => {
-    if (datasetVersion === 0) return;
+    // Clear immediately on any switch so the previous area's numbers can
+    // never linger under the new district's title.
+    let cancelled = false;
+    setKpis(null);
+    setError(false);
+    // Wait out the dataset swap exactly like the map layers do: once the
+    // prebuilt bootstrap has landed, KPIs resolve from its analytics cache
+    // with no engine round-trip — same beat as the parcels rendering.
+    if (datasetVersion === 0 || cityLoading) {
+      return () => {
+        cancelled = true;
+      };
+    }
     fetchCityKpis()
-      .then(setKpis)
-      .catch(() => setError(true));
-  }, [datasetVersion, city?.id]);
+      .then((k) => {
+        if (!cancelled) setKpis(k);
+      })
+      .catch(() => {
+        if (!cancelled) setError(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [datasetVersion, city?.id, cityLoading]);
 
   return (
     <PanelShell

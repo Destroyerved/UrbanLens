@@ -5,6 +5,7 @@ import { Leaf, ShieldAlert } from "lucide-react";
 import { PanelShell, Section, LoadingBlock } from "./PanelShell";
 import { GlowCard } from "@/components/ui/spotlight-card";
 import { useApp } from "@/lib/store";
+import { withRetry } from "@/lib/api";
 import {
   fetchConservation,
   fetchEncroachment,
@@ -23,8 +24,8 @@ export default function ConservationPanel() {
   const flyTo = useApp((s) => s.flyTo);
 
   useEffect(() => {
-    fetchConservation().then(setCons).catch(() => setFailed(true));
-    fetchEncroachment().then(setEnc).catch(() => setFailed(true));
+    withRetry(fetchConservation).then(setCons).catch(() => setFailed(true));
+    withRetry(fetchEncroachment).then(setEnc).catch(() => setFailed(true));
   }, []);
 
   const loading = tab === "priority" ? !cons : !enc;

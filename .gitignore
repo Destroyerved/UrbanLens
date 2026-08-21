@@ -1,67 +1,39 @@
-# Dependencies
+# Dependencies / builds
 node_modules/
-web/node_modules/
-landing-page/node_modules/
-
-# Next.js build output
 .next/
-web/.next/
-landing-page/.next/
 out/
-web/out/
+dist/
 build/
-web/build/
 
-# Python caches
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
+.pytest_cache/
 .venv/
-backend/.venv/
+venv/
 
-# Fetch logs / error dumps
-raw/osm/*.log
-raw/osm/*_err.txt
-raw/osm/*_log.txt
-
-# Run logs
-logs/
-*.log
-*.err
-*.out
-backend/err.log
-backend/out.log
-
-# Prebuilt demo DB is intentionally included for fast/free deployment.
-# Rebuild with: python scripts/build-fast-cache.py --city ahmedabad
-
-# Raw multi-date built-up rasters (GHSL + Esri) — rebuilt by scripts/fetch_*.py
-datasets/ghsl/
-datasets/esri/
-
-# Large local data and generated runtime artefacts. The frontend runs from the
-# prebuilt payloads in web/public/data; only the lightweight Gujarat config is
-# retained from the engine directory.
-datasets/
-backend/urbanlens.db*
+# Heavy local stores — rebuilt by the pipeline, never needed at runtime
+backend/urbanlens.db
+backend/urbanlens.db.*
 backend/cache/
+datasets/
+
+# Raw satellite master (64 MB) — re-fetched daily from GIBS; the rendered
+# latest.png + meta.json ARE the committed scene and stay tracked.
+*.tiff
+
+# Runtime caches
 backend/.cache/
-backend/models/
-web/data/engine/*
-!web/data/engine/gujarat_config.json
+# Per-district crop cache is keyed by date and regenerates on demand.
+backend/app/static/thermal/city_*
 
-# Local delivery archives and temporary package staging directories.
-*.zip
-package-staging-*/
-
-# Secrets — never commit credentials
-*.cdse_token
-.sat-credentials
+# Env & OS noise
 .env
 .env.*
-*.token
-credentials.json
+!.env.example
 .DS_Store
+Thumbs.db
 
-# Temporary / test folders
-landing-delivery/
-landing-page/
+# Editor
+.vscode/
+.idea/

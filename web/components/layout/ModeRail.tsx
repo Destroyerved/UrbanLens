@@ -2,7 +2,18 @@
 
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { FlaskConical, Hospital, Landmark, LayoutDashboard, Leaf, Route, Scale, Target, TrendingUp, type LucideIcon } from "lucide-react";
+import {
+  LayoutDashboard,
+  TrendingUp,
+  Hospital,
+  Landmark,
+  Target,
+  FlaskConical,
+  Leaf,
+  Route,
+  Scale,
+  type LucideIcon,
+} from "lucide-react";
 import type { Mode } from "@/types";
 import { MODE_META } from "@/config/layers";
 import { useApp } from "@/lib/store";

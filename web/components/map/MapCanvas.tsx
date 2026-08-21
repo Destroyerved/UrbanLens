@@ -29,7 +29,7 @@ import {
 import { circleRing, ringsBounds } from "@/lib/geo";
 import { WARDS } from "@/data/wards";
 import { setMapInstance } from "@/lib/mapref";
-import { refreshThermalStatus, THERMAL_STATUS, useThermalStatus } from "@/data/thermal";
+import { refreshThermalStatus, setThermalCity, THERMAL_STATUS, useThermalStatus } from "@/data/thermal";
 import type { Year } from "@/types";
 import { m2 } from "@/lib/marks";
 import { YEARS } from "@/types";
@@ -173,6 +173,12 @@ export default function MapCanvas() {
   /* ------------------------- thermal status ------------------------- */
   // Thermal data is lazy: do not wake the Python service on normal dashboard load.
 
+  // District-scoped LST: point the shared status store at the active district
+  // so the poll and the raster URL follow the selection.
+  useEffect(() => {
+    setThermalCity(city?.id ?? null);
+  }, [city?.id]);
+
   // Refresh whenever the UHI layer is switched on, and re-point the raster at
   // the committed file (cache-busted by updated_at) once we know the date.
   useEffect(() => {
@@ -181,7 +187,8 @@ export default function MapCanvas() {
     if (!map || !ready || !thermal.date) return;
     const src = map.getSource("thermal-raster") as maplibregl.ImageSource | undefined;
     if (src) {
-      const url = thermalRasterURL(thermal.updated_at ?? undefined);
+      const districtScope = thermal.scope === "district" && !!city;
+      const url = thermalRasterURL(districtScope ? city.id : null, thermal.updated_at ?? undefined);
       // Keyed on bounds too: the scene is re-placed when the backend widens or
       // narrows its fetch bbox, not only when the image itself changes.
       const key = `${url}|${(thermal.bounds ?? THERMAL_BOUNDS).join(",")}`;
@@ -194,7 +201,7 @@ export default function MapCanvas() {
         // during mount/teardown (e.g. WebGL context already lost).
       }
     }
-  }, [activeLayers, ready, thermal]);
+  }, [activeLayers, ready, thermal, city]);
 
   /* ------------------------------ init ------------------------------ */
   useEffect(() => {

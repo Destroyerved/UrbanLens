@@ -16,6 +16,7 @@ import { Switch } from "@/components/ui/switch";
 import { AnimatedNumber } from "@/components/shared/AnimatedNumber";
 import { GlowCard } from "@/components/ui/spotlight-card";
 import { useApp } from "@/lib/store";
+import { withRetry } from "@/lib/api";
 import { fetchGrowthSummary, fetchTransitions } from "@/services/growth";
 import { LANDUSE_COLORS } from "@/lib/mapdata";
 import type { LandUse, Year } from "@/types";
@@ -44,7 +45,7 @@ export default function GrowthPanel() {
   useEffect(() => {
     let current = true;
     setSummary(null);
-    void fetchGrowthSummary().then((nextSummary) => {
+    void withRetry(fetchGrowthSummary).then((nextSummary) => {
       if (!current) return;
       setSummary(nextSummary);
     }).catch(() => {

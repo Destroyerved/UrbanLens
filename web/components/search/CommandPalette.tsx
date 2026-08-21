@@ -3,7 +3,21 @@
 import { useEffect } from "react";
 import { Command } from "cmdk";
 import { AnimatePresence, motion } from "framer-motion";
-import { FlaskConical, Grid2x2, Hospital, Landmark, LayoutDashboard, Leaf, MapPin, Moon, Route, Scale, Sparkles, Target, TrendingUp } from "lucide-react";
+import {
+  LayoutDashboard,
+  TrendingUp,
+  Hospital,
+  Landmark,
+  Target,
+  FlaskConical,
+  Grid2x2,
+  MapPin,
+  Sparkles,
+  Moon,
+  Leaf,
+  Route,
+  Scale,
+} from "lucide-react";
 import { useTheme } from "next-themes";
 import { useApp } from "@/lib/store";
 import { PARCELS } from "@/data/parcels";

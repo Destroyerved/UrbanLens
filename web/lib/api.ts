@@ -114,6 +114,32 @@ export async function engineAvailable(): Promise<boolean> {
   }
 }
 
+/**
+ * Ride out transient engine contention instead of failing permanently.
+ *
+ * A cold engine start warms 34 districts, and a request landing in that
+ * window — or racing the first synchronous build of a cache — can get reset
+ * even though the engine is healthy a second later. Panels that fetch once on
+ * mount turn that into a permanent "failed to load", or worse: a swallowed
+ * error that renders as a legitimate-looking zero. Three attempts with a
+ * short backoff; the last failure still throws for the caller to handle.
+ */
+export async function withRetry<T>(
+  fn: () => Promise<T>,
+  attempts = 3,
+  delayMs = 1500,
+): Promise<T> {
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      if (i === attempts - 1) throw err;
+      await new Promise((r) => setTimeout(r, delayMs));
+    }
+  }
+  throw new Error("unreachable");
+}
+
 
 /** Wake a sleeping free-tier backend without blocking the already-static UI. */
 export function warmEngine(): void {

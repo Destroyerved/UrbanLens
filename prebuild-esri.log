@@ -1,0 +1,69 @@
+database: C:\Users\ved\Desktop\urbanslens\UrbanLens_ULTRAFAST_db_faiss\UrbanLens-ultrafast\backend\urbanlens.db
+ahmedabad: layers -> wards, land, facilities, roads, vegetation, greenspace, water, flood
+amreli: layers -> wards, land, facilities, roads, vegetation, greenspace, water, flood
+anand: layers -> wards, land, facilities, roads, vegetation, greenspace, water, flood
+aravalli: layers -> wards, land, facilities, roads, vegetation, greenspace, water, flood
+banaskantha: layers -> wards, land, facilities, roads, vegetation, greenspace, water, flood
+bharuch: layers -> wards, land, facilities, roads, vegetation, greenspace, water, flood
+bhavnagar: layers -> wards, land, facilities, roads, vegetation, greenspace, water, flood
+botad: layers -> wards, land, facilities, roads, vegetation, greenspace, water, flood
+chhota-udaipur: layers -> wards, land, facilities, roads, vegetation, greenspace, water, flood
+dahod: layers -> wards, land, facilities, roads, vegetation, greenspace, water, flood
+dang: layers -> wards, land, facilities, roads, vegetation, greenspace, water, flood
+devbhumi-dwaraka: layers -> wards, land, facilities, roads, vegetation, greenspace, water, flood
+gandhinagar: layers -> wards, land, facilities, roads, vegetation, greenspace, water, flood
+gir-somnath: layers -> wards, land, facilities, roads, vegetation, greenspace, water, flood
+jamnagar: layers -> wards, land, facilities, roads, vegetation, greenspace, water, flood
+junagadh: layers -> wards, land, facilities, roads, vegetation, greenspace, water, flood
+kheda: layers -> wards, land, facilities, roads, vegetation, greenspace, water, flood
+kutch: layers -> wards, land, facilities, roads, vegetation, greenspace, water, flood
+mahesana: layers -> wards, land, facilities, roads, vegetation, greenspace, water, flood
+mahisagar: layers -> wards, land, facilities, roads, vegetation, greenspace, water, flood
+morbi: layers -> wards, land, facilities, roads, vegetation, greenspace, water, flood
+narmada: layers -> wards, land, facilities, roads, vegetation, greenspace, water, flood
+navsari: layers -> wards, land, facilities, roads, vegetation, greenspace, water, flood
+panchmahal: layers -> wards, land, facilities, roads, vegetation, greenspace, water, flood
+patan: layers -> wards, land, facilities, roads, vegetation, greenspace, water, flood
+porbandar: layers -> wards, land, facilities, roads, vegetation, greenspace, water, flood
+rajkot: layers -> wards, land, facilities, roads, vegetation, greenspace, water, flood
+sabarkantha: layers -> wards, land, facilities, roads, vegetation, greenspace, water, flood
+surat: layers -> wards, land, facilities, roads, vegetation, greenspace, water, flood
+surendranagar: layers -> wards, land, facilities, roads, vegetation, greenspace, water, flood
+tapi: layers -> wards, land, facilities, roads, vegetation, greenspace, water, flood
+vadodara: layers -> wards, land, facilities, roads, vegetation, greenspace, water, flood
+valsad: layers -> wards, land, facilities, roads, vegetation, greenspace, water, flood
+vav-tharad: layers -> wards, land, facilities, roads, vegetation, greenspace, water, flood
+ahmedabad: 17,215 parcels cached in 1.23s; 17,215 vectors (faiss.IndexFlatIP) in 1.03s; derived caches (48 gaps/48 livability/603 growth cells); static bootstrap 1733 KiB (8104 KiB raw); optional 198 KiB in 7.01s
+amreli: 31,295 parcels cached in 98.06s; 31,295 vectors (faiss.IndexFlatIP) in 0.93s; derived caches (11 gaps/11 livability/9815 growth cells); static bootstrap 2538 KiB (11468 KiB raw); optional 57 KiB in 9.39s
+anand: 17,114 parcels cached in 67.67s; 17,114 vectors (faiss.IndexFlatIP) in 0.99s; derived caches (9 gaps/9 livability/3806 growth cells); static bootstrap 2286 KiB (10390 KiB raw); optional 34 KiB in 5.45s
+aravalli: 13,512 parcels cached in 40.68s; 13,512 vectors (faiss.IndexFlatIP) in 0.98s; derived caches (6 gaps/6 livability/4502 growth cells); static bootstrap 1332 KiB (5733 KiB raw); optional 63 KiB in 5.20s
+banaskantha: 28,980 parcels cached in 102.95s; 28,980 vectors (faiss.IndexFlatIP) in 2.11s; derived caches (8 gaps/8 livability/8510 growth cells); static bootstrap 3432 KiB (15489 KiB raw); optional 72 KiB in 9.05s
+bharuch: 24,985 parcels cached in 60.49s; 24,985 vectors (faiss.IndexFlatIP) in 0.75s; derived caches (8 gaps/8 livability/6211 growth cells); static bootstrap 2191 KiB (10249 KiB raw); optional 61 KiB in 4.58s
+bhavnagar: 27,549 parcels cached in 70.97s; 27,549 vectors (faiss.IndexFlatIP) in 1.97s; derived caches (8 gaps/8 livability/6878 growth cells); static bootstrap 2417 KiB (11011 KiB raw); optional 39 KiB in 8.38s
+botad: 11,906 parcels cached in 32.12s; 11,906 vectors (faiss.IndexFlatIP) in 0.97s; derived caches (4 gaps/4 livability/3351 growth cells); static bootstrap 1392 KiB (6392 KiB raw); optional 29 KiB in 3.85s
+chhota-udaipur: 9,503 parcels cached in 29.12s; 9,503 vectors (faiss.IndexFlatIP) in 0.79s; derived caches (4 gaps/4 livability/3122 growth cells); static bootstrap 793 KiB (3505 KiB raw); optional 60 KiB in 4.36s
+dahod: 20,142 parcels cached in 56.93s; 20,142 vectors (faiss.IndexFlatIP) in 0.78s; derived caches (9 gaps/9 livability/5000 growth cells); static bootstrap 1633 KiB (7536 KiB raw); optional 82 KiB in 3.87s
+dang: 2,988 parcels cached in 10.15s; 2,988 vectors (faiss.IndexFlatIP) in 1.13s; derived caches (2 gaps/2 livability/1431 growth cells); static bootstrap 295 KiB (1311 KiB raw); optional 17 KiB in 2.59s
+devbhumi-dwaraka: 31,115 parcels cached in 78.13s; 31,115 vectors (faiss.IndexFlatIP) in 1.38s; derived caches (4 gaps/4 livability/5667 growth cells); static bootstrap 2512 KiB (11571 KiB raw); optional 411 KiB in 6.00s
+gandhinagar: 7,308 parcels cached in 18.62s; 7,308 vectors (faiss.IndexFlatIP) in 0.78s; derived caches (11 gaps/11 livability/271 growth cells); static bootstrap 779 KiB (3612 KiB raw); optional 105 KiB in 2.32s
+gir-somnath: 16,990 parcels cached in 46.52s; 16,990 vectors (faiss.IndexFlatIP) in 1.12s; derived caches (6 gaps/6 livability/3558 growth cells); static bootstrap 2135 KiB (9853 KiB raw); optional 78 KiB in 4.47s
+jamnagar: 25,516 parcels cached in 205.75s; 25,516 vectors (faiss.IndexFlatIP) in 4.57s; derived caches (6 gaps/6 livability/8183 growth cells); static bootstrap 2664 KiB (12181 KiB raw); optional 58 KiB in 18.76s
+junagadh: 21,836 parcels cached in 135.74s; 21,836 vectors (faiss.IndexFlatIP) in 0.78s; derived caches (10 gaps/10 livability/6839 growth cells); static bootstrap 2183 KiB (9775 KiB raw); optional 41 KiB in 4.80s
+kheda: 12,781 parcels cached in 53.27s; 12,781 vectors (faiss.IndexFlatIP) in 1.04s; derived caches (10 gaps/10 livability/4163 growth cells); static bootstrap 1815 KiB (7968 KiB raw); optional 47 KiB in 3.44s
+kutch: 131,125 parcels cached in 489.52s; 131,125 vectors (faiss.IndexFlatIP) in 5.58s; derived caches (10 gaps/10 livability/29289 growth cells); static bootstrap 9716 KiB (47582 KiB raw); optional 119 KiB in 42.99s
+mahesana: 15,427 parcels cached in 110.03s; 15,427 vectors (faiss.IndexFlatIP) in 1.48s; derived caches (9 gaps/9 livability/5792 growth cells); static bootstrap 2395 KiB (10245 KiB raw); optional 77 KiB in 5.56s
+mahisagar: 11,071 parcels cached in 32.50s; 11,071 vectors (faiss.IndexFlatIP) in 1.30s; derived caches (6 gaps/6 livability/3414 growth cells); static bootstrap 1230 KiB (5266 KiB raw); optional 72 KiB in 3.75s
+morbi: 18,371 parcels cached in 103.54s; 18,371 vectors (faiss.IndexFlatIP) in 2.95s; derived caches (5 gaps/5 livability/6666 growth cells); static bootstrap 1489 KiB (6715 KiB raw); optional 30 KiB in 17.20s
+narmada: 17,323 parcels cached in 76.33s; 17,323 vectors (faiss.IndexFlatIP) in 0.67s; derived caches (5 gaps/5 livability/3839 growth cells); static bootstrap 1233 KiB (5779 KiB raw); optional 85 KiB in 2.74s
+navsari: 13,179 parcels cached in 34.79s; 13,179 vectors (faiss.IndexFlatIP) in 0.81s; derived caches (6 gaps/6 livability/2999 growth cells); static bootstrap 1713 KiB (7840 KiB raw); optional 40 KiB in 2.51s
+panchmahal: 12,109 parcels cached in 31.63s; 12,109 vectors (faiss.IndexFlatIP) in 0.77s; derived caches (5 gaps/5 livability/2985 growth cells); static bootstrap 1703 KiB (7636 KiB raw); optional 36 KiB in 6.90s
+patan: 16,800 parcels cached in 36.35s; 16,800 vectors (faiss.IndexFlatIP) in 0.66s; derived caches (8 gaps/8 livability/7048 growth cells); static bootstrap 1771 KiB (7852 KiB raw); optional 48 KiB in 2.69s
+porbandar: 12,804 parcels cached in 22.64s; 12,804 vectors (faiss.IndexFlatIP) in 0.62s; derived caches (3 gaps/3 livability/3162 growth cells); static bootstrap 1307 KiB (6002 KiB raw); optional 37 KiB in 1.78s
+rajkot: 38,194 parcels cached in 77.63s; 38,194 vectors (faiss.IndexFlatIP) in 1.00s; derived caches (14 gaps/14 livability/10281 growth cells); static bootstrap 4337 KiB (19795 KiB raw); optional 77 KiB in 4.89s
+sabarkantha: 18,129 parcels cached in 32.91s; 18,129 vectors (faiss.IndexFlatIP) in 0.67s; derived caches (8 gaps/8 livability/5729 growth cells); static bootstrap 1623 KiB (7204 KiB raw); optional 71 KiB in 2.35s
+surat: 42,569 parcels cached in 76.28s; 42,569 vectors (faiss.IndexFlatIP) in 1.49s; derived caches (14 gaps/14 livability/5724 growth cells); static bootstrap 4174 KiB (19125 KiB raw); optional 152 KiB in 4.50s
+surendranagar: 29,454 parcels cached in 61.20s; 29,454 vectors (faiss.IndexFlatIP) in 0.93s; derived caches (10 gaps/10 livability/12565 growth cells); static bootstrap 2806 KiB (12765 KiB raw); optional 61 KiB in 4.60s
+tapi: 9,926 parcels cached in 21.60s; 9,926 vectors (faiss.IndexFlatIP) in 0.65s; derived caches (6 gaps/6 livability/2688 growth cells); static bootstrap 999 KiB (4437 KiB raw); optional 39 KiB in 1.68s
+vadodara: 18,893 parcels cached in 48.03s; 18,893 vectors (faiss.IndexFlatIP) in 0.70s; derived caches (10 gaps/10 livability/4694 growth cells); static bootstrap 2499 KiB (10977 KiB raw); optional 59 KiB in 2.70s
+valsad: 9,328 parcels cached in 17.55s; 9,328 vectors (faiss.IndexFlatIP) in 0.56s; derived caches (7 gaps/7 livability/3997 growth cells); static bootstrap 1108 KiB (4602 KiB raw); optional 43 KiB in 1.64s
+vav-tharad: 12,241 parcels cached in 21.76s; 12,241 vectors (faiss.IndexFlatIP) in 0.63s; derived caches (5 gaps/5 livability/5458 growth cells); static bootstrap 1123 KiB (5065 KiB raw); optional 17 KiB in 1.90s

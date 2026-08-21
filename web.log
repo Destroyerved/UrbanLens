@@ -1,0 +1,108 @@
+
+> urbanlens-frontend@0.1.0 dev
+> next dev
+
+  ▲ Next.js 14.2.15
+  - Local:        http://localhost:3000
+
+ ✓ Starting...
+ ✓ Ready in 27.1s
+ ○ Compiling / ...
+ ✓ Compiled / in 9.4s (3294 modules)
+ GET / 200 in 27428ms
+ ○ Compiling /app ...
+ ✓ Compiled /app in 62.2s (4751 modules)
+ GET /app 200 in 16006ms
+ ○ Compiling /_not-found ...
+ ✓ Compiled /_not-found in 13.4s (4740 modules)
+ ○ Compiling /_error ...
+ ✓ Compiled /_error in 9.8s (4970 modules)
+ ✓ Compiled in 12.8s (4982 modules)
+ GET /app 200 in 1192ms
+ ○ Compiling /_not-found ...
+ ✓ Compiled /_not-found in 4.8s (4971 modules)
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 5392ms
+ ✓ Compiled in 5s (4971 modules)
+ ✓ Compiled in 2.4s (4971 modules)
+ ✓ Compiled in 819ms (4971 modules)
+ ✓ Compiled in 1425ms (4968 modules)
+ ✓ Compiled in 1428ms (4968 modules)
+ ○ Compiling /_error ...
+ ✓ Compiled /_error in 6.8s (4984 modules)
+ GET / 200 in 407ms
+ ✓ Compiled in 1925ms (4982 modules)
+ GET / 200 in 449ms
+ GET /app 200 in 319ms
+ GET / 200 in 43ms
+ GET /app 200 in 80ms
+ ○ Compiling /_error ...
+ ✓ Compiled /_error in 3.6s (4970 modules)
+ GET / 200 in 152ms
+ GET /app 200 in 142ms
+ GET /app 200 in 58ms
+ GET / 200 in 75ms
+ GET /app 200 in 119ms
+ GET /app 200 in 157ms
+ GET /app 200 in 90ms
+ GET /app 200 in 142ms
+ GET / 200 in 105ms
+ GET /app 200 in 118ms
+ GET /app 200 in 71ms
+ GET /app 200 in 126ms
+ GET / 200 in 98ms
+ GET /app 200 in 131ms
+ GET /app 200 in 91ms
+ GET /app 200 in 87ms
+ GET /app 200 in 79ms
+ ✓ Compiled in 4.8s (4982 modules)
+ ✓ Compiled in 1484ms (4968 modules)
+ ✓ Compiled in 976ms (4968 modules)
+ ✓ Compiled in 706ms (4968 modules)
+ ✓ Compiled in 1284ms (4982 modules)
+ ✓ Compiled in 1824ms (4982 modules)
+ ✓ Compiled in 1409ms (4982 modules)
+ ✓ Compiled in 1382ms (4982 modules)
+ ✓ Compiled in 1340ms (4982 modules)
+ GET /app 500 in 470ms
+ GET /app 500 in 205ms
+ ✓ Compiled in 1703ms (4984 modules)
+ GET /app 200 in 406ms
+ GET /app 200 in 409ms
+ ✓ Compiled in 1290ms (4984 modules)
+ ✓ Compiled in 1185ms (4984 modules)
+ ✓ Compiled in 1153ms (4984 modules)
+ ✓ Compiled in 2.4s (4984 modules)
+ ✓ Compiled in 2.1s (4984 modules)
+ ✓ Compiled in 1158ms (4984 modules)
+ ✓ Compiled in 1257ms (4984 modules)
+ ✓ Compiled in 1118ms (4984 modules)
+ ✓ Compiled in 1333ms (4984 modules)
+ ✓ Compiled in 800ms (4970 modules)
+ ○ Compiling /_error ...
+ ✓ Compiled /_error in 1085ms (4972 modules)
+ GET /app 200 in 1042ms
+ GET /app 200 in 327ms
+ GET /app 200 in 116ms
+ GET /app 200 in 311ms
+ ✓ Compiled in 77.1s (4984 modules)
+ GET /app 500 in 538ms
+ ✓ Compiled in 1213ms (4972 modules)
+ ✓ Compiled in 849ms (4972 modules)
+ ✓ Compiled in 1864ms (4986 modules)
+ GET /app 200 in 422ms
+ ✓ Compiled in 744ms (4972 modules)
+ ✓ Compiled in 907ms (4972 modules)
+ ✓ Compiled in 771ms (4972 modules)
+ ✓ Compiled in 815ms (4972 modules)
+ ✓ Compiled in 1618ms (4986 modules)
+ ✓ Compiled in 1270ms (4986 modules)
+ ✓ Compiled in 746ms (2581 modules)
+ ✓ Compiled in 740ms (2581 modules)
+ ✓ Compiled in 1396ms (4986 modules)
+ GET /app 200 in 2518ms
+ ✓ Compiled in 10.3s (4986 modules)
+ ✓ Compiled in 12.5s (4986 modules)
+ GET /app 200 in 2254ms
+ ○ Compiling /_not-found ...
+ ✓ Compiled /_not-found in 10.4s (4989 modules)
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 11076ms

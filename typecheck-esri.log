@@ -1,0 +1,13 @@
+data/grid.ts(42,36): error TS2345: Argument of type '{ 2018: number; 2022: number; 2024: number; }' is not assignable to parameter of type 'Record<Year, number>'.
+  Property '2026' is missing in type '{ 2018: number; 2022: number; 2024: number; }' but required in type 'Record<Year, number>'.
+data/parcels.ts(243,7): error TS2741: Property '2024' is missing in type '{ 2018: "agriculture"; 2022: "vacant"; 2026: "vacant"; }' but required in type 'Record<Year, LandUse>'.
+data/parcels.ts(252,7): error TS2741: Property '2024' is missing in type '{ 2018: "agriculture"; 2022: "agriculture"; 2026: "vacant"; }' but required in type 'Record<Year, LandUse>'.
+data/parcels.ts(261,7): error TS2741: Property '2024' is missing in type '{ 2018: "agriculture"; 2022: "agriculture"; 2026: "agriculture"; }' but required in type 'Record<Year, LandUse>'.
+data/wards.ts(91,7): error TS2322: Type '{ id: string; name: string; ring: LngLat[]; centroid: LngLat; areaKm2: number; population: { 2018: number; 2022: number; 2026: number; }; }[]' is not assignable to type 'Ward[]'.
+  Type '{ id: string; name: string; ring: LngLat[]; centroid: LngLat; areaKm2: number; population: { 2018: number; 2022: number; 2026: number; }; }' is not assignable to type 'Ward'.
+    Types of property 'population' are incompatible.
+      Property '2024' is missing in type '{ 2018: number; 2022: number; 2026: number; }' but required in type 'Record<Year, number>'.
+lib/dataset.ts(249,9): error TS2322: Type '{ id: string; name: string; ring: LngLat[]; centroid: LngLat; areaKm2: number; population: { 2018: number; 2022: number; 2026: number; }; }[]' is not assignable to type 'Ward[]'.
+  Type '{ id: string; name: string; ring: LngLat[]; centroid: LngLat; areaKm2: number; population: { 2018: number; 2022: number; 2026: number; }; }' is not assignable to type 'Ward'.
+    Types of property 'population' are incompatible.
+      Property '2024' is missing in type '{ 2018: number; 2022: number; 2026: number; }' but required in type 'Record<Year, number>'.
