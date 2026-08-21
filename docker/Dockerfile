@@ -7,8 +7,13 @@
 # to uvicorn on loopback. web/next.config.mjs already defaults its rewrite
 # target to http://127.0.0.1:8000, so this needs no configuration to work.
 #
-#   docker build -t urbanlens .
+#   docker build -t urbanlens -f docker/Dockerfile .
 #   docker run -p 7860:7860 urbanlens
+#
+# This lives in docker/ rather than at the repo root on purpose. Render and
+# other platforms auto-detect a root Dockerfile and switch the service to a
+# Docker build -- which for this file means serving Next on the public port
+# and demoting the API to loopback, quietly breaking a backend-only service.
 #
 # Python 3.11 rather than 3.12: rasterio, faiss-cpu and xgboost all publish
 # manylinux wheels for it, so the image builds without a toolchain or a system

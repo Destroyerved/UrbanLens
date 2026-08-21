@@ -124,7 +124,7 @@ attempting inference in the container.
 
 ## Alternative: everything in one container
 
-The root `Dockerfile` and `docker/start.sh` run both processes together, with
+The `docker/Dockerfile` and `docker/start.sh` pair runs both processes together, with
 Next on the public port proxying to uvicorn on loopback. That suits Cloud Run,
 Fly, or a plain VM, and is the right shape if you ever want a single
 self-contained deployment. It is not what the Vercel + Space split uses.
