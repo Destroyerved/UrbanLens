@@ -161,7 +161,7 @@ def route(city_id: str, query: str) -> dict:
             items = [p for p in items if p.area_sqm / 10_000 >= min_ha]
         if want_vacant:
             items = [p for p in items if p.land_use in ("vacant", "agriculture") and p.built_up_percent < 25]
-        items.sort(key=lambda p: -p.scores["development_potential"])
+        items.sort(key=lambda p: -p.scores.get("development_potential", 0.0))
         top = items[:8]
         return {
             "tool": "government_land",
@@ -175,7 +175,7 @@ def route(city_id: str, query: str) -> dict:
                 {
                     "id": p.parcel_id, "label": p.parcel_id,
                     "sub": f"{p.area_acres} ac · {p.land_use}",
-                    "score": round(p.scores["development_potential"]),
+                    "score": round(p.scores.get("development_potential", 0.0)),
                     "centroid": list(p.centroid),
                 }
                 for p in top

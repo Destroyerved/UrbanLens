@@ -98,14 +98,14 @@ def _run_tool(city_id: str, intent: dict, question: str) -> dict | None:
             items = [p for p in items if p.area_sqm / 10_000 >= min_ha]
         if intent.get("vacant_only"):
             items = [p for p in items if p.land_use in ("vacant", "agriculture") and p.built_up_percent < 25]
-        items.sort(key=lambda p: -p.scores["development_potential"])
+        items.sort(key=lambda p: -p.scores.get("development_potential", 0.0))
         top = items[:8]
         return {
             "tool": "government_land",
             "count": len(items), "min_hectares": min_ha,
             "items": [{"id": p.parcel_id, "label": p.parcel_id,
                        "sub": f"{p.area_acres} ac · {p.land_use}",
-                       "score": round(p.scores["development_potential"]),
+                       "score": round(p.scores.get("development_potential", 0.0)),
                        "centroid": list(p.centroid)} for p in top],
             "map": {"highlight_parcel_ids": [p.parcel_id for p in top]},
         }

@@ -73,7 +73,8 @@ def _population_need(ds, p: Parcel, spec: ProjectSpec) -> tuple[float, int, int,
         ds.grid, field_arr, lng, lat, spec.service_radius_km, spec.service_radius_km
     )
     unserved_score = norm(unserved, 2_000, 80_000)
-    nearest = p.nearest.get(spec.need_facility, float("inf"))
+    nearest_raw = p.nearest.get(spec.need_facility)
+    nearest = nearest_raw if nearest_raw is not None and np.isfinite(nearest_raw) else float("inf")
     gap = 100 - decay_score(nearest, spec.service_radius_km * 0.5, spec.service_radius_km * 2.2)
     return clamp(0.6 * unserved_score + 0.25 * gap + 0.15 * pop_score), pop, unserved, nearest
 
@@ -84,11 +85,11 @@ def suitability(ds, p: Parcel, project: str, weights: dict[str, float] | None = 
     need_score, pop, unserved, nearest = _population_need(ds, p, spec)
 
     breakdown = {
-        "accessibility": round(p.scores["accessibility"]),
+        "accessibility": round(p.scores.get("accessibility", 0.0)),
         "population_need": round(need_score),
-        "transit": round(p.scores["transit"]),
-        "infrastructure": round(p.scores["infrastructure"]),
-        "environment": round(p.scores["environment"]),
+        "transit": round(p.scores.get("transit", 0.0)),
+        "infrastructure": round(p.scores.get("infrastructure", 0.0)),
+        "environment": round(p.scores.get("environment", 0.0)),
         "land_compatibility": round(_land_compatibility(p, spec)),
     }
     total = round(final_score(breakdown, w))
@@ -123,7 +124,11 @@ def suitability(ds, p: Parcel, project: str, weights: dict[str, float] | None = 
     else:
         cons.append(f"{'High' if p.flood_risk == 'high' else 'Moderate'} flood risk")
     if breakdown["transit"] < 45:
-        cons.append(f"Limited public transport — {p.nearest['bus_stop']:.1f} km to nearest bus stop")
+        bs = p.nearest.get("bus_stop")
+        if bs is not None and np.isfinite(bs):
+            cons.append(f"Limited public transport — {bs:.1f} km to nearest bus stop")
+        else:
+            cons.append("Limited public transport — no bus stop nearby")
     else:
         pros.append("Well connected to public transport")
     if p.area_sqm / 10_000 >= spec.min_area_ha:
@@ -1036,7 +1041,7 @@ def city_overview(city_id: str) -> dict:
             if p.land_use in ("vacant", "agriculture") and p.built_up_percent < 25:
                 vacant_govt += 1
                 vacant_area += p.area_sqm
-        if p.scores["development_potential"] >= 80:
+        if p.scores.get("development_potential", 0.0) >= 80:
             high_potential += 1
         if p.flood_risk == "high" or p.vegetation_percent > 75 or p.water_percent > 15:
             env_sensitive += 1

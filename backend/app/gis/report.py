@@ -96,6 +96,14 @@ _FLOOD = {"low": "Low", "medium": "Moderate", "high": "High"}
 _SOURCE = {"osm": "Mapped (OpenStreetMap)", "modelled-fill": "Modelled gap-fill"}
 
 
+def _fmt_km(val: Any) -> str:
+    try:
+        x = float(val)
+        return f"{x:.2f} km" if x == x and x < float("inf") else "None nearby"
+    except (TypeError, ValueError):
+        return "None nearby"
+
+
 def _score_style(v: float):
     if v >= 70:
         return GOOD
@@ -297,12 +305,12 @@ def build_report_pdf(
     # --- location --------------------------------------------------------
     story.append(Paragraph("2 · Location &amp; Accessibility", S["h2"]))
     story.append(_kv([
-        ("Nearest arterial road", f"{p.road_km:.2f} km"),
-        ("Nearest hospital", f"{p.nearest['hospital']:.2f} km"),
-        ("Nearest school", f"{p.nearest['school']:.2f} km"),
-        ("Nearest park", f"{p.nearest['park']:.2f} km"),
-        ("Nearest bus stop", f"{p.nearest['bus_stop']:.2f} km"),
-        ("Nearest metro station", f"{p.nearest['metro_station']:.2f} km"),
+        ("Nearest arterial road", _fmt_km(p.road_km)),
+        ("Nearest hospital", _fmt_km(p.nearest.get("hospital"))),
+        ("Nearest school", _fmt_km(p.nearest.get("school"))),
+        ("Nearest park", _fmt_km(p.nearest.get("park"))),
+        ("Nearest bus stop", _fmt_km(p.nearest.get("bus_stop"))),
+        ("Nearest metro station", _fmt_km(p.nearest.get("metro_station"))),
         ("Population within 3 km", f"{p.pop_3km:,}"),
     ]))
 
@@ -318,7 +326,7 @@ def build_report_pdf(
     story.append(Spacer(1, 2.5 * mm))
     story.append(_column_header("Factor", "Weight", "Score", widths=[BODY_W - 78 * mm, 38 * mm, 40 * mm]))
     factor_rows = [
-        (_FACTOR_LABELS[k], f"{round(weights.get(k, 0) * 100)}%", breakdown[k])
+        (_FACTOR_LABELS[k], f"{round(weights.get(k, 0) * 100)}%", breakdown.get(k, 0))
         for k in ("accessibility", "population_need", "transit", "infrastructure",
                   "environment", "land_compatibility")
     ]
@@ -340,7 +348,7 @@ def build_report_pdf(
     story.append(Paragraph("Location scores", _style("sub2", fontName="Helvetica-Bold",
                                                      fontSize=9, leading=12, spaceBefore=4, spaceAfter=3)))
     story.append(_score_table([
-        (_LOCATION_LABELS[k], p.scores[k]) for k in _LOCATION_LABELS
+        (_LOCATION_LABELS[k], p.scores.get(k, 0.0)) for k in _LOCATION_LABELS
     ]))
 
     # --- district comparison ---------------------------------------------

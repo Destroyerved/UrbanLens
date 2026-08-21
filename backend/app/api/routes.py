@@ -574,6 +574,19 @@ def population_within(
             "population": population_within_km(ds.grid, lng, lat, radius_km)}
 
 
+def _safe_km(val: Any) -> float | None:
+    try:
+        x = float(val)
+        return round(x, 2) if np.isfinite(x) else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _safe_transit_km(p) -> float | None:
+    found = [float(v) for v in (p.nearest.get("bus_stop"), p.nearest.get("metro_station")) if v is not None and np.isfinite(float(v))]
+    return round(min(found), 2) if found else None
+
+
 @router.get("/parcels")
 def parcels(
     city: str | None = Query(default=None),
@@ -602,7 +615,7 @@ def parcels(
                     "ownership": p.ownership, "land_use": p.land_use, "zoning": p.zoning,
                     "area_acres": p.area_acres, "built_up_percent": p.built_up_percent,
                     "flood_risk": p.flood_risk, "ward": p.ward, "source": p.source,
-                    "development_potential": round(p.scores["development_potential"]),
+                    "development_potential": round(p.scores.get("development_potential", 0.0)),
                     "zoning_conflict": bool(analysis.classify_zoning_conflict(p)[0]),
                     "h2018": p.history.get(2018, 0), "h2022": p.history.get(2022, 0),
                     "h2024": p.history.get(2024, p.history.get(2026, 0)),
@@ -614,16 +627,16 @@ def parcels(
                             "water_percent": p.water_percent,
                             "elevation_m": p.elevation_m,
                             "centroid": list(p.centroid),
-                            "road_km": round(p.road_km, 2),
-                            "hospital_km": round(p.nearest["hospital"], 2),
-                            "school_km": round(p.nearest["school"], 2),
-                            "park_km": round(p.nearest["park"], 2),
-                            "transit_km": round(min(p.nearest["bus_stop"], p.nearest["metro_station"]), 2),
+                            "road_km": _safe_km(p.road_km),
+                            "hospital_km": _safe_km(p.nearest.get("hospital")),
+                            "school_km": _safe_km(p.nearest.get("school")),
+                            "park_km": _safe_km(p.nearest.get("park")),
+                            "transit_km": _safe_transit_km(p),
                             "population_3km": p.pop_3km,
-                            "accessibility": round(p.scores["accessibility"]),
-                            "infrastructure_readiness": round(p.scores["infrastructure"]),
+                            "accessibility": round(p.scores.get("accessibility", 0.0)),
+                            "infrastructure_readiness": round(p.scores.get("infrastructure", 0.0)),
                             # Consumers express this as sensitivity, the engine as suitability.
-                            "environmental_sensitivity": round(100 - p.scores["environment"]),
+                            "environmental_sensitivity": round(100 - p.scores.get("environment", 0.0)),
                         }
                         if detail == "full" else {}
                     ),
@@ -649,20 +662,20 @@ def parcel_detail(parcel_id: str, city: str | None = Query(default=None)) -> dic
         "water_percent": p.water_percent, "flood_risk": p.flood_risk,
         "elevation_m": p.elevation_m, "history": p.history, "centroid": list(p.centroid),
         "distances": {
-            "road_km": round(p.road_km, 2),
-            "hospital_km": round(p.nearest["hospital"], 2),
-            "school_km": round(p.nearest["school"], 2),
-            "park_km": round(p.nearest["park"], 2),
-            "bus_stop_km": round(p.nearest["bus_stop"], 2),
-            "metro_km": round(p.nearest["metro_station"], 2),
+            "road_km": _safe_km(p.road_km),
+            "hospital_km": _safe_km(p.nearest.get("hospital")),
+            "school_km": _safe_km(p.nearest.get("school")),
+            "park_km": _safe_km(p.nearest.get("park")),
+            "bus_stop_km": _safe_km(p.nearest.get("bus_stop")),
+            "metro_km": _safe_km(p.nearest.get("metro_station")),
         },
         "population_3km": p.pop_3km,
         "scores": {
-            "accessibility": round(p.scores["accessibility"]),
-            "infrastructure_readiness": round(p.scores["infrastructure"]),
-            "environmental_suitability": round(p.scores["environment"]),
-            "development_potential": round(p.scores["development_potential"]),
-            "transit": round(p.scores["transit"]),
+            "accessibility": round(p.scores.get("accessibility", 0.0)),
+            "infrastructure_readiness": round(p.scores.get("infrastructure", 0.0)),
+            "environmental_suitability": round(p.scores.get("environment", 0.0)),
+            "development_potential": round(p.scores.get("development_potential", 0.0)),
+            "transit": round(p.scores.get("transit", 0.0)),
         },
         "recommended_uses": recommended,
     }

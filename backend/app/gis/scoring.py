@@ -13,11 +13,13 @@ def clamp(v: float, lo: float = 0.0, hi: float = 100.0) -> float:
     return max(lo, min(hi, v))
 
 
-def decay_score(x: float, good: float, bad: float) -> float:
+def decay_score(x: float | None, good: float, bad: float) -> float:
     """Cost → score. 100 at or below `good`, 0 at or above `bad`, linear between.
 
     Used for "smaller is better" quantities such as distance-to-facility.
     """
+    if x is None or not (isinstance(x, (int, float)) and x == x and x < float("inf")):
+        return 0.0
     if x <= good:
         return 100.0
     if x >= bad:

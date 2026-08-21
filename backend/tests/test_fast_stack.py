@@ -104,3 +104,41 @@ def test_bundled_database_is_active():
     status = db_status(ACTIVE_DB_PATH)
     assert status.get("schema_version", 0) >= 4
     assert status.get("parcel_caches", 0) >= 1
+
+
+def test_parcel_detail_and_full_attributes_smoke():
+    with TestClient(app) as client:
+        # Full detail query
+        res = client.get("/api/parcels?city=ahmedabad&detail=full")
+        assert res.status_code == 200
+        feat = res.json()["features"][0]
+        assert "hospital_km" in feat["properties"]
+        assert "transit_km" in feat["properties"]
+        pid = feat["properties"]["parcel_id"]
+
+        # Detail endpoint
+        detail = client.get(f"/api/parcels/{pid}?city=ahmedabad")
+        assert detail.status_code == 200
+        d_json = detail.json()
+        assert d_json["parcel_id"] == pid
+        assert "distances" in d_json
+        assert "scores" in d_json
+
+        # Report PDF generation smoke
+        report = client.post("/api/report", json={"parcel_id": pid, "city": "ahmedabad", "project_type": "hospital"})
+        assert report.status_code == 200
+        assert report.headers["content-type"] == "application/pdf"
+        assert len(report.content) > 1000
+
+
+def test_decay_score_guards():
+    from app.gis.scoring import decay_score
+    import math
+
+    assert decay_score(None, 1.0, 5.0) == 0.0
+    assert decay_score(float("nan"), 1.0, 5.0) == 0.0
+    assert decay_score(float("inf"), 1.0, 5.0) == 0.0
+    assert decay_score(0.5, 1.0, 5.0) == 100.0
+    assert decay_score(6.0, 1.0, 5.0) == 0.0
+    assert math.isclose(decay_score(3.0, 1.0, 5.0), 50.0)
+
