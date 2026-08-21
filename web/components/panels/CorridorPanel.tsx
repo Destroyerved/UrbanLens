@@ -21,6 +21,7 @@ import type { LngLat } from "@/types";
 export default function CorridorPanel() {
   const mapClick = useApp((s) => s.mapClick);
   const setCorridorPath = useApp((s) => s.setCorridorPath);
+  const cityId = useApp((s) => s.city.id);
 
   const [start, setStart] = useState<LngLat | null>(null);
   const [end, setEnd] = useState<LngLat | null>(null);
@@ -42,6 +43,19 @@ export default function CorridorPanel() {
       setEnd(mapClick);
     }
   }, [mapClick]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // A corridor is two points in one district's geometry. Carried into another
+  // district it is not merely stale: the endpoints are longitudes and latitudes
+  // somewhere off the new map, so the line is drawn outside the viewport while
+  // the panel reports the previous district's kilometres and population served
+  // as though they described the one on screen. Clear it on the switch.
+  useEffect(() => {
+    setStart(null);
+    setEnd(null);
+    setResult(null);
+    setError(null);
+    setCorridorPath(null);
+  }, [cityId, setCorridorPath]);
 
   useEffect(() => {
     if (!start || !end) return;

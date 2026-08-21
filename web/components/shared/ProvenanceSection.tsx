@@ -10,6 +10,8 @@ import {
   type ProvenanceReport,
 } from "@/services/conservation";
 import { cn } from "@/lib/utils";
+import { useApp } from "@/lib/store";
+import { withRetry } from "@/lib/api";
 
 /**
  * Where every layer on screen came from.
@@ -23,10 +25,28 @@ import { cn } from "@/lib/utils";
 export function ProvenanceSection() {
   const [data, setData] = useState<ProvenanceReport | null>(null);
   const [open, setOpen] = useState(false);
+  const cityId = useApp((s) => s.city.id);
+  const datasetVersion = useApp((s) => s.datasetVersion);
 
+  // Refetch per city. Fetching once on mount left the previous district's
+  // provenance on screen after a switch, which is worse here than in any other
+  // panel: this section exists to tell a planner which layers are measured for
+  // the city in front of them, so showing another city's answer is not a stale
+  // number but a wrong claim about the data's standing.
+  //
+  // `live` drops a response that arrives after the city moved on. The service
+  // caches per city, so a slow request for the district you just left can
+  // otherwise resolve last and win.
   useEffect(() => {
-    fetchProvenance().then(setData).catch(() => setData(null));
-  }, []);
+    let live = true;
+    setData(null);
+    withRetry(fetchProvenance)
+      .then((d) => { if (live) setData(d); })
+      .catch(() => { if (live) setData(null); });
+    return () => {
+      live = false;
+    };
+  }, [cityId, datasetVersion]);
 
   if (!data) return null;
   const { rollup, layers } = data;
