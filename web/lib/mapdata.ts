@@ -236,7 +236,7 @@ export const THERMAL_BOUNDS: [number, number, number, number] = [68.1757, 20.119
  *  crop from the engine (generated on demand, disk-cached); without one — or
  *  for the composite state view — serves the statewide master PNG.
  *  `updated_at` busts the browser cache when the scene refreshes. */
-export const thermalRasterURL = (city: string | null, updatedAt?: string): string => {
+export const thermalRasterURL = (city: string | null = null, updatedAt?: string): string => {
   const v = updatedAt ? `?v=${encodeURIComponent(updatedAt)}` : "";
   return city
     ? `${API_BASE}/api/thermal/raster?city=${encodeURIComponent(city)}${updatedAt ? `&v=${encodeURIComponent(updatedAt)}` : ""}`
