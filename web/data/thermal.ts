@@ -46,9 +46,36 @@ function emit() {
   for (const l of listeners) l();
 }
 
+/** Fields that consumers actually render. Compared to decide whether the
+ *  store changed at all. */
+function same(a: ThermalStatus, b: ThermalStatus) {
+  return (
+    a.ok === b.ok &&
+    a.date === b.date &&
+    a.updated_at === b.updated_at &&
+    a.scope === b.scope &&
+    a.city === b.city &&
+    a.note === b.note &&
+    a.coverage === b.coverage &&
+    a.master_date === b.master_date &&
+    a.reason === b.reason &&
+    String(a.bounds) === String(b.bounds)
+  );
+}
+
 function setStatus(next: ThermalStatus) {
-  status = next;
+  // Always record the fetch, even when nothing moved, so the poll backs off.
   lastFetchedAt = Date.now();
+
+  // Emitting an equal-but-new object is not free here. useSyncExternalStore
+  // compares snapshots by reference, so a fresh object literal re-renders
+  // every consumer -- and MapCanvas has an effect that depends on `thermal`
+  // AND calls refreshThermalStatus(), which turns that re-render into another
+  // fetch, and that fetch into another re-render. The satellite scene changes
+  // once per pass; the store must not claim otherwise.
+  if (same(status, next)) return;
+
+  status = next;
   emit();
 }
 

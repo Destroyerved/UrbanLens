@@ -187,9 +187,12 @@ export default function MapCanvas() {
     // Toggling the layer back on must deterministically re-pull the raster:
     // a failed/aborted updateImage leaves a blank source behind, and an
     // unchanged URL key would otherwise skip reloading it forever.
-    if (on && !thermalWasOnRef.current) thermalUrlRef.current = null;
+    // Only the off->on transition, not every run. This effect also depends on
+    // `thermal`, so refreshing on each run made the fetch its own trigger.
+    const justTurnedOn = on && !thermalWasOnRef.current;
+    if (justTurnedOn) thermalUrlRef.current = null;
     thermalWasOnRef.current = on;
-    if (on) refreshThermalStatus();
+    if (justTurnedOn) refreshThermalStatus();
     const map = mapRef.current;
     if (!map || !ready || !thermal.date) return;
     const src = map.getSource("thermal-raster") as maplibregl.ImageSource | undefined;
