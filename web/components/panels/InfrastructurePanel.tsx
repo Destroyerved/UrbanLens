@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowRight, Check, Crosshair, X } from "lucide-react";
+import { ArrowRight, Check, Crosshair, X, FileSpreadsheet } from "lucide-react";
 import { PanelShell, Section, LoadingBlock } from "./PanelShell";
 import { MiniScore } from "@/components/shared/ScoreBar";
 import { GlowCard } from "@/components/ui/spotlight-card";
@@ -12,6 +12,7 @@ import { fetchWardGaps, analyzeAccessibility } from "@/services/infrastructure";
 import { WARD_BY_ID } from "@/data/wards";
 import type { AccessibilityReport, GapCategory, WardGap } from "@/types";
 import { cn, formatCompact, scoreTone, toneText } from "@/lib/utils";
+import { downloadInfrastructureExport } from "@/lib/export";
 
 const CATEGORIES: { id: GapCategory; label: string }[] = [
   { id: "healthcare", label: "Health" },
@@ -85,7 +86,20 @@ export default function InfrastructurePanel() {
         </div>
       </Section>
 
-      <Section label="Ward Ranking · Worst First">
+      <Section
+        label="Ward Ranking · Worst First"
+        right={
+          <button
+            type="button"
+            onClick={() => void downloadInfrastructureExport(cityId)}
+            className="glass flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10.5px] font-semibold text-muted-foreground hover:text-foreground transition-all hover:scale-[1.02] active:scale-95 cursor-pointer"
+            title="Download ward gap scores as CSV"
+          >
+            <FileSpreadsheet size={11} className="text-good" />
+            <span>Export CSV</span>
+          </button>
+        }
+      >
         {!sorted ? (
           <LoadingBlock label="Computing ward coverage…" />
         ) : (

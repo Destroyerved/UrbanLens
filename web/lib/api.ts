@@ -85,7 +85,28 @@ export function apiPost<T>(path: string, body: unknown) {
   return request<T>(path, { method: "POST", body: JSON.stringify(body) });
 }
 
-export async function apiPostPdf(path: string, body: unknown): Promise<Blob> {
+export async function apiGetBlob(
+  path: string,
+  params?: Record<string, string | number | boolean | undefined>,
+): Promise<Blob> {
+  let res: Response;
+  try {
+    res = await fetch(url(path, params));
+  } catch (cause) {
+    throw new ApiError(
+      `Cannot reach the spatial engine at ${BASE}. Start it with: cd backend && uvicorn app.main:app --port 8000`,
+      0,
+      path,
+    );
+  }
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new ApiError(text || res.statusText, res.status, path);
+  }
+  return res.blob();
+}
+
+export async function apiPostBlob(path: string, body: unknown): Promise<Blob> {
   let res: Response;
   try {
     res = await fetch(url(path), {
@@ -105,6 +126,10 @@ export async function apiPostPdf(path: string, body: unknown): Promise<Blob> {
     throw new ApiError(text || res.statusText, res.status, path);
   }
   return res.blob();
+}
+
+export async function apiPostPdf(path: string, body: unknown): Promise<Blob> {
+  return apiPostBlob(path, body);
 }
 
 /** Is the engine up? Used to show an actionable message rather than a blank panel. */

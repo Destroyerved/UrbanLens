@@ -142,3 +142,54 @@ def test_decay_score_guards():
     assert decay_score(6.0, 1.0, 5.0) == 0.0
     assert math.isclose(decay_score(3.0, 1.0, 5.0), 50.0)
 
+
+def test_export_endpoints():
+    import json
+
+    with TestClient(app) as client:
+        # 1. Parcels CSV
+        csv_res = client.get("/api/export/parcels?city=ahmedabad&format=csv")
+        assert csv_res.status_code == 200
+        assert "text/csv" in csv_res.headers["content-type"]
+        assert "attachment; filename=\"urbanlens-parcels-ahmedabad.csv\"" in csv_res.headers["content-disposition"]
+        text = csv_res.content.decode("utf-8-sig")
+        assert "parcel_id" in text
+        assert "ownership" in text
+        assert "zoning" in text
+
+        # 2. Parcels GeoJSON
+        geojson_res = client.get("/api/export/parcels?city=ahmedabad&format=geojson")
+        assert geojson_res.status_code == 200
+        assert "attachment; filename=\"urbanlens-parcels-ahmedabad.geojson\"" in geojson_res.headers["content-disposition"]
+        gj = json.loads(geojson_res.content)
+        assert gj["type"] == "FeatureCollection"
+        assert len(gj["features"]) > 1000
+
+        # 3. Infrastructure gaps CSV
+        infra_res = client.get("/api/export/infrastructure?city=ahmedabad")
+        assert infra_res.status_code == 200
+        assert "text/csv" in infra_res.headers["content-type"]
+        infra_text = infra_res.content.decode("utf-8-sig")
+        assert "ward_code" in infra_text
+        assert "healthcare" in infra_text
+
+        # 4. Equity CSV
+        equity_res = client.get("/api/export/equity?city=ahmedabad")
+        assert equity_res.status_code == 200
+        assert "text/csv" in equity_res.headers["content-type"]
+        eq_text = equity_res.content.decode("utf-8-sig")
+        assert "ward_code" in eq_text
+        assert "shortfall" in eq_text
+
+        # 5. Site selection results CSV
+        site_res = client.post(
+            "/api/export/sites?city=ahmedabad",
+            json={"project_type": "hospital", "limit": 5},
+        )
+        assert site_res.status_code == 200
+        assert "text/csv" in site_res.headers["content-type"]
+        site_text = site_res.content.decode("utf-8-sig")
+        assert "rank" in site_text
+        assert "score" in site_text
+
+

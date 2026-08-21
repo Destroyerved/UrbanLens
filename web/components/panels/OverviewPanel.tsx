@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { TrendingUp, AlertTriangle, Landmark, ArrowRight } from "lucide-react";
+import { TrendingUp, AlertTriangle, Landmark, ArrowRight, Download, FileSpreadsheet, Layers } from "lucide-react";
 import { PanelShell, Section, LoadingBlock } from "./PanelShell";
 import { AnimatedNumber } from "@/components/shared/AnimatedNumber";
 import { GlowCard } from "@/components/ui/spotlight-card";
@@ -9,6 +9,7 @@ import { fetchCityKpis } from "@/services/infrastructure";
 import { useApp } from "@/lib/store";
 import { formatCompact, formatNumber } from "@/lib/utils";
 import { ProvenanceSection } from "@/components/shared/ProvenanceSection";
+import { downloadParcelsExport } from "@/lib/export";
 
 type Kpis = Awaited<ReturnType<typeof fetchCityKpis>>;
 
@@ -256,6 +257,27 @@ export default function OverviewPanel() {
                 </button>
               </div>
             </GlowCard>
+          </Section>
+
+          <Section label="Export GIS Data">
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => void downloadParcelsExport("csv", city.id)}
+                className="glass flex items-center justify-center gap-1.5 h-9 rounded-xl text-[11.5px] font-semibold text-foreground transition-all hover:scale-[1.02] hover:bg-surface-3 active:scale-95 cursor-pointer"
+              >
+                <FileSpreadsheet size={13} className="text-good shrink-0" />
+                <span>Parcels (CSV)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => void downloadParcelsExport("geojson", city.id)}
+                className="glass flex items-center justify-center gap-1.5 h-9 rounded-xl text-[11.5px] font-semibold text-foreground transition-all hover:scale-[1.02] hover:bg-surface-3 active:scale-95 cursor-pointer"
+              >
+                <Layers size={13} className="text-accent shrink-0" />
+                <span>Parcels (GeoJSON)</span>
+              </button>
+            </div>
           </Section>
 
           <ProvenanceSection />

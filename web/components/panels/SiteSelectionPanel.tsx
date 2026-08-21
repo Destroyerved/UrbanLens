@@ -18,6 +18,7 @@ import {
   School,
   Store,
   Trees,
+  FileSpreadsheet,
 } from "lucide-react";
 import { PanelShell, Section, EmptyBlock } from "./PanelShell";
 import { Slider } from "@/components/ui/slider";
@@ -28,7 +29,7 @@ import { AnimatedNumber } from "@/components/shared/AnimatedNumber";
 import { GlowCard } from "@/components/ui/spotlight-card";
 import { useApp } from "@/lib/store";
 import { WARD_BY_ID } from "@/data/wards";
-import { downloadRecommendationPdf } from "@/lib/export";
+import { downloadRecommendationPdf, downloadSiteSelectionExport } from "@/lib/export";
 import type { ProjectType, SuitabilityWeights } from "@/types";
 import { cn, scoreTone, toneText } from "@/lib/utils";
 
@@ -211,21 +212,38 @@ export default function SiteSelectionPanel() {
           label={`Best Sites · ${candidates.length} candidates`}
           className="mt-4"
           right={
-            candidates.length >= 2 ? (
+            <div className="flex items-center gap-1.5">
               <button
                 type="button"
-                onClick={() => setCompareOpen(!compareOpen)}
-                className={cn(
-                  "px-2.5 py-1 text-[11px] font-bold rounded-full border transition-all flex items-center gap-1.5 shadow-sm cursor-pointer",
-                  compareOpen
-                    ? "bg-accent text-accent-foreground border-accent shadow-[0_0_12px_rgba(56,189,248,0.4)]"
-                    : "glass hover:bg-accent/15 border-white/20 dark:border-white/10 text-muted-foreground hover:text-foreground"
-                )}
+                onClick={() =>
+                  void downloadSiteSelectionExport({
+                    projectType: siteProject,
+                    constraints,
+                    weights,
+                  })
+                }
+                className="glass hover:bg-surface-3 border-white/20 dark:border-white/10 text-muted-foreground hover:text-foreground px-2 py-1 text-[10.5px] font-semibold rounded-full border transition-all flex items-center gap-1 shadow-sm cursor-pointer"
+                title="Download candidate evaluation results as CSV"
               >
-                <Scale size={13} />
-                <span>Compare</span>
+                <FileSpreadsheet size={11} className="text-good" />
+                <span>Export CSV</span>
               </button>
-            ) : undefined
+              {candidates.length >= 2 && (
+                <button
+                  type="button"
+                  onClick={() => setCompareOpen(!compareOpen)}
+                  className={cn(
+                    "px-2.5 py-1 text-[11px] font-bold rounded-full border transition-all flex items-center gap-1.5 shadow-sm cursor-pointer",
+                    compareOpen
+                      ? "bg-accent text-accent-foreground border-accent shadow-[0_0_12px_rgba(56,189,248,0.4)]"
+                      : "glass hover:bg-accent/15 border-white/20 dark:border-white/10 text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <Scale size={13} />
+                  <span>Compare</span>
+                </button>
+              )}
+            </div>
           }
         >
           <div className="space-y-3">

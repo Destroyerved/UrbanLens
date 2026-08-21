@@ -19,6 +19,7 @@ from app.data.loader import (
     get_vegetation,
     get_water,
 )
+from app.api import export as export_api
 from app.gis import analysis
 from app.gis import conservation as conservation_gis
 from app.gis import corridor as corridor_gis
@@ -725,6 +726,85 @@ def generate_report(body: ReportBody, city: str | None = Query(default=None)) ->
     return Response(
         content=pdf,
         media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+# --------------------------------------------------------------------------
+# Exports
+# --------------------------------------------------------------------------
+
+
+@router.get("/export/parcels")
+def export_parcels(
+    format: str = Query(default="csv", pattern="^(csv|geojson)$"),
+    city: str | None = Query(default=None),
+) -> Response:
+    """Export complete parcel inventory with planning attributes (CSV or GeoJSON)."""
+    ds = _dataset(city)
+    if format == "geojson":
+        content = export_api.export_parcels_geojson(ds.city.id)
+        media_type = "application/geo+json"
+        filename = f"urbanlens-parcels-{ds.city.id}.geojson"
+    else:
+        content = export_api.export_parcels_csv(ds.city.id)
+        media_type = "text/csv; charset=utf-8"
+        filename = f"urbanlens-parcels-{ds.city.id}.csv"
+
+    return Response(
+        content=content,
+        media_type=media_type,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get("/export/infrastructure")
+def export_infrastructure(city: str | None = Query(default=None)) -> Response:
+    """Export ward infrastructure gap analysis as CSV."""
+    ds = _dataset(city)
+    content = export_api.export_gaps_csv(ds.city.id)
+    filename = f"urbanlens-infrastructure-gaps-{ds.city.id}.csv"
+    return Response(
+        content=content,
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get("/export/equity")
+def export_equity(city: str | None = Query(default=None)) -> Response:
+    """Export service equity and deprivation report as CSV."""
+    ds = _dataset(city)
+    content = export_api.export_equity_csv(ds.city.id)
+    filename = f"urbanlens-equity-{ds.city.id}.csv"
+    return Response(
+        content=content,
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.post("/export/sites")
+def export_sites(body: SiteSearchBody, city: str | None = Query(default=None)) -> Response:
+    """Export site selection candidate evaluation results as CSV."""
+    ds = _dataset(city)
+    _project_or_400(body.project_type)
+    search_res = analysis.search_sites(
+        ds.city.id,
+        body.project_type,
+        minimum_area_hectares=body.minimum_area_hectares,
+        government_land=body.government_land,
+        low_flood_risk=body.low_flood_risk,
+        max_road_distance_km=body.max_road_distance_km,
+        min_unserved_population=body.min_unserved_population,
+        weights=body.weights,
+        limit=body.limit,
+    )
+    content = export_api.export_sites_csv(search_res.get("results", []))
+    filename = f"urbanlens-site-selection-{ds.city.id}-{body.project_type}.csv"
+    return Response(
+        content=content,
+        media_type="text/csv; charset=utf-8",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 

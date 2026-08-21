@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Users } from "lucide-react";
+import { Users, FileSpreadsheet } from "lucide-react";
 import { PanelShell, Section, LoadingBlock } from "./PanelShell";
 import { GlowCard } from "@/components/ui/spotlight-card";
 import { useApp } from "@/lib/store";
 import { withRetry } from "@/lib/api";
 import { fetchEquity, SERVICE_LABEL, type EquityReport } from "@/services/equity";
 import { cn, formatCompact } from "@/lib/utils";
+import { downloadEquityExport } from "@/lib/export";
 
 /** Gini bands, phrased for a planner rather than an economist. */
 function giniLabel(g: number): { text: string; tone: string } {
@@ -66,7 +67,20 @@ export default function EquityPanel() {
         </div>
       }
     >
-      <Section label="Headline">
+      <Section
+        label="Headline"
+        right={
+          <button
+            type="button"
+            onClick={() => void downloadEquityExport(cityId)}
+            className="glass flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10.5px] font-semibold text-muted-foreground hover:text-foreground transition-all hover:scale-[1.02] active:scale-95 cursor-pointer"
+            title="Download equity report as CSV"
+          >
+            <FileSpreadsheet size={11} className="text-good" />
+            <span>Export CSV</span>
+          </button>
+        }
+      >
         <div className="grid grid-cols-2 gap-2">
           <GlowCard className="rounded-2xl p-3">
             <div
