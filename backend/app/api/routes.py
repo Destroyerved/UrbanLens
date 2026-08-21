@@ -488,6 +488,38 @@ def thermal_raster(city: str | None = Query(default=None)) -> Response:
     raise HTTPException(status_code=404, detail="no thermal raster published yet")
 
 
+@router.get("/thermal/points")
+def thermal_points(city: str = Query(...)) -> dict:
+    """Heat-surface GeoJSON for one district: sample points + boundary.
+
+    Points are sampled from the district's cached crop (same data the raster
+    shows), each carrying ``v`` — its brightness percentile among that scene's
+    real readings — which drives the client-side heatmap weighting. The
+    district's ward-union polygon is included as a Polygon feature so the map
+    can outline exactly what the glow covers. 404 for statewide scope: the
+    composite view keeps its plain raster overlay by design.
+    """
+    from app.thermal import city_scene, heat_featurecollection
+
+    try:
+        scene = city_scene(city)
+    except Exception:  # noqa: BLE001 — a broken crop must not 500 the map
+        scene = None
+    if not scene or scene.get("scope") != "district" or not scene.get("bounds"):
+        raise HTTPException(status_code=404, detail="no district heat surface")
+
+    try:
+        fc = heat_featurecollection(city, scene["date"], tuple(scene["bounds"]))
+    except (FileNotFoundError, ValueError) as exc:
+        raise HTTPException(
+            status_code=404, detail=f"heat surface unavailable: {exc}"
+        ) from exc
+    fc["date"] = scene["date"]
+    fc["coverage"] = scene.get("coverage")
+    fc["note"] = scene.get("note")
+    return fc
+
+
 @router.get("/facilities")
 def facilities(
     city: str | None = Query(default=None),

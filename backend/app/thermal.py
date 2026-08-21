@@ -25,6 +25,7 @@ import re
 import time
 import urllib.request
 from datetime import datetime, timezone
+from functools import lru_cache
 from pathlib import Path
 
 import numpy as np
@@ -61,9 +62,13 @@ CITY_PAD_DEG = 0.02
 # visually empty and reads as a broken feature, so it is refused — first in
 # favour of a previous day's clearer pass, then the statewide scene.
 MIN_CITY_ALPHA_FRAC = 0.15
+# Coverage a pass needs before the district view looks solid rather than
+# moth-eaten. Today's crop is served as-is above this; below it the scene
+# walks back through previous days looking for a cleaner one.
+GOOD_COVERAGE_FRAC = 0.75
 # How many previous daily passes the last-clear-pass fallback may probe (small
-# per-district fetches, ~100 KB each) before giving up and going statewide.
-CLEAR_PASS_LOOKBACK_DAYS = 5
+# per-district fetches, ~100 KB each) before settling for the best day seen.
+CLEAR_PASS_LOOKBACK_DAYS = 30
 # Pixel size of a per-district probe window. ~512 px over one district keeps
 # each probe well under a quarter megabyte while comfortably exceeding the
 # district's ward-envelope pixel count at native ~1 km resolution.
@@ -325,10 +330,15 @@ def _convert_to_png(tiff: bytes, dest: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
-def _ward_bbox(city_id: str) -> tuple[float, float, float, float] | None:
-    """Lon/lat envelope of the district's ward polygons (the study area shown
-    on the map), padded slightly. Falls back to the config bbox upstream."""
+def _ward_geometry(city_id: str):
+    """Unary union of the district's ward/taluka polygons in lon/lat, or None.
+
+    This is the true administrative shape of the study area — used both for
+    the padded crop envelope and, via rasterization, to alpha-mask crops so
+    the overlay only ever appears inside the district's boundaries.
+    """
     from shapely.geometry import shape
+    from shapely.ops import unary_union
 
     from app.data.loader import get_dataset
 
@@ -336,22 +346,72 @@ def _ward_bbox(city_id: str) -> tuple[float, float, float, float] | None:
         ds = get_dataset(city_id)
     except Exception:  # noqa: BLE001 — no wards means the caller falls back
         return None
-    boxes = []
+    polys = []
     for f in getattr(ds, "wards", None) or []:
         geom = f.get("geometry") if isinstance(f, dict) else None
         if not geom:
             continue
         try:
-            boxes.append(shape(geom).bounds)
-        except Exception:  # noqa: BLE001 — one bad polygon must not sink the bbox
+            polys.append(shape(geom))
+        except Exception:  # noqa: BLE001 — one bad polygon must not sink the union
             continue
-    if not boxes:
+    if not polys:
         return None
-    w = min(b[0] for b in boxes) - CITY_PAD_DEG
-    s = min(b[1] for b in boxes) - CITY_PAD_DEG
-    e = max(b[2] for b in boxes) + CITY_PAD_DEG
-    n = max(b[3] for b in boxes) + CITY_PAD_DEG
-    return (w, s, e, n)
+    return unary_union(polys)
+
+
+def _ward_bbox(city_id: str) -> tuple[float, float, float, float] | None:
+    """Lon/lat envelope of the district's ward polygons (the study area shown
+    on the map), padded slightly. Falls back to the config bbox upstream."""
+    geom = _ward_geometry(city_id)
+    if geom is None:
+        return None
+    w, s, e, n = geom.bounds
+    return (
+        w - CITY_PAD_DEG,
+        s - CITY_PAD_DEG,
+        e + CITY_PAD_DEG,
+        n + CITY_PAD_DEG,
+    )
+
+
+def _mask_to_district(
+    arr: np.ndarray,
+    bounds: tuple[float, float, float, float],
+    geom,
+):
+    """Zero the alpha channel outside the district's polygons.
+
+    The map renders these PNGs as plain image overlays; anything transparent
+    shows the basemap instead. Rasterizing the ward union onto the crop's own
+    affine keeps the mask pixel-registered with the data — the layer is then
+    physically confined to the district's shape, at ~150 m/px edge fidelity.
+    Applied before the contrast stretch so per-district statistics describe
+    district pixels only.
+    """
+    if geom is None or arr.ndim != 3 or arr.shape[0] < 4:
+        return arr
+    try:
+        import rasterio
+        from rasterio.features import rasterize
+        from rasterio.transform import from_bounds as tf_from_bounds
+
+        w, s, e, n = bounds
+        tr = tf_from_bounds(w, s, e, n, width=arr.shape[2], height=arr.shape[1])
+        mask = rasterize(
+            [(geom, 1)],
+            out_shape=(arr.shape[1], arr.shape[2]),
+            transform=tr,
+            fill=0,
+            default_value=1,
+            dtype="uint8",
+            all_touched=True,
+        )
+        arr = arr.copy()
+        arr[3] = (arr[3].astype(np.uint8) * mask).astype(np.uint8)
+    except Exception:  # noqa: BLE001 — an unmaskable crop still serves, square but honest
+        pass
+    return arr
 
 
 def _crop_master(bbox: tuple[float, float, float, float]):
@@ -476,16 +536,18 @@ def _clear_pass_scene(
     city_id: str,
     bbox: tuple[float, float, float, float],
     meta: dict,
+    geom,
 ) -> dict | None:
-    """Last-clear-pass fallback: walk back day by day until this district has a
-    usable reading of its own.
+    """Best-recent-pass fallback: walk back day by day for a cleaner view of
+    this district than today's pass provides.
 
-    Cloud is per-day and per-district; today's monsoon hole does not mean the
-    district has no heat data at all. Each probe is a tiny district-sized
-    fetch, cached under the same ``city_<id>_<date>`` names as ordinary crops.
-    The payload keeps ``date`` at the clear pass it actually shows and says so
-    in ``note``/``master_date`` — never passing old data off as today's.
-    Returns None when every probed day also fails.
+    Cloud is per-day and per-district; a monsoon hole over one district does
+    not mean it has no heat data at all. Each probe is a tiny district-sized
+    fetch (~200 KB), cached under the same ``city_<id>_<date>`` names as
+    ordinary crops. The first probed day at GOOD_COVERAGE_FRAC wins outright;
+    otherwise the clearest day seen is kept. Every payload keeps ``date`` at
+    the pass actually shown and says so in ``note``/``master_date`` — old data
+    never poses as today's. Returns None when nothing clears the floor.
     """
     master_date = meta["date"]
     try:
@@ -495,6 +557,7 @@ def _clear_pass_scene(
     except ValueError:
         return None
 
+    best = None  # (coverage, payload)
     for offset in range(1, CLEAR_PASS_LOOKBACK_DAYS + 1):
         probe_date = (d0 - timedelta(days=offset)).isoformat()
         png = THERMAL_DIR / f"city_{city_id}_{probe_date}.png"
@@ -504,7 +567,10 @@ def _clear_pass_scene(
         if png.exists() and sidecar.exists():
             try:
                 with sidecar.open("r", encoding="utf-8") as fh:
-                    payload = json.load(fh)
+                    cached = json.load(fh)
+                # Self-heal: pre-masking crops regenerate so boundaries appear.
+                if cached.get("masked") and cached.get("ok"):
+                    payload = cached
             except (OSError, ValueError):
                 payload = None
 
@@ -514,11 +580,21 @@ def _clear_pass_scene(
                 continue
             if arr.ndim != 3 or arr.shape[0] < 4:
                 continue
+            # Some days GIBS answers with an image whose georeferencing does
+            # not match the requested window; such a crop describes the wrong
+            # area entirely and must not be served as this district.
+            rw, rs, re_, rn = bounds
+            ew, es, ee, en = bbox
+            if any(abs(a - b) > 0.25 for a, b in ((rw, ew), (rs, es), (re_, ee), (rn, en))):
+                continue
             coverage = float((arr[3] > 0).mean())
             if coverage < MIN_CITY_ALPHA_FRAC:
                 continue
             if float(arr[:3].astype(np.int16).std()) < 1.0:
                 continue
+            arr = _mask_to_district(arr, bounds, geom)
+            if not bool((arr[3] > 0).any()):
+                continue  # mask emptied the frame — bounds/geometry disagree
             _write_png(_stretch_rgb(arr), png)
             payload = {
                 "ok": True,
@@ -529,6 +605,7 @@ def _clear_pass_scene(
                 "city": city_id,
                 "scope": "district",
                 "coverage": round(coverage, 4),
+                "masked": True,
                 "resolution_note": "MODIS Terra LST (day), ~1 km native resolution; colours are relative thermal intensity",
                 "note": (
                     f"today's pass ({master_date}) is clouded here — showing this "
@@ -542,8 +619,13 @@ def _clear_pass_scene(
                 os.replace(tmp, sidecar)
             except OSError:
                 pass
-        return payload
-    return None
+
+        cov = float(payload["coverage"])
+        if best is None or cov > best[0]:
+            best = (cov, payload)
+        if cov >= GOOD_COVERAGE_FRAC:
+            return payload
+    return best[1] if best and best[0] >= MIN_CITY_ALPHA_FRAC else None
 
 
 def city_scene(city_id: str) -> dict | None:
@@ -552,10 +634,13 @@ def city_scene(city_id: str) -> dict | None:
 
     Every payload carries ``coverage`` — the fraction of the district the
     raster actually has data for — because MODIS LST Day is optical and monsoon
-    cloud punches uneven holes. A district below MIN_CITY_ALPHA_FRAC first tries
-    its most recent clear pass (small dated probes), then falls back to the
-    statewide scene with an honest note. Returns ``None`` only when no district
-    view can be framed at all (unknown id, missing geometry, no master yet).
+    cloud punches uneven holes. Crops are alpha-masked to the district's ward
+    boundaries so the overlay can never render outside them. Quality ladder:
+    today's pass at GOOD_COVERAGE_FRAC or better serves directly; a weaker one
+    triggers small dated probes over the last CLEAR_PASS_LOOKBACK_DAYS days,
+    keeping the clearest reading found; only when nothing clears the floor does
+    the view degrade to the statewide scene with an honest note. Returns
+    ``None`` only when no district view can be framed at all.
     """
     meta = read_meta()
     if not meta or not meta.get("ok") or not meta.get("date"):
@@ -581,6 +666,8 @@ def city_scene(city_id: str) -> dict | None:
             "note": f"{city_id}: {reason} — showing the statewide scene",
         }
 
+    geom = _ward_geometry(city_id)
+
     from app.core.cache import singleflight
 
     with singleflight(("thermal-city", city_id, date)):
@@ -590,7 +677,11 @@ def city_scene(city_id: str) -> dict | None:
         if png.exists() and sidecar.exists():
             try:
                 with sidecar.open("r", encoding="utf-8") as fh:
-                    return json.load(fh)
+                    cached = json.load(fh)
+                # Self-heal: pre-masking square crops regenerate on demand so
+                # every district eventually gains its true boundary shape.
+                if cached.get("masked") and cached.get("ok"):
+                    return cached
             except (OSError, ValueError):
                 pass  # regenerate below
 
@@ -610,18 +701,31 @@ def city_scene(city_id: str) -> dict | None:
             return state_fallback("master scene unreadable")
 
         coverage = float((arr[3] > 0).mean()) if arr.shape[0] >= 4 else None
-        if coverage is not None and coverage < MIN_CITY_ALPHA_FRAC:
-            alt = _clear_pass_scene(city_id, bbox, meta)
-            if alt is not None:
-                return alt
-            lookback = CLEAR_PASS_LOOKBACK_DAYS
-            return state_fallback(
-                f"only {coverage:.0%} clear on {date} and none of the last "
-                f"{lookback} days had a usable reading either (cloud)"
-            )
+        solid_today = coverage is not None and coverage >= GOOD_COVERAGE_FRAC
+        weak_today = coverage is not None and coverage < MIN_CITY_ALPHA_FRAC
+
+        alt = None
+        if coverage is not None and not solid_today:
+            alt = _clear_pass_scene(city_id, bbox, meta, geom)
+            if weak_today and alt is None:
+                lookback = CLEAR_PASS_LOOKBACK_DAYS
+                return state_fallback(
+                    f"only {coverage:.0%} clear on {date} and none of the last "
+                    f"{lookback} days had a usable reading either (cloud)"
+                )
+            if alt is not None and coverage is not None:
+                alt_cov = float(alt.get("coverage") or 0.0)
+                if alt_cov > coverage:
+                    # The clearest recent day beats today's patchy pass — serve
+                    # it, honestly dated, and keep its cache for tomorrow.
+                    return alt
+
         if float(arr[:3].astype(np.int16).std()) < 1.0:
             return state_fallback("scene has no usable temperature variation")
 
+        arr = _mask_to_district(arr, bounds, geom)
+        if not bool((arr[3] > 0).any()):
+            arr = _crop_master(bbox)[0]  # mask/geometry disagreed; serve unmasked
         arr = _stretch_rgb(arr)
         _write_png(arr, png)
 
@@ -634,22 +738,32 @@ def city_scene(city_id: str) -> dict | None:
             "city": city_id,
             "scope": "district",
             "coverage": round(coverage, 4) if coverage is not None else None,
+            "masked": True,
             "resolution_note": "MODIS Terra LST (day), ~1 km native resolution; colours are relative thermal intensity",
         }
+        if not solid_today:
+            payload["note"] = (
+                f"today's pass ({date}) is patchy here "
+                f"({coverage:.0%} clear) — the clearest of the last "
+                f"{CLEAR_PASS_LOOKBACK_DAYS} days shown"
+            )
+
         tmp = sidecar.with_suffix(".tmp")
         with tmp.open("w", encoding="utf-8") as fh:
             json.dump(payload, fh)
         os.replace(tmp, sidecar)
 
         # Prune crops from earlier scenes so the directory cannot grow one file
-        # per district per day forever. Only files for THIS district are
-        # removed, and only after the current pair is durably in place.
-        for old in THERMAL_DIR.glob(f"city_{city_id}_*"):
-            if old.name not in (png.name, sidecar.name):
-                try:
-                    old.unlink()
-                except OSError:
-                    pass
+        # per district per day forever — but only after a solid today crop:
+        # while a district rides its historical passes, those dated caches are
+        # exactly what tomorrow's ladder will reuse.
+        if solid_today:
+            for old in THERMAL_DIR.glob(f"city_{city_id}_*"):
+                if old.name not in (png.name, sidecar.name):
+                    try:
+                        old.unlink()
+                    except OSError:
+                        pass
 
         return payload
 
@@ -661,6 +775,94 @@ def city_raster_path(city_id: str) -> Path | None:
         return None
     png = THERMAL_DIR / f"city_{city_id}_{scene['date']}.png"
     return png if png.exists() else None
+
+
+_HEAT_TARGET_SAMPLES = 6000
+
+
+@lru_cache(maxsize=64)
+def _heat_geojson_cached(
+    city_id: str, date: str, bounds: tuple[float, float, float, float]
+) -> dict:
+    """Memoized build of the district's heat surface GeoJSON.
+
+    Points are sampled straight from the cached crop PNG — the stretch is a
+    monotone per-channel rescale, so brightness rank of the rendered pixels is
+    the honest ordering of the underlying readings. The district's ward-union
+    polygon rides along as a Polygon feature so the client can outline it.
+    """
+    png = THERMAL_DIR / f"city_{city_id}_{date}.png"
+    if not png.exists():
+        raise FileNotFoundError(png)
+
+    from PIL import Image
+
+    img = np.asarray(Image.open(png).convert("RGBA"), dtype=np.uint8)
+    h, w = img.shape[:2]
+    opaque = img[..., 3] > 0
+    if not opaque.any():
+        raise ValueError("crop has no opaque pixels")
+
+    lum = (
+        img[..., 0].astype(np.float32) * 0.299
+        + img[..., 1].astype(np.float32) * 0.587
+        + img[..., 2].astype(np.float32) * 0.114
+    )
+    vals = lum[opaque]
+    order = np.argsort(vals, kind="stable")
+    ranks = np.empty(vals.shape[0], dtype=np.float32)
+    ranks[order] = np.linspace(0.0, 1.0, vals.shape[0], dtype=np.float32)
+
+    # Uniform stride over the row-major opaque pixel list keeps sampling
+    # spatially even while capping payload size (~_HEAT_TARGET_SAMPLES points).
+    step = max(2, int(round(vals.shape[0] / _HEAT_TARGET_SAMPLES)))
+
+    import rasterio
+    from rasterio.transform import xy as tf_xy
+
+    w_, s_, e_, n_ = bounds
+    tr = rasterio.transform.from_bounds(w_, s_, e_, n_, width=w, height=h)
+
+    features: list[dict] = []
+    ys, xs = np.nonzero(opaque)
+    for k in range(0, ys.shape[0], step):
+        yy = int(ys[k])
+        xx = int(xs[k])
+        lon, lat = tf_xy(tr, xx + 0.5, yy + 0.5)
+        features.append(
+            {
+                "type": "Feature",
+                "geometry": {
+                    "type": "Point",
+                    "coordinates": [round(float(lon), 6), round(float(lat), 6)],
+                },
+                "properties": {"v": round(float(ranks[k]), 3)},
+            }
+        )
+
+    geom = _ward_geometry(city_id)
+    if geom is not None and not geom.is_empty:
+        try:
+            from shapely.geometry import mapping
+
+            features.append(
+                {
+                    "type": "Feature",
+                    "geometry": mapping(geom.simplify(0.0015)),
+                    "properties": {"boundary": True},
+                }
+            )
+        except Exception:  # noqa: BLE001 — outline is cosmetic, never fatal
+            pass
+
+    return {"type": "FeatureCollection", "features": features}
+
+
+def heat_featurecollection(
+    city_id: str, date: str, bounds: tuple[float, float, float, float]
+) -> dict:
+    """Public wrapper — see ``_heat_geojson_cached``."""
+    return _heat_geojson_cached(city_id, date, tuple(bounds))
 
 
 def _acquire_lock() -> bool:
