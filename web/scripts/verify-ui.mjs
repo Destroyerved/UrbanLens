@@ -46,6 +46,7 @@ const IGNORED_CONSOLE = [
   // console copy too would double-report and, for third-party assets, fail the
   // run on something the network side deliberately excused.
   /^Failed to load resource: the server responded with a status of \d+/i,
+  /AbortError/i,
 ];
 
 const consoleErrors = [];
@@ -157,7 +158,7 @@ step("Overview — engine KPIs");
   check(!/computing city intelligence/i.test(t), "KPIs resolved (not stuck loading)");
   check(!/failed to load/i.test(t), "No KPI load failure");
   // Population must be a real figure, not a zero placeholder.
-  const pop = t.match(/([\d.]+)M\s*\n?\s*Population/);
+  const pop = t.match(/([\d.]+)M\s*\n?\s*(?:Est\.\s*)?population/i);
   check(!!pop && parseFloat(pop[1]) > 0, "Population KPI is non-zero", pop?.[1]);
   check(/glis parcels tracked/i.test(t), "Parcel count KPI present");
 }

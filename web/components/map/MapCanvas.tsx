@@ -195,7 +195,10 @@ export default function MapCanvas() {
       if (thermalUrlRef.current === key) return;
       thermalUrlRef.current = key;
       try {
-        src.updateImage({ url, coordinates: thermalCorners(thermal.bounds) });
+        const updatePromise = src.updateImage({ url, coordinates: thermalCorners(thermal.bounds) });
+        if (updatePromise && typeof (updatePromise as any).catch === "function") {
+          (updatePromise as any).catch(() => {});
+        }
       } catch {
         // updateImage aborts any in-flight image load; ignore if it throws
         // during mount/teardown (e.g. WebGL context already lost).
@@ -306,12 +309,10 @@ export default function MapCanvas() {
       map.addSource("corridor", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
       map.addSource("thermal-raster", {
         type: "image",
-        // MapLibre's image source decoder does not support GIFs. A tiny
-        // transparent PNG keeps the source valid until a real LST raster is
-        // requested, without an eager /static/thermal request.
-        url: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL5nAAAAABJRU5ErkJggg==",
+        url: thermalRasterURL(),
         coordinates: thermalCorners(THERMAL_STATUS().bounds),
       });
+      thermalUrlRef.current = `${thermalRasterURL()}|${(THERMAL_STATUS().bounds ?? THERMAL_BOUNDS).join(",")}`;
       // Swallow maplibre's ErrorEvent logging: updateImage() aborts the
       // initial load() on mount, which fires an 'error' event with no
       // listeners and gets console.error'd by maplibre's Evented.

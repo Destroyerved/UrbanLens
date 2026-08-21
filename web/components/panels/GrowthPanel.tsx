@@ -66,7 +66,7 @@ export default function GrowthPanel() {
     } else {
       fetchTransitions(from, year).then((t) => setTransitions(t.slice(0, 5)));
     }
-  }, [year]);
+  }, [year, cityId, datasetVersion]);
 
   const chartData = useMemo(
     () =>

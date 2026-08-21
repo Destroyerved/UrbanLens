@@ -57,7 +57,8 @@ export function smoothstep(edge0: number, edge1: number, x: number) {
 
 /** Shortest signed angular difference, so the globe never spins the long way. */
 export function shortestAngle(from: number, to: number) {
-  return ((to - from + Math.PI) % (Math.PI * 2)) - Math.PI;
+  const diff = (to - from) % (Math.PI * 2);
+  return ((diff + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
 }
 
 /**

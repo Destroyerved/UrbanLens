@@ -79,6 +79,19 @@ process.on("SIGTERM", () => shutdown(0));
 console.log(`${COLOURS.dim}UrbanLens — engine :8000  ·  app :3000${COLOURS.off}`);
 console.log(`${COLOURS.dim}Open http://localhost:3000 and click the globe to enter.${COLOURS.off}\n`);
 
-const python = process.env.PYTHON ?? "python";
+import { execSync } from "node:child_process";
+
+function resolvePython() {
+  if (process.env.PYTHON) return process.env.PYTHON;
+  for (const cmd of ["python3", "python"]) {
+    try {
+      execSync(`${cmd} --version`, { stdio: "ignore" });
+      return cmd;
+    } catch {}
+  }
+  return "python3";
+}
+
+const python = resolvePython();
 run("engine", python, ["-m", "uvicorn", "app.main:app", "--port", "8000"], BACKEND);
 run("web", "npm", ["run", "dev"], WEB);

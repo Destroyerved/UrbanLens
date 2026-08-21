@@ -37,23 +37,6 @@ export default function GujaratOverlay({
   const outlineGeometry = useMemo(() => sphereRibbon(GUJARAT_OUTLINE, 0.0035, 1.0045), []);
   const haloGeometry = useMemo(() => sphereRibbon(GUJARAT_OUTLINE, 0.016, 1.0035), []);
 
-  useEffect(
-    () => () => {
-      outlineGeometry.dispose();
-      haloGeometry.dispose();
-    },
-    [outlineGeometry, haloGeometry]
-  );
-
-  const glowPosition = useMemo(
-    () => latLngToVec3(GUJARAT_CENTER[1], GUJARAT_CENTER[0], 1.002),
-    []
-  );
-  const indiaPosition = useMemo(
-    () => latLngToVec3(INDIA_CENTER[1], INDIA_CENTER[0], 1.002),
-    []
-  );
-
   /** a small graticule patch clipped to the Gujarat bounding box */
   const gridGeometry = useMemo(() => {
     const pts: number[] = [];
@@ -76,6 +59,24 @@ export default function GujaratOverlay({
     g.setAttribute("position", new THREE.Float32BufferAttribute(pts, 3));
     return g;
   }, []);
+
+  useEffect(
+    () => () => {
+      outlineGeometry.dispose();
+      haloGeometry.dispose();
+      gridGeometry.dispose();
+    },
+    [outlineGeometry, haloGeometry, gridGeometry]
+  );
+
+  const glowPosition = useMemo(
+    () => latLngToVec3(GUJARAT_CENTER[1], GUJARAT_CENTER[0], 1.002),
+    []
+  );
+  const indiaPosition = useMemo(
+    () => latLngToVec3(INDIA_CENTER[1], INDIA_CENTER[0], 1.002),
+    []
+  );
 
   useFrame(({ clock }) => {
     const layers = layersForProgress(globeState.progress);

@@ -76,8 +76,8 @@ export function computeCoverage(
     if (d <= radiusKm) coveredPop += cell.population;
   }
   return {
-    coveragePct: Math.round((coveredPop / totalPop) * 100),
-    avgDistKm: Math.round((distSum / totalPop) * 10) / 10,
+    coveragePct: totalPop > 0 ? Math.round((coveredPop / totalPop) * 100) : 0,
+    avgDistKm: totalPop > 0 ? Math.round((distSum / totalPop) * 10) / 10 : 0,
     coveredPop,
     totalPop,
   };
@@ -511,9 +511,11 @@ export function computeTransitions(from: Year, to: Year): { from: LandUse; to: L
 }
 
 export function growthSummary() {
+  const base = BUILTUP_KM2[2018] || 1;
+  const current = BUILTUP_KM2[2024] ?? BUILTUP_KM2[2018] ?? 0;
   return {
     builtUpKm2: BUILTUP_KM2,
-    growthPct: Math.round(((BUILTUP_KM2[2024] - BUILTUP_KM2[2018]) / BUILTUP_KM2[2018]) * 100),
+    growthPct: Math.round(((current - base) / base) * 100),
   };
 }
 
@@ -547,7 +549,7 @@ export function computeCityKpis() {
   const vacantGovtHa = govt
     .filter((p) => p.landUse === "vacant" || p.landUse === "agriculture")
     .reduce((s, p) => s + p.areaHa, 0);
-  const population = WARDS.reduce((s, w) => s + w.population[2026], 0);
+  const population = WARDS.reduce((s, w) => s + (w.population?.[2026] ?? 0), 0);
   const { growthPct } = growthSummary();
   const hospitals = FACILITY_COORDS("hospital");
   const coverage = computeCoverage(hospitals, SERVICE_RADIUS_KM.hospital!);
@@ -569,9 +571,9 @@ export function computeCityKpis() {
 export function explainGrowth(wardId: string): string[] {
   const ward = WARD_BY_ID.get(wardId);
   if (!ward) return [];
-  const growth = Math.round(
-    ((ward.population[2026] - ward.population[2018]) / ward.population[2018]) * 100
-  );
+  const base = ward.population?.[2018] || 1;
+  const current = ward.population?.[2026] ?? base;
+  const growth = Math.round(((current - base) / base) * 100);
   return [
     `Population grew ${growth}% since 2018`,
     "Adjacent to the expanding 2026 built-up frontier",

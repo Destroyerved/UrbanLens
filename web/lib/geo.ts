@@ -102,6 +102,7 @@ export function circleRing(center: LngLat, radiusKm: number, n = 48): LngLat[] {
 
 /** Shoelace area of a lng/lat ring, km². */
 export function ringAreaKm2(ring: LngLat[]): number {
+  if (!ring || ring.length < 3) return 0;
   const ky = KM_PER_DEG_LAT;
   const kx = kmPerDegLng(ring[0][1]);
   let sum = 0;
@@ -114,6 +115,7 @@ export function ringAreaKm2(ring: LngLat[]): number {
 }
 
 export function ringCentroid(ring: LngLat[]): LngLat {
+  if (!ring || ring.length < 2) return [0, 0];
   let x = 0,
     y = 0;
   const n = ring.length - 1;

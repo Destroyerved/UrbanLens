@@ -22,10 +22,13 @@ export default function EquityPanel() {
   const [failed, setFailed] = useState(false);
   const flyTo = useApp((s) => s.flyTo);
   const highlightWards = useApp((s) => s.highlightWards);
+  const datasetVersion = useApp((s) => s.datasetVersion);
+  const cityId = useApp((s) => s.city.id);
 
   useEffect(() => {
+    setFailed(false);
     withRetry(fetchEquity).then(setData).catch(() => setFailed(true));
-  }, []);
+  }, [cityId, datasetVersion]);
 
   if (failed)
     return (

@@ -22,11 +22,14 @@ export default function ConservationPanel() {
   const [enc, setEnc] = useState<EncroachmentReport | null>(null);
   const [failed, setFailed] = useState(false);
   const flyTo = useApp((s) => s.flyTo);
+  const datasetVersion = useApp((s) => s.datasetVersion);
+  const cityId = useApp((s) => s.city.id);
 
   useEffect(() => {
+    setFailed(false);
     withRetry(fetchConservation).then(setCons).catch(() => setFailed(true));
     withRetry(fetchEncroachment).then(setEnc).catch(() => setFailed(true));
-  }, []);
+  }, [cityId, datasetVersion]);
 
   const loading = tab === "priority" ? !cons : !enc;
 

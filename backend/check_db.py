@@ -1,7 +1,8 @@
 import sqlite3
+from pathlib import Path
 
-db = r"urbanlens.db"
-con = sqlite3.connect(db)
+db = Path(__file__).resolve().parent / "urbanlens.db"
+con = sqlite3.connect(str(db))
 j = con.execute(
     "SELECT cache_key, city, length(data), substr(source_signature,1,80) FROM json_cache"
 ).fetchall()

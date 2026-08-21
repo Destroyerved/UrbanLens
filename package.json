@@ -6,8 +6,8 @@
   "type": "module",
   "scripts": {
     "dev": "node scripts/dev.mjs",
-    "setup": "npm install --prefix web && python -m pip install -r backend/requirements.txt",
-    "engine": "python -m uvicorn app.main:app --port 8000 --app-dir backend",
+    "setup": "npm install --prefix web && (python3 -m pip install -r backend/requirements.txt || python -m pip install -r backend/requirements.txt)",
+    "engine": "python3 -m uvicorn app.main:app --port 8000 --app-dir backend || python -m uvicorn app.main:app --port 8000 --app-dir backend",
     "web": "npm run dev --prefix web",
     "build": "npm run build --prefix web",
     "start": "npm run start --prefix web",

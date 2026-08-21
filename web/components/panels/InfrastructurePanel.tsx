@@ -29,14 +29,16 @@ export default function InfrastructurePanel() {
   const flyTo = useApp((s) => s.flyTo);
   const setMode = useApp((s) => s.setMode);
   const mapClick = useApp((s) => s.mapClick);
+  const datasetVersion = useApp((s) => s.datasetVersion);
+  const cityId = useApp((s) => s.city.id);
 
   const [gaps, setGaps] = useState<WardGap[] | null>(null);
   const [access, setAccess] = useState<AccessibilityReport | null>(null);
   const [accessLoading, setAccessLoading] = useState(false);
 
   useEffect(() => {
-    void withRetry(fetchWardGaps).then(setGaps);
-  }, []);
+    void withRetry(fetchWardGaps).then(setGaps).catch(() => setGaps(null));
+  }, [cityId, datasetVersion]);
 
   useEffect(() => {
     if (!mapClick) return;
