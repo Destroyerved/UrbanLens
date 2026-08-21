@@ -40,10 +40,28 @@ FEATURE_NAMES = (
 )
 
 
-def _access(distance_km: float, scale: float) -> float:
-    if not np.isfinite(distance_km):
+def _access(distance_km: float | None, scale: float) -> float:
+    # None means "nothing of that kind was found", which scores the same as
+    # infinitely far. Guarding here as well as in _nearest_km keeps a stray
+    # None out of np.isfinite, which raises rather than returning False.
+    if distance_km is None or not np.isfinite(distance_km):
         return 0.0
     return float(np.exp(-max(distance_km, 0.0) / scale))
+
+
+def _nearest_km(p: Parcel, *kinds: str) -> float:
+    """Distance to the closest facility of any of `kinds`, in km.
+
+    `nearest` carries an explicit None when nothing of that kind was found
+    inside the search radius, and that is not the same as the key being
+    absent -- but dict.get's default only covers the absent case. Feeding the
+    None straight into min() is what took /api/vector/status down with a
+    TypeError on every district whose parcels have an unserved category:
+    Ahmedabad has a bus stop near everything and never hit it, Kutch and
+    Porbandar do not and hit it immediately.
+    """
+    found = [v for v in (p.nearest.get(k) for k in kinds) if v is not None]
+    return min(found) if found else float("inf")
 
 
 def parcel_features(p: Parcel) -> np.ndarray:
@@ -55,10 +73,10 @@ def parcel_features(p: Parcel) -> np.ndarray:
             p.vegetation_percent / 100.0,
             p.water_percent / 100.0,
             _access(p.road_km, 2.0),
-            _access(p.nearest.get("hospital", float("inf")), 5.0),
-            _access(p.nearest.get("school", float("inf")), 3.0),
-            _access(p.nearest.get("park", float("inf")), 3.0),
-            _access(min(p.nearest.get("bus_stop", float("inf")), p.nearest.get("metro_station", float("inf"))), 3.0),
+            _access(_nearest_km(p, "hospital"), 5.0),
+            _access(_nearest_km(p, "school"), 3.0),
+            _access(_nearest_km(p, "park"), 3.0),
+            _access(_nearest_km(p, "bus_stop", "metro_station"), 3.0),
             np.log1p(max(p.pop_3km, 0)),
             p.scores.get("accessibility", 0.0) / 100.0,
             p.scores.get("infrastructure", 0.0) / 100.0,
