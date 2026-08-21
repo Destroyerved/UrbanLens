@@ -144,10 +144,18 @@ export async function withRetry<T>(
 }
 
 
-/** Wake a sleeping free-tier backend without blocking the already-static UI. */
+/** Wake a sleeping free-tier backend without blocking the already-static UI.
+ *
+ * Deliberately the shallow probe. `deep=true` loads the full dataset and
+ * builds every parcel -- measured at 556 MB peak and 19.5s for Ahmedabad,
+ * which is over the 512 MB a free instance gets. That turned a warm-up into
+ * an OOM kill on every page load, and the resulting 502 carries no CORS
+ * header, so it surfaced in the console as a CORS error. Waking the host is
+ * all this needs to do; the first real request can pay for its own data.
+ */
 export function warmEngine(): void {
   if (typeof window === "undefined") return;
-  void fetch(url("/api/health", { deep: true }), {
+  void fetch(url("/api/health"), {
     method: "GET",
     cache: "no-store",
     keepalive: true,
