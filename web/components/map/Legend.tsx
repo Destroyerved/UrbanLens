@@ -1,8 +1,11 @@
 "use client";
 
+import { motion } from "framer-motion";
+import { ChevronUp, X } from "lucide-react";
 import { useApp } from "@/lib/store";
 import { LANDUSE_COLORS, FACILITY_COLORS, FACILITY_LABELS } from "@/lib/mapdata";
 import { THERMAL_STATUS, useThermalStatus } from "@/data/thermal";
+import { cn } from "@/lib/utils";
 
 function Row({ color, label }: { color: string; label: string }) {
   return (
@@ -201,5 +204,94 @@ export default function Legend() {
         </div>
       )}
     </div>
+  );
+}
+
+
+/* ---------------------------------------------------------------------------
+ * Bottom-left control pair.
+ *
+ * `Legend` above is pure content — it renders rows for whatever layers are on
+ * and owns no open/closed state. AppShell drives the bottom-left controls
+ * itself so the legend and the basemap gallery can close each other, which
+ * means it needs the same two-part shape BasemapSelector exposes: a button
+ * that reflects `isOpen`, and a dismissible panel. These wrap the content in
+ * that chrome rather than duplicating it.
+ * ------------------------------------------------------------------------- */
+
+export function LegendButton({
+  isOpen,
+  onToggle,
+}: {
+  isOpen: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      data-glow
+      style={{
+        "--base": 220,
+        "--spread": 100,
+        "--radius": 21,
+        "--border-size": "1.5px",
+        "--spotlight-size": "200px",
+      } as React.CSSProperties}
+      className={cn(
+        "glass-strong flex h-[42px] w-[180px] shrink-0 items-center gap-2.5 px-3.5 rounded-[21px] shadow-elev-3 transition-colors duration-150 cursor-pointer select-none outline-none border border-white/25 dark:border-white/15",
+        isOpen
+          ? "ring-2 ring-accent shadow-[0_0_12px_rgba(56,189,248,0.4)]"
+          : "hover:border-white/40"
+      )}
+      aria-label={isOpen ? "Hide map legend" : "Show map legend"}
+    >
+      <span className="text-base shrink-0 leading-none">🗺️</span>
+      <span className="text-[12px] font-bold text-foreground truncate leading-none flex-1 text-left">
+        Legend
+      </span>
+      <ChevronUp
+        size={13}
+        className={cn(
+          "text-muted-foreground transition-transform duration-200 shrink-0",
+          isOpen && "rotate-180 text-accent"
+        )}
+      />
+    </button>
+  );
+}
+
+export function LegendPanel({ onClose }: { onClose: () => void }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: -12, scale: 0.95 }}
+      animate={{ opacity: 1, x: 0, scale: 1 }}
+      exit={{ opacity: 0, x: -8, scale: 0.96 }}
+      transition={{ type: "spring", damping: 28, stiffness: 420, mass: 0.6 }}
+      data-glow
+      style={{
+        "--base": 220,
+        "--spread": 200,
+        "--radius": 24,
+        "--border-size": "1.5px",
+        "--spotlight-size": "340px",
+      } as React.CSSProperties}
+      className="glass-strong pointer-events-auto max-h-[60vh] w-[300px] overflow-y-auto rounded-3xl p-3.5 shadow-elev-3 backdrop-blur-2xl border border-white/25 dark:border-white/15 select-none"
+    >
+      <div className="mb-2.5 flex items-center justify-between border-b border-white/15 dark:border-white/10 pb-2">
+        <div className="text-[13px] font-extrabold tracking-tight text-foreground">
+          Map Legend
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="grid h-6 w-6 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground"
+          aria-label="Close legend"
+        >
+          <X size={13} />
+        </button>
+      </div>
+      <Legend />
+    </motion.div>
   );
 }
