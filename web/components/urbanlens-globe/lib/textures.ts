@@ -13,12 +13,43 @@ export interface EarthTextures {
   usingAssets: boolean;
 }
 
-const FILES = {
+const HIGH_RES_FILES = {
+  day: "earth-day-4k.webp",
+  night: "earth-night-2k.webp",
+  clouds: "earth-clouds-2k.webp",
+  ocean: "earth-ocean-2k.webp",
+};
+
+const STANDARD_FILES = {
+  day: "earth-day-2k.webp",
+  night: "earth-night-2k.webp",
+  clouds: "earth-clouds-2k.webp",
+  ocean: "earth-ocean-2k.webp",
+};
+
+const LEGACY_FILES = {
   day: "earth_day.jpg",
   night: "earth_night.jpg",
   clouds: "clouds_alpha.jpg",
   ocean: "earth_specular.jpg",
 };
+
+async function loadWithFallback(
+  base: string,
+  key: "day" | "night" | "clouds" | "ocean",
+  loader: THREE.TextureLoader
+): Promise<THREE.Texture | null> {
+  const candidates = [
+    `${base}/${HIGH_RES_FILES[key]}`,
+    `${base}/${STANDARD_FILES[key]}`,
+    `${base}/${LEGACY_FILES[key]}`,
+  ];
+  for (const url of candidates) {
+    const tex = await loadOne(url, loader);
+    if (tex) return tex;
+  }
+  return null;
+}
 
 function loadOne(url: string, loader: THREE.TextureLoader): Promise<THREE.Texture | null> {
   return new Promise((resolve) => {
@@ -233,16 +264,16 @@ function buildFallback(): Omit<EarthTextures, "usingAssets"> {
  */
 export async function loadEarthTextures(
   basePath: string,
-  maxAnisotropy = 4
+  maxAnisotropy = 16
 ): Promise<EarthTextures> {
   const loader = new THREE.TextureLoader();
   const base = basePath.replace(/\/$/, "");
 
   const [day, night, clouds, ocean] = await Promise.all([
-    loadOne(`${base}/${FILES.day}`, loader),
-    loadOne(`${base}/${FILES.night}`, loader),
-    loadOne(`${base}/${FILES.clouds}`, loader),
-    loadOne(`${base}/${FILES.ocean}`, loader),
+    loadWithFallback(base, "day", loader),
+    loadWithFallback(base, "night", loader),
+    loadWithFallback(base, "clouds", loader),
+    loadWithFallback(base, "ocean", loader),
   ]);
 
   // build the synthesised Earth once, and only if something is actually missing
@@ -253,6 +284,9 @@ export async function loadEarthTextures(
     if (!t) return null;
     t.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace;
     t.anisotropy = maxAnisotropy;
+    t.minFilter = THREE.LinearMipmapLinearFilter;
+    t.magFilter = THREE.LinearFilter;
+    t.generateMipmaps = true;
     t.wrapS = THREE.RepeatWrapping;
     t.needsUpdate = true;
     return t;

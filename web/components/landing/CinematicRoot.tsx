@@ -3,11 +3,13 @@
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
+import { ScanEye } from "lucide-react";
 import Lenis from "lenis";
 import { cn } from "@/lib/utils";
 import { Magnetic } from "@/components/ui/magnetic";
 import { stage } from "@/lib/landing/timeline";
 import { APP_ROUTE, NAV } from "@/lib/landing/story";
+import { useGlobeSnapshot } from "@/components/urbanlens-globe/lib/store";
 import {
   ExplainScene,
   FinalScene,
@@ -292,34 +294,33 @@ function Nav() {
   );
 }
 
-function OpeningCurtain() {
+function OpeningCurtain({ isReady }: { isReady: boolean }) {
   const [mounted, setMounted] = useState(false);
-  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    // Never hold first content behind an artificial half-second delay.
-    const t = setTimeout(() => {
-      setReady(true);
-    }, 120);
-    return () => clearTimeout(t);
   }, []);
 
   if (!mounted) return null;
 
   return (
-    <div className={cn("ulc-opening-veil", ready && "ulc-veil-open")} aria-hidden="true">
+    <div
+      className={cn("ulc-opening-veil", isReady && "ulc-veil-open")}
+      aria-hidden="true"
+    >
       <div
         className={cn(
-          "flex flex-col items-center gap-3.5 transition-all duration-300",
-          ready ? "scale-95 opacity-0" : "scale-100 opacity-100"
+          "flex flex-col items-center gap-3.5 transition-all duration-400",
+          isReady ? "scale-90 opacity-0" : "scale-100 opacity-100"
         )}
       >
-        <span className="ulc-display text-[14px] font-bold tracking-[0.32em] text-white">
-          URBANLENS
-        </span>
-        <div className="h-0.5 w-20 overflow-hidden rounded-full bg-white/10">
-          <div className="h-full w-full animate-[ulc-shimmer_1.4s_ease-in-out_infinite] bg-gradient-to-r from-transparent via-[var(--cyan)] to-transparent" />
+        {/* Holographic Symbol Loader */}
+        <div className="relative flex items-center justify-center">
+          <div className="absolute h-16 w-16 rounded-full bg-[var(--cyan)]/20 animate-ping opacity-35" />
+          <div className="relative grid h-12 w-12 place-items-center rounded-full glass-strong border border-white/40 shadow-[0_0_25px_rgba(22,217,245,0.45)] backdrop-blur-2xl bg-slate-900/60">
+            <div className="absolute inset-[-2px] rounded-full border-[1.5px] border-t-[var(--cyan)] border-r-transparent border-b-[var(--cyan)]/30 border-l-transparent animate-spin [animation-duration:1s] shadow-[0_0_8px_rgba(22,217,245,0.6)]" />
+            <ScanEye size={19} className="text-[var(--cyan)] animate-pulse drop-shadow-[0_0_10px_rgba(22,217,245,0.9)]" />
+          </div>
         </div>
       </div>
     </div>
@@ -330,19 +331,26 @@ function OpeningCurtain() {
 
 export default function CinematicRoot() {
   useDirector();
+  const { ready: globeReady } = useGlobeSnapshot();
   const [visualsReady, setVisualsReady] = useState(false);
   const [cityStageReady, setCityStageReady] = useState(false);
+  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    // Let text/nav paint first; WebGL is loaded during the first idle slice.
-    const start = () => setVisualsReady(true);
-    if ("requestIdleCallback" in window) {
-      const id = window.requestIdleCallback(start, { timeout: 350 });
-      return () => window.cancelIdleCallback(id);
-    }
-    const id = window.setTimeout(start, 120);
-    return () => window.clearTimeout(id);
+    // Start WebGL visual assets loading immediately
+    setVisualsReady(true);
   }, []);
+
+  useEffect(() => {
+    if (globeReady) {
+      // Delay slightly for butter-smooth first frame paint
+      const t = setTimeout(() => setIsReady(true), 250);
+      return () => clearTimeout(t);
+    }
+    // Safety fallback timeout so page never gets blocked
+    const fallback = setTimeout(() => setIsReady(true), 1800);
+    return () => clearTimeout(fallback);
+  }, [globeReady]);
 
   useEffect(() => {
     // The city MapLibre chapter is several screens down. Do not download or
@@ -350,9 +358,6 @@ export default function CinematicRoot() {
     const check = () => {
       if (window.scrollY > window.innerHeight * 0.8) {
         setCityStageReady(true);
-        // One-shot: the second WebGL engine never gets torn down again, so
-        // leaving this bound means a listener firing on every scroll event for
-        // the rest of the session to re-set a state that is already true.
         window.removeEventListener("scroll", check);
       }
     };
@@ -363,7 +368,7 @@ export default function CinematicRoot() {
 
   return (
     <div className="ulc relative">
-      <OpeningCurtain />
+      <OpeningCurtain isReady={isReady} />
       {visualsReady && <StarsBackground className="pointer-events-none fixed inset-0 z-0 bg-transparent" />}
       {visualsReady && <EarthStage />}
       {cityStageReady && <CityStage />}

@@ -14,9 +14,9 @@ export interface AtmosphereProps {
 
 export default function Atmosphere({
   sunDirection,
-  color = "#7ABEFF",
-  intensity = 1.15,
-  scale = 1.055,
+  color = "#60A5FA",
+  intensity = 1.45,
+  scale = 1.058,
 }: AtmosphereProps) {
   const uniforms = useMemo(
     () => ({
@@ -29,7 +29,7 @@ export default function Atmosphere({
 
   return (
     <mesh renderOrder={2}>
-      <sphereGeometry args={[scale, 64, 32]} />
+      <sphereGeometry args={[scale, 128, 128]} />
       <shaderMaterial
         vertexShader={atmosphereVertex}
         fragmentShader={atmosphereFragment}

@@ -22,9 +22,9 @@ export interface CloudsProps {
 export default function Clouds({
   map,
   sunDirection,
-  opacity = 0.78,
-  segments = 64,
-  driftSpeed = 0.006,
+  opacity = 0.85,
+  segments = 128,
+  driftSpeed = 0.007,
 }: CloudsProps) {
   const mesh = useRef<THREE.Mesh>(null);
   const material = useRef<THREE.ShaderMaterial>(null);
@@ -50,7 +50,7 @@ export default function Clouds({
 
   return (
     <mesh ref={mesh} renderOrder={1}>
-      <sphereGeometry args={[1.012, segments, segments / 2]} />
+      <sphereGeometry args={[1.012, segments, segments]} />
       <shaderMaterial
         ref={material}
         vertexShader={earthVertex}

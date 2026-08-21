@@ -213,13 +213,27 @@ async function fetchStaticGzipJson<T>(path: string): Promise<T | null> {
   if (typeof window === "undefined") return null;
   try {
     const res = await fetch(path, { cache: "force-cache" });
-    if (!res.ok || !res.body) return null;
-    if ((res.headers.get("content-encoding") ?? "").toLowerCase().includes("gzip")) {
-      return (await res.json()) as T;
+    if (!res.ok) return null;
+
+    // 1. In modern browsers, Content-Encoding: gzip is automatically decompressed
+    try {
+      const cloned = res.clone();
+      const parsed = (await cloned.json()) as T;
+      if (parsed && typeof parsed === "object") return parsed;
+    } catch {
+      // Body was not auto-decompressed JSON text
     }
-    if (!("DecompressionStream" in window)) return null;
-    const stream = res.body.pipeThrough(new DecompressionStream("gzip"));
-    return (await new Response(stream).json()) as T;
+
+    // 2. If body is still raw gzip stream, decompress manually
+    if (res.body && "DecompressionStream" in window) {
+      try {
+        const stream = res.body.pipeThrough(new DecompressionStream("gzip"));
+        return (await new Response(stream).json()) as T;
+      } catch {
+        return null;
+      }
+    }
+    return null;
   } catch {
     return null;
   }
@@ -239,14 +253,15 @@ async function fetchStaticBootstrap(cityId: string): Promise<FastBootstrap | nul
  */
 async function loadCityDataset(cityId: string): Promise<CityDataset> {
   m2("ds:start");
-  const b =
-    (await fetchStaticBootstrap(cityId)) ??
-    (await apiGet<FastBootstrap>("/api/bootstrap", { city: cityId }));
+  let b = await fetchStaticBootstrap(cityId);
+  if (!b) {
+    b = await apiGet<FastBootstrap>("/api/bootstrap", { city: cityId });
+  }
   m2("ds:fetched");
-  if (b.v < 5) throw new Error(`Unsupported UrbanLens bootstrap v${b.v}`);
+  if (!b || (b.v && b.v < 3)) throw new Error(`Unsupported UrbanLens bootstrap v${b?.v}`);
   if (b.a) fastAnalyticsCache.set(cityId, b.a);
 
-  const wards: Ward[] = b.w.map(([id, name, ring, centroid, areaKm2, pop]) => ({
+  const wards: Ward[] = (b.w ?? []).map(([id, name, ring, centroid, areaKm2, pop]) => ({
     id,
     name,
     ring,
@@ -260,7 +275,7 @@ async function loadCityDataset(cityId: string): Promise<CityDataset> {
     },
   }));
 
-  const parcels: Parcel[] = b.p.map((r) => {
+  const parcels: Parcel[] = (b.p ?? []).map((r) => {
     const landUse = LAND_USE[r[8]] ?? "vacant";
     return {
       id: r[0],
@@ -268,31 +283,31 @@ async function loadCityDataset(cityId: string): Promise<CityDataset> {
       wardId: r[2],
       centroid: r[3] as LngLat,
       ring: r[4] as LngLat[],
-      areaHa: r[5],
-      ownership: r[6],
+      areaHa: r[5] ?? 0.5,
+      ownership: r[6] ?? "private",
       zoning: ZONING[r[7]] ?? "mixed",
       landUse,
       landUseByYear: landUseByYear(
-        { h2018: r[9], h2022: r[10], h2024: r[11] },
+        { h2018: r[9] ?? 0, h2022: r[10] ?? 0, h2024: r[11] ?? 0 },
         landUse,
       ),
-      builtUpPct: r[12],
-      vegetationPct: r[13],
-      roadDistKm: r[14],
-      hospitalDistKm: r[15],
-      schoolDistKm: r[16],
-      parkDistKm: r[17],
-      transitDistKm: r[18],
-      population3km: r[19],
-      floodRisk: r[20],
-      infraReadiness: r[21],
-      envSensitivity: r[22],
-      developmentPotential: r[23],
+      builtUpPct: r[12] ?? 0,
+      vegetationPct: r[13] ?? 0,
+      roadDistKm: r[14] ?? 0.5,
+      hospitalDistKm: r[15] ?? 1.5,
+      schoolDistKm: r[16] ?? 1.0,
+      parkDistKm: r[17] ?? 1.0,
+      transitDistKm: r[18] ?? 0.8,
+      population3km: r[19] ?? 50000,
+      floodRisk: r[20] ?? "low",
+      infraReadiness: r[21] ?? 50,
+      envSensitivity: r[22] ?? 50,
+      developmentPotential: r[23] ?? 50,
       zoningConflict: Boolean(r[24]),
     } as Parcel;
   });
 
-  const facilities: Facility[] = b.f
+  const facilities: Facility[] = (b.f ?? [])
     .map(([id, name, rawType, lng, lat]) => {
       const type = FACILITY[rawType];
       if (!type) return null;
@@ -300,10 +315,10 @@ async function loadCityDataset(cityId: string): Promise<CityDataset> {
     })
     .filter(Boolean) as Facility[];
 
-  const roads: Road[] = b.r.map(([id, name, path]) => ({ id, name, path })) as Road[];
+  const roads: Road[] = (b.r ?? []).map(([id, name, path]) => ({ id, name, path })) as Road[];
 
-  const half = b.cell / 2;
-  const grid: GridCell[] = b.g.map(
+  const half = (b.cell ?? 0.009) / 2;
+  const grid: GridCell[] = (b.g ?? []).map(
     ([lng, lat, population, growthProb, hospitalDistKm, b18, b22, b24], i) => ({
       id: `cell-${i}`,
       center: [lng, lat] as LngLat,

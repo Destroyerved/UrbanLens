@@ -339,7 +339,7 @@ export function ExpandingSearchDock({
               damping: 28,
             }}
             onSubmit={handleSubmit}
-            className="relative z-[70]"
+            className="relative z-[75]"
           >
             <div className="glass-strong relative flex h-8 items-center gap-2 overflow-hidden rounded-full border border-accent/60 shadow-[0_0_20px_rgba(56,189,248,0.3),inset_0_1px_1px_rgba(255,255,255,0.3)] backdrop-blur-2xl px-2.5 ring-2 ring-accent/30">
               <input

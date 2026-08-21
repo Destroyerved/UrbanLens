@@ -30,7 +30,7 @@ export default function ModeRail() {
       <div
         data-glow
         onMouseLeave={() => setHovered(null)}
-        className="glass-strong pointer-events-auto relative flex flex-col gap-1.5 rounded-[28px] p-2 shadow-elev-3 backdrop-blur-2xl"
+        className="glass-strong pointer-events-auto relative flex w-[68px] shrink-0 flex-col gap-1 rounded-[26px] p-1.5 shadow-elev-3 backdrop-blur-2xl"
       >
         {MODES.map((m, i) => {
           const active = mode === m.id;
@@ -59,7 +59,7 @@ export default function ModeRail() {
                 onBlur={() => setHovered(null)}
                 aria-label={MODE_META[m.id].label}
                 className={cn(
-                  "group relative flex h-[54px] w-[56px] flex-col items-center justify-center gap-1 rounded-2xl px-0.5 transition-colors cursor-pointer outline-none active:scale-[0.94]",
+                  "group relative flex h-[50px] w-[54px] flex-col items-center justify-center gap-0.5 rounded-2xl px-0.5 transition-colors cursor-pointer outline-none active:scale-[0.94]",
                   active
                     ? "text-accent-foreground font-bold"
                     : "text-foreground/75 hover:text-foreground"
@@ -74,7 +74,7 @@ export default function ModeRail() {
                   />
                 )}
 
-                {/* 2. Hover Glowing Ring Effect (Exact Basemap style) */}
+                {/* 2. Hover Glowing Ring Effect */}
                 <AnimatePresence>
                   {isHovered && !active && (
                     <motion.span
@@ -115,18 +115,9 @@ export default function ModeRail() {
                 >
                   {m.label}
                 </span>
-
-                {/* Active Dot indicator on the right edge */}
-                {active && (
-                  <motion.span
-                    layoutId="mode-rail-active-dot"
-                    className="pointer-events-none absolute -right-1 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-accent ring-2 ring-white dark:ring-slate-900 shadow-[0_0_8px_rgba(56,189,248,0.9)] z-20"
-                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                  />
-                )}
               </button>
 
-              {/* 3. Floating Tooltip Pill */}
+              {/* 3. Floating Quick Tooltip Pill */}
               <AnimatePresence>
                 {isHovered && (
                   <motion.div
@@ -134,7 +125,7 @@ export default function ModeRail() {
                     animate={{ opacity: 1, x: 0, scale: 1 }}
                     exit={{ opacity: 0, x: -6, scale: 0.94 }}
                     transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                    className="pointer-events-none absolute left-[68px] top-1/2 -translate-y-1/2 z-[50] flex flex-col whitespace-nowrap rounded-xl bg-slate-950/90 dark:bg-slate-900/95 px-3 py-1.5 shadow-elev-3 backdrop-blur-xl border border-white/15"
+                    className="pointer-events-none absolute left-[84px] top-1/2 -translate-y-1/2 z-[50] flex flex-col whitespace-nowrap rounded-xl bg-slate-950/90 dark:bg-slate-900/95 px-3 py-1.5 shadow-elev-3 backdrop-blur-xl border border-white/15"
                   >
                     <div className="flex items-center gap-1.5 text-[12px] font-bold text-white">
                       <span>{MODE_META[m.id].label}</span>

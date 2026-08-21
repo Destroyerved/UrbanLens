@@ -51,11 +51,11 @@ export default function EarthStage() {
         <GlobeCanvas
           texturePath="/textures"
           accent="#16D9F5"
-          atmosphereColor="#7ABEFF"
+          atmosphereColor="#60A5FA"
           showCities={false}
           showCityLabels={false}
           showGrid={true}
-          quality="low"
+          quality="high"
           className="size-full"
         />
       )}

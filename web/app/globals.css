@@ -25,19 +25,16 @@
   --critical: 0 82% 44%;
   --gov: 216 92% 44%;
 
-  /* Liquid Glass — Ultra Translucent Light */
-  --glass-bg: rgba(255, 255, 255, 0.28);
-  /* The intelligence panel floats over the parcel layer. Below ~0.75 the
-     high-chroma fills read through and panel text sits on a mottled,
-     unpredictable ground. */
-  --glass-bg-strong: rgba(255, 255, 255, 0.80);
-  --glass-card-bg: rgba(255, 255, 255, 0.22);
-  --glass-border: rgba(255, 255, 255, 0.75);
-  --glass-border-subtle: rgba(255, 255, 255, 0.50);
-  --glass-inset-1: inset 1.5px 1.5px 1px 0 rgba(255, 255, 255, 0.85);
-  --glass-inset-2: inset -1px -1px 1px 1px rgba(255, 255, 255, 0.45);
-  --glass-shadow: 0 8px 28px 0 rgba(0, 0, 0, 0.14), 0 2px 8px 0 rgba(0, 0, 0, 0.06);
-  --glass-shadow-strong: 0 16px 44px 0 rgba(0, 0, 0, 0.20), 0 4px 16px 0 rgba(0, 0, 0, 0.10);
+  /* Liquid Glass — Ultra Translucent Light Glassmorphism */
+  --glass-bg: rgba(255, 255, 255, 0.42);
+  --glass-bg-strong: rgba(255, 255, 255, 0.58);
+  --glass-card-bg: rgba(255, 255, 255, 0.28);
+  --glass-border: rgba(255, 255, 255, 0.85);
+  --glass-border-subtle: rgba(255, 255, 255, 0.60);
+  --glass-inset-1: inset 1.5px 1.5px 1px 0 rgba(255, 255, 255, 0.95);
+  --glass-inset-2: inset -1px -1px 1px 1px rgba(255, 255, 255, 0.50);
+  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.12), 0 2px 8px 0 rgba(0, 0, 0, 0.04);
+  --glass-shadow-strong: 0 16px 48px 0 rgba(0, 0, 0, 0.18), 0 4px 16px 0 rgba(0, 0, 0, 0.08);
   --glass-ease: cubic-bezier(0.175, 0.885, 0.32, 1.2);
 
   --shadow-1: 0 2px 8px rgba(0, 0, 0, 0.10);
@@ -74,18 +71,15 @@
   --gov: 214 95% 65%;
 
   /* Liquid Glass — Ultra Translucent Dark Glassmorphism */
-  --glass-bg: rgba(10, 15, 28, 0.42);
-  /* The intelligence panel floats over the parcel layer. Below ~0.75 the
-     high-chroma fills read through and panel text sits on a mottled,
-     unpredictable ground. */
-  --glass-bg-strong: rgba(8, 12, 24, 0.82);
-  --glass-card-bg: rgba(255, 255, 255, 0.06);
-  --glass-border: rgba(255, 255, 255, 0.22);
-  --glass-border-subtle: rgba(255, 255, 255, 0.12);
-  --glass-inset-1: inset 1.5px 1.5px 1px 0 rgba(255, 255, 255, 0.45);
-  --glass-inset-2: inset -1px -1px 1px 1px rgba(255, 255, 255, 0.12);
-  --glass-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.35), 0 0 20px rgba(56, 189, 248, 0.08);
-  --glass-shadow-strong: 0 20px 50px 0 rgba(0, 0, 0, 0.45), 0 0 30px rgba(56, 189, 248, 0.12);
+  --glass-bg: rgba(10, 15, 28, 0.38);
+  --glass-bg-strong: rgba(8, 14, 28, 0.48);
+  --glass-card-bg: rgba(255, 255, 255, 0.07);
+  --glass-border: rgba(255, 255, 255, 0.26);
+  --glass-border-subtle: rgba(255, 255, 255, 0.14);
+  --glass-inset-1: inset 1.5px 1.5px 1px 0 rgba(255, 255, 255, 0.55);
+  --glass-inset-2: inset -1px -1px 1px 1px rgba(255, 255, 255, 0.10);
+  --glass-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.40), 0 0 24px rgba(56, 189, 248, 0.10);
+  --glass-shadow-strong: 0 20px 50px 0 rgba(0, 0, 0, 0.50), 0 0 32px rgba(56, 189, 248, 0.16);
   --glass-ease: cubic-bezier(0.175, 0.885, 0.32, 1.2);
 }
 
@@ -106,17 +100,14 @@
   --critical: 0 85% 62%;
   --gov: 260 95% 68%;
 
-  /* Liquid Glass — Ultra Translucent Dim */
-  --glass-bg: rgba(18, 12, 30, 0.42);
-  /* The intelligence panel floats over the parcel layer. Below ~0.75 the
-     high-chroma fills read through and panel text sits on a mottled,
-     unpredictable ground. */
-  --glass-bg-strong: rgba(15, 10, 26, 0.82);
-  --glass-card-bg: rgba(255, 255, 255, 0.07);
-  --glass-border: rgba(192, 132, 252, 0.30);
-  --glass-border-subtle: rgba(192, 132, 252, 0.16);
-  --glass-inset-1: inset 1.5px 1.5px 1px 0 rgba(255, 255, 255, 0.45);
-  --glass-inset-2: inset -1px -1px 1px 1px rgba(168, 85, 247, 0.18);
+  /* Liquid Glass — Ultra Translucent Dim Glassmorphism */
+  --glass-bg: rgba(18, 12, 30, 0.38);
+  --glass-bg-strong: rgba(15, 10, 26, 0.48);
+  --glass-card-bg: rgba(255, 255, 255, 0.08);
+  --glass-border: rgba(192, 132, 252, 0.32);
+  --glass-border-subtle: rgba(192, 132, 252, 0.18);
+  --glass-inset-1: inset 1.5px 1.5px 1px 0 rgba(255, 255, 255, 0.55);
+  --glass-inset-2: inset -1px -1px 1px 1px rgba(168, 85, 247, 0.20);
   --glass-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.40), 0 0 24px rgba(147, 51, 234, 0.12);
   --glass-shadow-strong: 0 20px 50px 0 rgba(0, 0, 0, 0.50), 0 0 36px rgba(147, 51, 234, 0.18);
   --glass-ease: cubic-bezier(0.175, 0.885, 0.32, 1.2);
@@ -204,49 +195,42 @@ body {
 
 .glass {
   background: var(--glass-bg);
-  -webkit-backdrop-filter: blur(12px) saturate(150%);
-  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(190%);
+  backdrop-filter: blur(16px) saturate(190%);
   border: 1px solid var(--glass-border);
   box-shadow: var(--glass-shadow), var(--glass-inset-1), var(--glass-inset-2);
 }
 
 .glass-strong {
   background: var(--glass-bg-strong);
-  /* No saturation boost.
-     This panel floats over the parcel layer, whose fills are deliberately
-     high-chroma (orange residential, purple commercial, green vegetation).
-     Blurring those and then multiplying saturation by 1.5 turned the whole
-     panel into a prismatic wash the moment the map flew somewhere dense —
-     which is every time Site Selection returns a result. More blur mixes the
-     colours toward neutral instead of amplifying them. */
-  -webkit-backdrop-filter: blur(20px) saturate(102%);
-  backdrop-filter: blur(20px) saturate(102%);
+  -webkit-backdrop-filter: blur(20px) saturate(190%);
+  backdrop-filter: blur(20px) saturate(190%);
   border: 1px solid var(--glass-border);
   box-shadow: var(--glass-shadow-strong), var(--glass-inset-1), var(--glass-inset-2);
 }
 
 .glass-card {
   background: var(--glass-card-bg);
-  -webkit-backdrop-filter: blur(6px) saturate(145%);
-  backdrop-filter: blur(6px) saturate(145%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  backdrop-filter: blur(16px) saturate(180%);
   border: 1px solid var(--glass-border-subtle);
   box-shadow: var(--shadow-1), var(--glass-inset-1), var(--glass-inset-2);
-  transition: transform 150ms ease;
+  transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1), background-color 200ms ease, border-color 200ms ease, box-shadow 200ms ease;
 }
 
 .glass-glow-card {
   background: var(--glass-card-bg);
-  -webkit-backdrop-filter: blur(6px) saturate(145%);
-  backdrop-filter: blur(6px) saturate(145%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  backdrop-filter: blur(16px) saturate(180%);
   border: 1px solid var(--glass-border-subtle);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15), var(--glass-inset-1);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.18), var(--glass-inset-1), 0 0 16px rgba(56, 189, 248, 0.08);
 }
 
 .glass-card:hover {
-  transform: translateY(-1px);
-  background: rgba(255, 255, 255, 0.18);
+  transform: translateY(-2px) scale(1.01);
+  background: rgba(255, 255, 255, 0.22);
   border-color: var(--glass-border);
-  box-shadow: var(--shadow-2), var(--glass-inset-1), var(--glass-inset-2);
+  box-shadow: var(--shadow-2), var(--glass-inset-1), var(--glass-inset-2), 0 0 20px rgba(56, 189, 248, 0.15);
 }
 
 .glass-border-glow {

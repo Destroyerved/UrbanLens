@@ -127,7 +127,8 @@ export default function GujaratGlobeHero({
           texturePath={texturePath}
           accent={accent}
           atmosphereColor={atmosphereColor}
-          showCityLabels={showCityLabels}
+          showCities={false}
+          showCityLabels={false}
           showGrid={showGrid}
           quality={quality}
         />

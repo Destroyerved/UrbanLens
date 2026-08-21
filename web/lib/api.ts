@@ -13,10 +13,9 @@
  */
 
 const CONFIGURED_BASE = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/$/, "");
-// In production, default to same-origin /api so a Vercel rewrite can proxy the
-// engine. Local dev still falls back to :8000. This avoids accidentally asking
-// an end user's own localhost when NEXT_PUBLIC_API_URL was not configured.
-const BASE = CONFIGURED_BASE || (process.env.NODE_ENV === "development" ? "http://localhost:8000" : "");
+const BASE =
+  CONFIGURED_BASE ||
+  (typeof window !== "undefined" ? "" : "http://127.0.0.1:8000");
 
 export const API_BASE = BASE;
 

@@ -131,9 +131,13 @@ interface AppState {
   copilotBusy: boolean;
   sendCopilot: (text: string) => Promise<void>;
 
-  // Search palette
+  // Search palette & Dock
   paletteOpen: boolean;
   setPaletteOpen: (v: boolean) => void;
+  searchFocused: boolean;
+  setSearchFocused: (v: boolean) => void;
+  citySwitcherOpen: boolean;
+  setCitySwitcherOpen: (v: boolean) => void;
 
   /** Last empty-map click (used by the 15-minute analyzer). */
   mapClick: LngLat | null;
@@ -433,6 +437,10 @@ export const useApp = create<AppState>((set, get) => ({
 
   paletteOpen: false,
   setPaletteOpen: (paletteOpen) => set({ paletteOpen }),
+  searchFocused: false,
+  setSearchFocused: (searchFocused) => set({ searchFocused }),
+  citySwitcherOpen: false,
+  setCitySwitcherOpen: (citySwitcherOpen) => set({ citySwitcherOpen }),
 
   mapClick: null,
   setMapClick: (mapClick) => set({ mapClick }),

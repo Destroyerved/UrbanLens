@@ -19,7 +19,9 @@ export default function TopBar() {
   const cityError = useApp((s) => s.cityError);
   const copilotOpen = useApp((s) => s.copilotOpen);
   const setCopilotOpen = useApp((s) => s.setCopilotOpen);
-  const [cityOpen, setCityOpen] = useState(false);
+  const searchFocused = useApp((s) => s.searchFocused);
+  const citySwitcherOpen = useApp((s) => s.citySwitcherOpen);
+  const setCitySwitcherOpen = useApp((s) => s.setCitySwitcherOpen);
   const [filterText, setFilterText] = useState("");
 
   const filteredCities = useMemo(() => {
@@ -36,13 +38,19 @@ export default function TopBar() {
   return (
     <div
       data-glow
-      className="glass-strong pointer-events-auto flex h-12 items-center gap-2.5 rounded-full pl-3.5 pr-2.5 shadow-elev-3 backdrop-blur-2xl border border-white/25 dark:border-white/15"
+      className={cn(
+        "glass-strong pointer-events-auto flex h-12 items-center gap-2.5 rounded-full pl-3.5 pr-2.5 shadow-elev-3 backdrop-blur-2xl border border-white/25 dark:border-white/15 transition-all duration-300",
+        (searchFocused || citySwitcherOpen) && "shadow-[0_0_35px_rgba(56,189,248,0.25)] border-white/40"
+      )}
     >
       {/* Brand — links back to Landing Page */}
       <a
         href="/"
         title="Return to Landing Page"
-        className="flex items-center gap-2.5 pr-2 transition-all duration-200 ease-out hover:opacity-85 cursor-pointer"
+        className={cn(
+          "flex items-center gap-2.5 pr-2 transition-all duration-300 ease-out hover:opacity-85 cursor-pointer",
+          (searchFocused || citySwitcherOpen) && "opacity-20 filter blur-[8px] pointer-events-none"
+        )}
       >
         <div className="grid h-7 w-7 place-items-center rounded-full bg-accent/20 ring-1 ring-accent/50 shadow-[0_0_12px_rgba(56,189,248,0.3)]">
           <ScanEye size={15} className="text-accent" />
@@ -55,10 +63,10 @@ export default function TopBar() {
         </div>
       </a>
 
-      <div className="mx-1 h-5 w-px bg-white/25 dark:bg-white/15" />
+      <div className={cn("mx-1 h-5 w-px bg-white/25 dark:bg-white/15 transition-all duration-300", (searchFocused || citySwitcherOpen) && "opacity-20")} />
 
       {/* Animated Expanding Search Dock */}
-      <div className="relative z-[70]">
+      <div className={cn("relative z-[70] transition-all duration-300", citySwitcherOpen && "opacity-20 filter blur-[8px] pointer-events-none")}>
         <ExpandingSearchDock onSearch={() => setPaletteOpen(true)} />
       </div>
 
@@ -67,11 +75,14 @@ export default function TopBar() {
       {/* Right Tools (Gujarat Districts Switcher, Copilot, Theme) */}
       <div className="flex items-center gap-2">
         {/* Gujarat 34-District Switcher */}
-        <div className="relative">
+        <div className={cn("relative transition-all duration-300", searchFocused && "opacity-20 filter blur-[8px] pointer-events-none")}>
           <button
             type="button"
-            onClick={() => setCityOpen((v) => !v)}
-            className="glass-card flex h-8 items-center gap-1.5 rounded-full px-3 text-[12px] font-semibold text-foreground transition-all hover:scale-[1.02] cursor-pointer"
+            onClick={() => setCitySwitcherOpen(!citySwitcherOpen)}
+            className={cn(
+              "glass-card relative z-[75] flex h-8 items-center gap-1.5 rounded-full px-3 text-[12px] font-semibold text-foreground transition-all hover:scale-[1.02] cursor-pointer",
+              citySwitcherOpen && "ring-2 ring-accent shadow-[0_0_12px_rgba(56,189,248,0.35)]"
+            )}
           >
             <span
               className={cn(
@@ -85,12 +96,12 @@ export default function TopBar() {
             <span className="text-muted-foreground font-normal text-[11px]">· Gujarat</span>
             <ChevronDown
               size={12}
-              className={cn("text-muted-foreground transition-transform", cityOpen && "rotate-180")}
+              className={cn("text-muted-foreground transition-transform", citySwitcherOpen && "rotate-180")}
             />
           </button>
 
           <AnimatePresence>
-            {cityOpen && (
+            {citySwitcherOpen && (
               <motion.div
                 initial={{ opacity: 0, y: -6, scale: 0.96 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -127,7 +138,7 @@ export default function TopBar() {
                             key={c.id}
                             type="button"
                             onClick={() => {
-                              setCityOpen(false);
+                              setCitySwitcherOpen(false);
                               setFilterText("");
                               void setCity(c.id);
                             }}
@@ -159,7 +170,7 @@ export default function TopBar() {
                         key={c.id}
                         type="button"
                         onClick={() => {
-                          setCityOpen(false);
+                          setCitySwitcherOpen(false);
                           setFilterText("");
                           void setCity(c.id);
                         }}
@@ -197,16 +208,19 @@ export default function TopBar() {
           </AnimatePresence>
         </div>
 
-        <div className="mx-0.5 h-5 w-px bg-white/25 dark:bg-white/15" />
+        <div className={cn("mx-0.5 h-5 w-px bg-white/25 dark:bg-white/15 transition-all duration-300", (searchFocused || citySwitcherOpen) && "opacity-20")} />
 
-        {/* Liquid Metal Copilot Button */}
-        <LiquidMetalButton
-          label="Copilot"
-          active={copilotOpen}
-          onClick={() => setCopilotOpen(!copilotOpen)}
-        />
+        {/* Copilot & Theme Controls (Blurred when search or location is active) */}
+        <div className={cn("flex items-center gap-2 transition-all duration-300", (searchFocused || citySwitcherOpen) && "opacity-20 filter blur-[8px] pointer-events-none")}>
+          {/* Liquid Metal Copilot Button */}
+          <LiquidMetalButton
+            label="Copilot"
+            active={copilotOpen}
+            onClick={() => setCopilotOpen(!copilotOpen)}
+          />
 
-        <ThemeToggle />
+          <ThemeToggle />
+        </div>
       </div>
     </div>
   );

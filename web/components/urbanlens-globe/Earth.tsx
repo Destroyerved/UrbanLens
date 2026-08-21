@@ -19,7 +19,7 @@ export interface EarthProps {
 export default function Earth({
   textures,
   sunDirection,
-  segments = 96,
+  segments = 128,
   rimColor = "#7ABEFF",
   scanColor = "#16D9F5",
 }: EarthProps) {
@@ -32,9 +32,9 @@ export default function Earth({
       uOcean: { value: textures.ocean },
       uSunDirection: { value: sunDirection },
       uRimColor: { value: new THREE.Color(rimColor) },
-      uNightIntensity: { value: textures.usingAssets ? 0.9 : 1.15 },
-      uExposure: { value: textures.usingAssets ? 1.0 : 1.18 },
-      uRimStrength: { value: 1 },
+      uNightIntensity: { value: textures.usingAssets ? 1.35 : 1.15 },
+      uExposure: { value: textures.usingAssets ? 1.08 : 1.18 },
+      uRimStrength: { value: 1.15 },
       uScanY: { value: 0.5 },
       uScanAmount: { value: 0 },
       uScanColor: { value: new THREE.Color(scanColor) },
@@ -52,7 +52,7 @@ export default function Earth({
 
   return (
     <mesh renderOrder={0}>
-      <sphereGeometry args={[1, segments, segments / 2]} />
+      <sphereGeometry args={[1, segments, segments]} />
       <shaderMaterial
         ref={material}
         vertexShader={earthVertex}

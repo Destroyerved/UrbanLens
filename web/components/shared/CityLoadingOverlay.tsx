@@ -1,14 +1,17 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { ScanEye } from "lucide-react";
+import { ScanEye, AlertTriangle, RotateCcw } from "lucide-react";
 import { useApp } from "@/lib/store";
 
 export default function CityLoadingOverlay() {
   const cityLoading = useApp((s) => s.cityLoading);
   const datasetVersion = useApp((s) => s.datasetVersion);
+  const cityError = useApp((s) => s.cityError);
+  const city = useApp((s) => s.city);
+  const setCity = useApp((s) => s.setCity);
 
-  const isVisible = cityLoading || datasetVersion === 0;
+  const isVisible = cityLoading || datasetVersion === 0 || Boolean(cityError);
 
   return (
     <AnimatePresence>
@@ -18,49 +21,58 @@ export default function CityLoadingOverlay() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.3, ease: "easeInOut" }}
-          className="fixed inset-0 z-[120] flex items-center justify-center bg-black/70 dark:bg-black/80 pointer-events-auto"
+          transition={{ duration: 0.22, ease: "easeOut" }}
+          className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/20 dark:bg-slate-950/35 backdrop-blur-md pointer-events-auto select-none"
         >
-          {/* Ambient Background Spotlight */}
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(56,189,248,0.2),transparent_60%)] pointer-events-none" />
-
-          {/* Minimalist Liquid Glass Brand Card */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.94, y: 8 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.96, y: 8 }}
-            transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-            className="glass-strong relative flex flex-col items-center justify-center px-10 py-7 rounded-3xl shadow-2xl border border-white/30 dark:border-white/15 text-center backdrop-blur-md bg-white/15 dark:bg-black/50"
-          >
-            {/* Animated Glowing Brand Icon */}
-            <div className="relative mb-3 flex items-center justify-center">
-              <div className="absolute h-16 w-16 rounded-full bg-accent/20 animate-ping opacity-60" />
-              <div className="relative grid h-12 w-12 place-items-center rounded-2xl bg-accent/25 text-accent ring-1.5 ring-accent/60 shadow-[0_0_20px_rgba(56,189,248,0.45)]">
-                <ScanEye size={22} className="animate-pulse" />
+          {cityError ? (
+            /* Error Fallback Pill */
+            <motion.div
+              initial={{ opacity: 0, scale: 0.92, y: 6 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.92, y: 6 }}
+              className="glass-strong flex items-center gap-3 px-4 py-2.5 rounded-2xl shadow-2xl border border-destructive/40 backdrop-blur-2xl bg-slate-900/80 max-w-xs"
+            >
+              <div className="grid h-7 w-7 place-items-center rounded-xl bg-destructive/20 text-destructive ring-1 ring-destructive/40">
+                <AlertTriangle size={14} />
               </div>
-            </div>
+              <div className="flex-1 min-w-0 pr-1">
+                <div className="text-[11px] font-bold text-destructive">Sync Error</div>
+                <div className="text-[9.5px] text-muted-foreground truncate">{cityError}</div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCity(city.id)}
+                className="flex items-center gap-1 rounded-lg bg-accent/20 px-2 py-1 text-[10px] font-bold text-accent hover:bg-accent/30 transition-colors cursor-pointer"
+              >
+                <RotateCcw size={11} />
+                Retry
+              </button>
+            </motion.div>
+          ) : (
+            /* Ultra-Cool Futuristic Spatial Emblem Loader */
+            <motion.div
+              initial={{ opacity: 0, scale: 0.85 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.85 }}
+              transition={{ type: "spring", stiffness: 420, damping: 26 }}
+              className="relative flex items-center justify-center"
+            >
+              {/* Outer Radar Expanding Wave */}
+              <div className="absolute h-16 w-16 rounded-full bg-accent/20 animate-ping opacity-35" />
 
-            {/* Brand Title */}
-            <h2 className="text-[20px] font-extrabold tracking-tight text-foreground">
-              UrbanLens
-            </h2>
+              {/* Holographic Glowing Glass Lens Disc */}
+              <div className="relative grid h-12 w-12 place-items-center rounded-full glass-strong border border-white/40 dark:border-accent/50 shadow-[0_0_25px_rgba(56,189,248,0.4),inset_0_1px_2px_rgba(255,255,255,0.4)] backdrop-blur-2xl bg-slate-900/50 dark:bg-slate-950/60">
+                {/* Orbital Neon Laser Spinner Ring */}
+                <div className="absolute inset-[-2px] rounded-full border-[1.5px] border-t-accent border-r-transparent border-b-accent/30 border-l-transparent animate-spin [animation-duration:1s] shadow-[0_0_8px_rgba(56,189,248,0.6)]" />
 
-            {/* Sleek Minimal Progress Line */}
-            <div className="mt-4 h-1 w-28 bg-white/15 dark:bg-white/10 rounded-full overflow-hidden relative">
-              <motion.div
-                className="h-full bg-accent rounded-full shadow-[0_0_10px_rgba(56,189,248,0.8)]"
-                animate={{
-                  x: ["-100%", "100%"],
-                }}
-                transition={{
-                  repeat: Infinity,
-                  duration: 1.2,
-                  ease: "easeInOut",
-                }}
-                style={{ width: "50%" }}
-              />
-            </div>
-          </motion.div>
+                {/* Center Pulsing Optical Eye Symbol */}
+                <ScanEye
+                  size={19}
+                  className="text-accent animate-pulse drop-shadow-[0_0_10px_rgba(56,189,248,0.9)]"
+                />
+              </div>
+            </motion.div>
+          )}
         </motion.div>
       )}
     </AnimatePresence>

@@ -8,8 +8,8 @@ import { useApp } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import MapControls from "@/components/map/MapControls";
 import LayerPanel from "@/components/map/LayerPanel";
-import BasemapSelector from "@/components/map/BasemapSelector";
-import Legend from "@/components/map/Legend";
+import { BasemapSelectorButton, BasemapGalleryPanel } from "@/components/map/BasemapSelector";
+import { LegendButton, LegendPanel } from "@/components/map/Legend";
 import TopBar from "./TopBar";
 import ModeRail from "./ModeRail";
 import CommandPalette from "@/components/search/CommandPalette";
@@ -45,9 +45,47 @@ export default function AppShell() {
   const setPanelOpen = useApp((s) => s.setPanelOpen);
   const copilotOpen = useApp((s) => s.copilotOpen);
   const compareOpen = useApp((s) => s.compareOpen);
+  const searchFocused = useApp((s) => s.searchFocused);
+  const setSearchFocused = useApp((s) => s.setSearchFocused);
+  const paletteOpen = useApp((s) => s.paletteOpen);
+  const setPaletteOpen = useApp((s) => s.setPaletteOpen);
+  const citySwitcherOpen = useApp((s) => s.citySwitcherOpen);
+  const setCitySwitcherOpen = useApp((s) => s.setCitySwitcherOpen);
+
   const [layersOpen, setLayersOpen] = useState(false);
+  const [legendOpen, setLegendOpen] = useState(false);
+  const [basemapOpen, setBasemapOpen] = useState(false);
 
   const hasActiveRightPanel = copilotOpen || panelOpen;
+  const isModalActive = searchFocused || paletteOpen || citySwitcherOpen;
+
+  // Click outside listener for bottom-left popups
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && !target.closest("[data-bottom-left-control]")) {
+        setLegendOpen(false);
+        setBasemapOpen(false);
+      }
+    };
+    if (legendOpen || basemapOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [legendOpen, basemapOpen]);
+
+  // Global Escape key listener to dismiss all active search/city modals
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isModalActive) {
+        setSearchFocused(false);
+        setPaletteOpen(false);
+        setCitySwitcherOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isModalActive, setSearchFocused, setPaletteOpen, setCitySwitcherOpen]);
 
   // The map layers ship empty and are fetched from the engine, so the study
   // area has to be loaded before anything renders real geography. `?city=`
@@ -67,12 +105,33 @@ export default function AppShell() {
       {/* Global continuous pointer tracker for specular glass border highlights */}
       <GlobalSpotlight />
 
-      {/* Main website content layer — applies aesthetic optical blur, depth scale and saturation when city is loading */}
+      {/* Global Liquid Glass Blur Backdrop — covers and blurs entire workspace including map and controls */}
+      <AnimatePresence>
+        {isModalActive && (
+          <motion.div
+            key="global-glass-blur-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            onClick={() => {
+              setSearchFocused(false);
+              setPaletteOpen(false);
+              setCitySwitcherOpen(false);
+            }}
+            className="pointer-events-auto fixed inset-0 z-[48] bg-slate-900/15 dark:bg-slate-950/25 backdrop-blur-xl cursor-pointer transition-opacity"
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Main website content layer — applies aesthetic optical blur, depth scale and saturation when city is loading or modal is active */}
       <div
         className={cn(
-          "absolute inset-0 transition-all duration-500 ease-out",
+          "absolute inset-0 transition-all duration-300 ease-out",
           (cityLoading || datasetVersion === 0) &&
-            "opacity-70 brightness-[0.90] pointer-events-none select-none"
+            "opacity-70 brightness-[0.90] pointer-events-none select-none",
+          isModalActive &&
+            "filter blur-[16px] saturate-[140%] scale-[0.995] pointer-events-none select-none"
         )}
       >
         {/* Base: the map never unmounts */}
@@ -156,16 +215,50 @@ export default function AppShell() {
           <MapControls onToggleLayers={() => setLayersOpen((v) => !v)} layersOpen={layersOpen} />
         </div>
 
-        {/* Bottom-left: Morphing Basemap Gallery + Legend */}
-        <div className="pointer-events-none absolute bottom-5 left-4 z-[25] flex flex-col items-start gap-3">
+        {/* Bottom-left: Fixed Static Corner Buttons (Overview & Basemap) */}
+        <div
+          data-bottom-left-control
+          className="pointer-events-none absolute bottom-5 left-4 z-[30] flex flex-col gap-2.5"
+        >
           <div className="pointer-events-auto">
-            <BasemapSelector />
+            <LegendButton
+              isOpen={legendOpen}
+              onToggle={() => {
+                setLegendOpen((v) => !v);
+                setBasemapOpen(false);
+              }}
+            />
           </div>
-
           <div className="pointer-events-auto">
-            <Legend />
+            <BasemapSelectorButton
+              isOpen={basemapOpen}
+              onToggle={() => {
+                setBasemapOpen((v) => !v);
+                setLegendOpen(false);
+              }}
+            />
           </div>
         </div>
+
+        {/* Floating Popout Panels (Anchored cleanly to the right of the buttons at left-[200px] bottom-5) */}
+        <AnimatePresence>
+          {legendOpen && (
+            <div
+              data-bottom-left-control
+              className="pointer-events-auto absolute bottom-5 left-[200px] z-[40]"
+            >
+              <LegendPanel onClose={() => setLegendOpen(false)} />
+            </div>
+          )}
+          {basemapOpen && (
+            <div
+              data-bottom-left-control
+              className="pointer-events-auto absolute bottom-5 left-[200px] z-[40]"
+            >
+              <BasemapGalleryPanel onClose={() => setBasemapOpen(false)} />
+            </div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Chrome TopBar sits in fixed sharp position */}

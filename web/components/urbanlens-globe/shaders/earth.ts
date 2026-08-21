@@ -43,29 +43,38 @@ export const earthFragment = /* glsl */ `
     vec3 V = normalize(vViewDir);
 
     float sun = dot(N, L);
-    float dayAmount = smoothstep(-0.18, 0.42, sun);
+    float dayAmount = smoothstep(-0.14, 0.38, sun);
 
     vec3 day = texture2D(uDay, vUv).rgb * uExposure;
-    vec3 night = texture2D(uNight, vUv).rgb * uNightIntensity;
+    vec3 nightTex = texture2D(uNight, vUv).rgb;
     float ocean = texture2D(uOcean, vUv).r;
 
-    vec3 color = mix(night, day, dayAmount);
+    // Day side dynamic lighting
+    vec3 dayLit = day * (0.16 + 1.05 * max(sun, 0.0));
 
-    // one soft specular lobe on water only — never a hotspot on land
+    // Vibrant city lights on the night hemisphere
+    float lightsF = smoothstep(0.12, -0.28, sun);
+    vec3 lights = pow(nightTex, vec3(1.25)) * vec3(1.0, 0.84, 0.56) * (1.8 * uNightIntensity);
+    vec3 nightSide = day * vec3(0.015, 0.022, 0.038) + lights * lightsF;
+
+    vec3 color = mix(nightSide, dayLit, dayAmount);
+
+    // Ocean specular reflection (sun glint)
     vec3 H = normalize(L + V);
-    float spec = pow(max(dot(N, H), 0.0), 46.0) * ocean * 0.55 * dayAmount;
-    color += vec3(0.40, 0.60, 0.95) * spec;
+    float spec = pow(max(dot(N, H), 0.0), 60.0) * ocean * 0.72 * dayAmount;
+    color += vec3(0.45, 0.65, 0.95) * spec;
 
-    // warm scatter along the terminator
-    color += vec3(0.16, 0.09, 0.04) * smoothstep(0.34, 0.0, abs(sun)) * 0.5;
+    // Warm golden-hour sunset scattering along the day/night terminator
+    float terminator = smoothstep(0.32, 0.0, abs(sun));
+    color += vec3(0.22, 0.11, 0.05) * terminator * 0.65;
 
-    // atmospheric rim on the surface itself, so the limb never goes flat
-    float fresnel = pow(1.0 - max(dot(N, V), 0.0), 3.1);
-    color += uRimColor * fresnel * (0.3 + 0.7 * smoothstep(-0.55, 0.6, sun)) * uRimStrength;
+    // Atmospheric limb Fresnel glow
+    float fresnel = pow(1.0 - max(dot(N, V), 0.0), 3.2);
+    color += uRimColor * fresnel * (0.25 + 0.75 * smoothstep(-0.5, 0.6, sun)) * uRimStrength;
 
-    // slow analysis sweep
-    float band = smoothstep(0.03, 0.0, abs(vUv.y - uScanY));
-    color += uScanColor * band * uScanAmount * 0.4;
+    // Holographic scanline band when analyzing
+    float band = smoothstep(0.025, 0.0, abs(vUv.y - uScanY));
+    color += uScanColor * band * uScanAmount * 0.5;
 
     gl_FragColor = vec4(color, 1.0);
   }

@@ -6,6 +6,8 @@ import { Toaster } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { warmEngine } from "@/lib/api";
 
+import { GlobalSpotlight } from "@/components/ui/spotlight-card";
+
 export function Providers({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Begin waking a sleeping free backend while the user is still on the
@@ -28,6 +30,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       disableTransitionOnChange
     >
       <TooltipProvider delayDuration={250}>
+        <GlobalSpotlight />
         {children}
         <Toaster
           position="bottom-center"

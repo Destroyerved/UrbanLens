@@ -189,17 +189,17 @@ export default function GlobeCanvas({
     };
   }, [texturePath]);
 
-  const low = quality === "low" || (quality === "auto" && compact);
-  const segments = low ? 64 : 96;
-  const starCount = low ? 500 : 1200;
-  const dpr: [number, number] = low ? [1, 1.25] : [1, 1.6];
+  const highQuality = quality === "high" || (quality === "auto" && !compact);
+  const segments = highQuality ? 128 : compact ? 64 : 96;
+  const starCount = highQuality ? 2200 : 1200;
+  const dpr: [number, number] = highQuality ? [1, 2] : [1, 1.5];
 
   return (
     <div ref={host} className={className} aria-hidden="true">
       <Canvas
         frameloop={visible ? "always" : "never"}
         dpr={dpr}
-        gl={{ antialias: !low, alpha: true, powerPreference: "high-performance" }}
+        gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
         camera={{ fov: 34, position: [0, 0, 4.6], near: 0.1, far: 100 }}
         onCreated={({ gl }) => {
           gl.setClearColor(0x000000, 0);
@@ -211,7 +211,8 @@ export default function GlobeCanvas({
             textures={textures}
             accent={accent}
             atmosphereColor={atmosphereColor}
-            showCityLabels={showCityLabels && !low}
+            showCities={showCities}
+            showCityLabels={showCityLabels}
             showGrid={showGrid}
             segments={segments}
             starCount={starCount}
