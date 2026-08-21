@@ -1,0 +1,34 @@
+# Builds the engine image. Referenced by deploy/cloudrun/deploy.sh.
+#
+# This exists rather than `gcloud run deploy --source .` because that form
+# only finds a Dockerfile at the repo root, and a root Dockerfile is exactly
+# what must not exist here -- Render auto-detects one and switches an existing
+# service to a Docker build, which is how the backend broke once already.
+# A build config lets the Dockerfile stay in deploy/engine/ where it belongs.
+substitutions:
+  _IMAGE: "urbanlens-engine"
+  _REGION: "asia-south1"
+  _REPO: "urbanlens"
+
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f
+      - deploy/engine/Dockerfile
+      - -t
+      - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_IMAGE}:${SHORT_SHA}
+      - -t
+      - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_IMAGE}:latest
+      - .
+
+images:
+  - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_IMAGE}:${SHORT_SHA}
+  - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_IMAGE}:latest
+
+options:
+  # The default 10 GB worker runs out mid-build: ~630 MB of source, ~575 MB of
+  # wheels, and the resulting ~1.3 GB image all live on the same disk.
+  diskSizeGb: 50
+  machineType: E2_HIGHCPU_8
+timeout: 2400s

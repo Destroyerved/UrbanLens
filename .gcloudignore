@@ -1,0 +1,37 @@
+# What Cloud Build uploads. Without this, `gcloud` falls back to .gitignore
+# semantics and sweeps up ~1.5 GB of things the engine never reads.
+#
+# Keep: backend/, datasets/, web/data/engine/. That is the whole input set.
+.git
+.github
+.agents
+.claude
+
+node_modules
+web/node_modules
+web/.next
+web/out
+
+__pycache__
+**/__pycache__
+*.pyc
+.venv
+venv
+.pytest_cache
+.ruff_cache
+
+# 251 MB local SQLite cache. Absent, the loader reads the GeoJSON layers
+# directly, which is the intended deployment configuration.
+backend/urbanlens.db
+backend/urbanlens.db-shm
+backend/urbanlens.db-wal
+backend/cache
+backend/.cache
+
+# 72 MB of prebuilt bootstrap payloads. Vercel serves these as static assets;
+# the engine has no use for them.
+web/public/data
+
+preview
+prd.md
+*.log

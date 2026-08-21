@@ -1,4 +1,13 @@
-# Deploying UrbanLens
+# Deploying UrbanLens to a Hugging Face Space
+
+> **Docker Spaces now require a PRO subscription.** Creating one on a free
+> account returns `402 Payment Required`: *"Static Spaces are free for
+> everyone, but hosting Gradio and Docker Spaces on free cpu-basic requires a
+> PRO subscription."* A Static Space is HTML/JS only and cannot run FastAPI.
+>
+> The live deployment path is **[CLOUD_RUN.md](CLOUD_RUN.md)**. Everything
+> below still works if you have PRO.
+
 
 The shipped setup is split: **Next on Vercel, the Python engine on a Hugging
 Face Space**, with the browser calling the engine directly.

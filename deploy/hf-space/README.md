@@ -4,7 +4,7 @@ emoji: 🛰️
 colorFrom: blue
 colorTo: green
 sdk: docker
-app_port: 7860
+app_port: 8080
 pinned: false
 short_description: Spatial analysis API for urban planning across Gujarat
 ---

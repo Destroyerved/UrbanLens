@@ -1,24 +1,32 @@
-# UrbanLens spatial engine — Hugging Face Space (backend only).
+# UrbanLens spatial engine — the API alone, no frontend.
 #
-# The Next frontend lives on Vercel; this Space runs only the FastAPI engine,
-# which the browser calls directly via NEXT_PUBLIC_API_URL. That split is
-# deliberate: proxying through Vercel's rewrite puts a gateway timeout in front
-# of a cold engine, and the first request after idle takes ~27s (measured, see
-# docs/HF_SPACES.md). A browser will wait that out; an edge proxy will not.
+# The Next dashboard is on Vercel and the browser calls this image directly
+# via NEXT_PUBLIC_API_URL. That is deliberate: proxying through Vercel's
+# rewrite puts a gateway timeout in front of a cold engine, and the first
+# request after idle can take a minute. A browser waits; an edge proxy does
+# not.
 #
-# The data lives in the Space repo rather than being cloned from GitHub at
-# build time, because the GitHub repo is private and an HF build machine has no
-# credentials for it. Hugging Face is git-LFS native, so the layers push there
-# directly. See docs/HF_SPACES.md for which paths to copy in.
+# Runs anywhere that sets $PORT and expects one listener — Cloud Run (the
+# current target), a Hugging Face Docker Space, Fly, or a plain VM. Cloud Run
+# injects PORT=8080; the default below covers hosts that inject nothing.
+#
+# Sizing is not guesswork. Measured peak RSS on a cold process, no SQLite
+# cache present, building parcels from street geometry:
+#
+#     Ahmedabad     556 MB    17,215 parcels
+#     Kutch       2,956 MB   131,125 parcels, 101s
+#
+# Kutch is why this needs 4 GiB and why a 512 MB instance cannot host it.
 #
 # Python 3.11 rather than 3.12: rasterio, faiss-cpu and xgboost all publish
 # manylinux wheels for it, so this builds without GDAL or a toolchain. Moving
 # up a version turns it into a 20-minute source build.
 FROM python:3.11-slim-bookworm
 
-# Spaces run the container as uid 1000. The engine writes its parcel cache, the
-# FAISS index and the thermal refresh under the app directory, so that user has
-# to own it or the first request fails on a read-only path.
+# Run as a non-root uid. The engine writes its parcel cache, the FAISS index
+# and the thermal refresh under the app directory, so that user has to own it
+# or the first request fails on a read-only path. (HF Spaces specifically
+# requires uid 1000, which is why it is pinned rather than left to Debian.)
 RUN useradd -m -u 1000 urbanlens
 WORKDIR /app
 
@@ -41,13 +49,14 @@ USER urbanlens
 #
 # CORS defaults to * because the browser calls this origin cross-site from
 # Vercel. Narrow it to your deployment once the domain is known.
-ENV PORT=7860 \
+ENV PORT=8080 \
     PYTHONUNBUFFERED=1 \
     PYTHONPATH=/app/backend \
     URBANLENS_CORS_ORIGINS="*"
 
-EXPOSE 7860
+EXPOSE 8080
 
-# 0.0.0.0 here, unlike the all-in-one Dockerfile: this is the port the Space
-# publishes, not a loopback hop behind a colocated Next server.
+# 0.0.0.0, unlike docker/Dockerfile: this is the port the platform publishes,
+# not a loopback hop behind a colocated Next server. ${PORT} is honoured so
+# Cloud Run's injected 8080 wins over the default above.
 CMD ["sh", "-c", "python -m uvicorn app.main:app --app-dir backend --host 0.0.0.0 --port ${PORT}"]

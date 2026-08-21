@@ -36,7 +36,7 @@ cat > "$TARGET/.gitattributes" <<'ATTR'
 *.pkl.gz filter=lfs diff=lfs merge=lfs -text
 ATTR
 
-cp "$SRC/deploy/hf-space/Dockerfile" "$TARGET/Dockerfile"
+cp "$SRC/deploy/engine/Dockerfile" "$TARGET/Dockerfile"
 cp "$SRC/deploy/hf-space/README.md"  "$TARGET/README.md"
 
 # backend/ minus the local SQLite cache and build detritus. The DB is a cache,
