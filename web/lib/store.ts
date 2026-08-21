@@ -71,9 +71,6 @@ interface AppState {
   setPanelOpen: (v: boolean) => void;
   togglePanel: () => void;
 
-  searchFocused: boolean;
-  setSearchFocused: (v: boolean) => void;
-
   basemap: BasemapType;
   setBasemap: (b: BasemapType) => void;
 
@@ -179,9 +176,6 @@ export const useApp = create<AppState>((set, get) => ({
   panelOpen: true,
   setPanelOpen: (panelOpen) => set({ panelOpen }),
   togglePanel: () => set((s) => ({ panelOpen: !s.panelOpen })),
-
-  searchFocused: false,
-  setSearchFocused: (searchFocused) => set({ searchFocused }),
 
   setMode: (mode) => {
     const prev = get();
