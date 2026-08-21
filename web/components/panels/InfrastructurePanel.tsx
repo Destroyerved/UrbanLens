@@ -7,6 +7,7 @@ import { PanelShell, Section, LoadingBlock } from "./PanelShell";
 import { MiniScore } from "@/components/shared/ScoreBar";
 import { GlowCard } from "@/components/ui/spotlight-card";
 import { useApp } from "@/lib/store";
+import { withRetry } from "@/lib/api";
 import { fetchWardGaps, analyzeAccessibility } from "@/services/infrastructure";
 import { WARD_BY_ID } from "@/data/wards";
 import type { AccessibilityReport, GapCategory, WardGap } from "@/types";
@@ -34,7 +35,7 @@ export default function InfrastructurePanel() {
   const [accessLoading, setAccessLoading] = useState(false);
 
   useEffect(() => {
-    fetchWardGaps().then(setGaps);
+    void withRetry(fetchWardGaps).then(setGaps);
   }, []);
 
   useEffect(() => {

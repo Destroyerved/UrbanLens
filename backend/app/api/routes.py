@@ -423,16 +423,30 @@ def flood(city: str | None = Query(default=None)) -> dict:
 
 
 @router.get("/thermal/status")
-def thermal_status() -> dict:
+def thermal_status(city: str | None = Query(default=None)) -> dict:
     """State of the committed LST raster (NASA GIBS MODIS, refreshed daily).
 
-    Reads only the atomically-published metadata, so it can never describe a
+    With ``?city=<district>`` the payload is scoped to that district: bounds
+    shrink to its ward envelope and the raster is a locally-generated crop
+    re-stretched on the district's own pixels (see /thermal/raster). Any
+    failure to produce an honest district view falls back to the statewide
+    scene rather than guessing.
+
+    Reads only atomically-published files, so it can never describe a
     half-fetched image. ``ok: true`` means the raster is current; ``ok: false``
     with a ``date`` means the last refresh failed and the dashboard should keep
     showing that date flagged stale; no ``date`` at all means the first fetch
     has not succeeded yet.
     """
-    from app.thermal import read_meta
+    from app.thermal import city_scene, read_meta
+
+    if city:
+        try:
+            scene = city_scene(city)
+        except Exception:  # noqa: BLE001 — a broken crop must not 500 the map
+            scene = None
+        if scene is not None:
+            return scene
 
     meta = read_meta()
     if meta is None:
@@ -441,9 +455,37 @@ def thermal_status() -> dict:
             "date": None,
             "updated_at": None,
             "bounds": None,
+            "city": city,
+            "scope": "state",
             "reason": "no thermal data published yet — the first refresh runs at startup",
         }
-    return meta
+    return {**meta, "city": city, "scope": "state"}
+
+
+@router.get("/thermal/raster")
+def thermal_raster(city: str | None = Query(default=None)) -> Response:
+    """The LST image for the map overlay.
+
+    With ``?city=<district>`` serves that district's crop (generated on first
+    request from the master scene, then disk-cached per district + date).
+    Without it — or when no district view can be produced — serves the
+    statewide master PNG, matching what /thermal/status reports.
+    """
+    from fastapi.responses import FileResponse
+
+    from app.thermal import PNG_PATH, city_raster_path
+
+    if city:
+        png = city_raster_path(city)
+        if png is not None:
+            return FileResponse(
+                png,
+                media_type="image/png",
+                headers={"Cache-Control": "public, max-age=86400"},
+            )
+    if PNG_PATH.exists():
+        return FileResponse(PNG_PATH, media_type="image/png")
+    raise HTTPException(status_code=404, detail="no thermal raster published yet")
 
 
 @router.get("/facilities")

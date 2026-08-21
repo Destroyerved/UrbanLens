@@ -1,0 +1,50 @@
+
+> urbanlens-frontend@0.1.0 dev
+> next dev
+
+  ▲ Next.js 14.2.15
+  - Local:        http://localhost:3000
+
+ ✓ Starting...
+ ✓ Ready in 13.6s
+ ○ Compiling /app ...
+ ✓ Compiled /app in 14.8s (2726 modules)
+ GET /app 200 in 57ms
+ GET /app 200 in 88ms
+ GET /app 200 in 299ms
+ ○ Compiling / ...
+ ✓ Compiled / in 52.1s (4755 modules)
+ GET /app 200 in 41417ms
+ GET /app 200 in 14179ms
+ GET /app 200 in 58ms
+ ✓ Compiled in 2.6s (3747 modules)
+ GET /app 200 in 202ms
+ ○ Compiling /_not-found ...
+ ✓ Compiled /_not-found in 1787ms (3736 modules)
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 2027ms
+ GET /app 200 in 198ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 29ms
+ ✓ Compiled in 3s (3747 modules)
+ GET /app 200 in 381ms
+ ✓ Compiled in 7.8s (3747 modules)
+ GET /app 200 in 987ms
+ GET /app 200 in 252ms
+ ✓ Compiled in 5.1s (3747 modules)
+ ✓ Compiled in 3s (3747 modules)
+ ✓ Compiled in 3.5s (3747 modules)
+ ✓ Compiled in 2.9s (3747 modules)
+ ✓ Compiled in 2.1s (3733 modules)
+ ✓ Compiled in 3.6s (3747 modules)
+ ✓ Compiled in 2.1s (3747 modules)
+ GET /app 200 in 536ms
+ GET /app 200 in 200ms
+ ✓ Compiled in 4.8s (3747 modules)
+ ✓ Compiled in 1771ms (3747 modules)
+ ✓ Compiled in 1004ms (3747 modules)
+ ✓ Compiled in 1539ms (3747 modules)
+ GET /app 200 in 396ms
+ GET /app 200 in 51ms
+ GET /app 200 in 167ms
+ ○ Compiling / ...
+ ✓ Compiled / in 6.9s (2365 modules)
+ GET / 200 in 19722ms

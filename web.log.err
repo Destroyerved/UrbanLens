@@ -1,0 +1,278 @@
+(node:6552) [DEP0060] DeprecationWarning: The `util._extend` API is deprecated. Please use Object.assign() instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+Failed to proxy http://127.0.0.1:8000/api/thermal/status?city=kheda Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1634:16)
+    at TCPConnectWrap.callbackTrampoline (node:internal/async_hooks:130:17) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8000
+}
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1634:16)
+    at TCPConnectWrap.callbackTrampoline (node:internal/async_hooks:130:17) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8000
+}
+Failed to proxy http://127.0.0.1:8000/api/thermal/status?city=kheda Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1634:16)
+    at TCPConnectWrap.callbackTrampoline (node:internal/async_hooks:130:17) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8000
+}
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1634:16)
+    at TCPConnectWrap.callbackTrampoline (node:internal/async_hooks:130:17) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8000
+}
+Failed to proxy http://127.0.0.1:8000/api/thermal/status?city=ahmedabad Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1634:16)
+    at TCPConnectWrap.callbackTrampoline (node:internal/async_hooks:130:17) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8000
+}
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1634:16)
+    at TCPConnectWrap.callbackTrampoline (node:internal/async_hooks:130:17) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8000
+}
+Failed to proxy http://127.0.0.1:8000/api/thermal/status?city=kheda Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1634:16)
+    at TCPConnectWrap.callbackTrampoline (node:internal/async_hooks:130:17) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8000
+}
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1634:16)
+    at TCPConnectWrap.callbackTrampoline (node:internal/async_hooks:130:17) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8000
+}
+Failed to proxy http://127.0.0.1:8000/api/thermal/status?city=ahmedabad Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1634:16)
+    at TCPConnectWrap.callbackTrampoline (node:internal/async_hooks:130:17) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8000
+}
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1634:16)
+    at TCPConnectWrap.callbackTrampoline (node:internal/async_hooks:130:17) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8000
+}
+ ⨯ ./config/city.ts
+Error: 
+  [31mx[0m Expected ',', got ':'
+    ,-[[36;1;4mC:\Users\ved\Desktop\urbanslens\UrbanLens_ULTRAFAST_db_faiss\UrbanLens-ultrafast\web\config\city.ts[0m:30:1]
+ [2m30[0m | }
+ [2m31[0m | 
+ [2m32[0m | export const CITIES: CityConfig[] = [
+ [2m33[0m |   id: "ahmedabad-metro",
+    : [31;1m    ^[0m
+ [2m34[0m |   name: "Ahmedabad Metro Region",
+ [2m35[0m |   state: "Gujarat",
+ [2m36[0m |   blurb: "Peri-urban region – composite view",
+    `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./config/city.ts
+./lib/store.ts
+./components/layout/AppShell.tsx
+./app/app/page.tsx
+Failed to proxy http://127.0.0.1:8000/api/thermal/status?city=kheda Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1634:16)
+    at TCPConnectWrap.callbackTrampoline (node:internal/async_hooks:130:17) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8000
+}
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1634:16)
+    at TCPConnectWrap.callbackTrampoline (node:internal/async_hooks:130:17) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8000
+}
+Failed to proxy http://127.0.0.1:8000/api/thermal/status?city=ahmedabad Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1634:16)
+    at TCPConnectWrap.callbackTrampoline (node:internal/async_hooks:130:17) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8000
+}
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1634:16)
+    at TCPConnectWrap.callbackTrampoline (node:internal/async_hooks:130:17) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8000
+}
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ ⨯ components\map\LayerPanel.tsx (30:18) @ Waves
+ ⨯ ReferenceError: Waves is not defined
+    at eval (./components/map/LayerPanel.tsx:58:95)
+    at (ssr)/./components/map/LayerPanel.tsx (C:\Users\ved\Desktop\urbanslens\UrbanLens_ULTRAFAST_db_faiss\UrbanLens-ultrafast\web\.next\server\app\app\page.js:184:1)
+    at __webpack_require__ (C:\Users\ved\Desktop\urbanslens\UrbanLens_ULTRAFAST_db_faiss\UrbanLens-ultrafast\web\.next\server\webpack-runtime.js:33:42)
+    at eval (./components/layout/AppShell.tsx:16:84)
+    at (ssr)/./components/layout/AppShell.tsx (C:\Users\ved\Desktop\urbanslens\UrbanLens_ULTRAFAST_db_faiss\UrbanLens-ultrafast\web\.next\server\app\app\page.js:129:1)
+    at __webpack_require__ (C:\Users\ved\Desktop\urbanslens\UrbanLens_ULTRAFAST_db_faiss\UrbanLens-ultrafast\web\.next\server\webpack-runtime.js:33:42)
+    at eval (./app/app/page.tsx:9:85)
+    at (ssr)/./app/app/page.tsx (C:\Users\ved\Desktop\urbanslens\UrbanLens_ULTRAFAST_db_faiss\UrbanLens-ultrafast\web\.next\server\app\app\page.js:107:1)
+    at Object.__webpack_require__ [as require] (C:\Users\ved\Desktop\urbanslens\UrbanLens_ULTRAFAST_db_faiss\UrbanLens-ultrafast\web\.next\server\webpack-runtime.js:33:42)
+digest: "936404074"
+[0m [90m 28 |[39m   [32m"govt-land"[39m[33m:[39m [33m<[39m[33mLandmark[39m size[33m=[39m{[35m14[39m} [33m/[39m[33m>[39m[33m,[39m[0m
+[0m [90m 29 |[39m   [32m"zoning-conflicts"[39m[33m:[39m [33m<[39m[33mShieldAlert[39m size[33m=[39m{[35m14[39m} [33m/[39m[33m>[39m[33m,[39m[0m
+[0m[31m[1m>[22m[39m[90m 30 |[39m   [32m"flood-risk"[39m[33m:[39m [33m<[39m[33mWaves[39m size[33m=[39m{[35m14[39m} [33m/[39m[33m>[39m[33m,[39m[0m
+[0m [90m    |[39m                  [31m[1m^[22m[39m[0m
+[0m [90m 31 |[39m   wards[33m:[39m [33m<[39m[33mMapIcon[39m size[33m=[39m{[35m14[39m} [33m/[39m[33m>[39m[33m,[39m[0m
+[0m [90m 32 |[39m   roads[33m:[39m [33m<[39m[33mRoute[39m size[33m=[39m{[35m14[39m} [33m/[39m[33m>[39m[33m,[39m[0m
+[0m [90m 33 |[39m   facilities[33m:[39m [33m<[39m[33mHospital[39m size[33m=[39m{[35m14[39m} [33m/[39m[33m>[39m[33m,[39m[0m
+ ⨯ components\map\LayerPanel.tsx (30:18) @ Waves
+ ⨯ ReferenceError: Waves is not defined
+    at eval (./components/map/LayerPanel.tsx:58:95)
+    at (ssr)/./components/map/LayerPanel.tsx (C:\Users\ved\Desktop\urbanslens\UrbanLens_ULTRAFAST_db_faiss\UrbanLens-ultrafast\web\.next\server\app\app\page.js:184:1)
+    at __webpack_require__ (C:\Users\ved\Desktop\urbanslens\UrbanLens_ULTRAFAST_db_faiss\UrbanLens-ultrafast\web\.next\server\webpack-runtime.js:33:42)
+    at eval (./components/layout/AppShell.tsx:16:84)
+    at (ssr)/./components/layout/AppShell.tsx (C:\Users\ved\Desktop\urbanslens\UrbanLens_ULTRAFAST_db_faiss\UrbanLens-ultrafast\web\.next\server\app\app\page.js:129:1)
+    at __webpack_require__ (C:\Users\ved\Desktop\urbanslens\UrbanLens_ULTRAFAST_db_faiss\UrbanLens-ultrafast\web\.next\server\webpack-runtime.js:33:42)
+    at eval (./app/app/page.tsx:9:85)
+    at (ssr)/./app/app/page.tsx (C:\Users\ved\Desktop\urbanslens\UrbanLens_ULTRAFAST_db_faiss\UrbanLens-ultrafast\web\.next\server\app\app\page.js:107:1)
+    at Object.__webpack_require__ [as require] (C:\Users\ved\Desktop\urbanslens\UrbanLens_ULTRAFAST_db_faiss\UrbanLens-ultrafast\web\.next\server\webpack-runtime.js:33:42)
+digest: "936404074"
+[0m [90m 28 |[39m   [32m"govt-land"[39m[33m:[39m [33m<[39m[33mLandmark[39m size[33m=[39m{[35m14[39m} [33m/[39m[33m>[39m[33m,[39m[0m
+[0m [90m 29 |[39m   [32m"zoning-conflicts"[39m[33m:[39m [33m<[39m[33mShieldAlert[39m size[33m=[39m{[35m14[39m} [33m/[39m[33m>[39m[33m,[39m[0m
+[0m[31m[1m>[22m[39m[90m 30 |[39m   [32m"flood-risk"[39m[33m:[39m [33m<[39m[33mWaves[39m size[33m=[39m{[35m14[39m} [33m/[39m[33m>[39m[33m,[39m[0m
+[0m [90m    |[39m                  [31m[1m^[22m[39m[0m
+[0m [90m 31 |[39m   wards[33m:[39m [33m<[39m[33mMapIcon[39m size[33m=[39m{[35m14[39m} [33m/[39m[33m>[39m[33m,[39m[0m
+[0m [90m 32 |[39m   roads[33m:[39m [33m<[39m[33mRoute[39m size[33m=[39m{[35m14[39m} [33m/[39m[33m>[39m[33m,[39m[0m
+[0m [90m 33 |[39m   facilities[33m:[39m [33m<[39m[33mHospital[39m size[33m=[39m{[35m14[39m} [33m/[39m[33m>[39m[33m,[39m[0m
+Failed to proxy http://127.0.0.1:8000/api/thermal/status?city=ahmedabad Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1634:16)
+    at TCPConnectWrap.callbackTrampoline (node:internal/async_hooks:130:17) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8000
+}
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1634:16)
+    at TCPConnectWrap.callbackTrampoline (node:internal/async_hooks:130:17) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8000
+}
+ ⚠ ./lib/mapdata.ts
+Attempted import error: 'BUILTUP_RINGS' is not exported from '@/data/grid' (imported as 'BUILTUP_RINGS').
+
+Import trace for requested module:
+./lib/mapdata.ts
+./components/map/Legend.tsx
+./components/layout/AppShell.tsx
+./app/app/page.tsx
+
+./lib/mapdata.ts
+Attempted import error: 'BUILTUP_RINGS' is not exported from '@/data/grid' (imported as 'BUILTUP_RINGS').
+
+Import trace for requested module:
+./lib/mapdata.ts
+./components/map/Legend.tsx
+./components/layout/AppShell.tsx
+./app/app/page.tsx
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ ⨯ data\grid.ts (152:22) @ builtupRadiusKm
+ ⨯ ReferenceError: builtupRadiusKm is not defined
+    at buildGrid (./data/grid.ts:144:26)
+    at eval (./data/grid.ts:172:16)
+    at (ssr)/./data/grid.ts (C:\Users\ved\Desktop\urbanslens\UrbanLens_ULTRAFAST_db_faiss\UrbanLens-ultrafast\web\.next\server\app\app\page.js:360:1)
+    at __webpack_require__ (C:\Users\ved\Desktop\urbanslens\UrbanLens_ULTRAFAST_db_faiss\UrbanLens-ultrafast\web\.next\server\webpack-runtime.js:33:42)
+    at eval (./data/parcels.ts:14:63)
+    at (ssr)/./data/parcels.ts (C:\Users\ved\Desktop\urbanslens\UrbanLens_ULTRAFAST_db_faiss\UrbanLens-ultrafast\web\.next\server\app\app\page.js:382:1)
+    at __webpack_require__ (C:\Users\ved\Desktop\urbanslens\UrbanLens_ULTRAFAST_db_faiss\UrbanLens-ultrafast\web\.next\server\webpack-runtime.js:33:42)
+    at eval (./services/suitability.ts:8:71)
+    at (ssr)/./services/suitability.ts (C:\Users\ved\Desktop\urbanslens\UrbanLens_ULTRAFAST_db_faiss\UrbanLens-ultrafast\web\.next\server\app\app\page.js:558:1)
+    at __webpack_require__ (C:\Users\ved\Desktop\urbanslens\UrbanLens_ULTRAFAST_db_faiss\UrbanLens-ultrafast\web\.next\server\webpack-runtime.js:33:42)
+    at eval (./lib/store.ts:8:79)
+    at (ssr)/./lib/store.ts (C:\Users\ved\Desktop\urbanslens\UrbanLens_ULTRAFAST_db_faiss\UrbanLens-ultrafast\web\.next\server\app\app\page.js:514:1)
+    at __webpack_require__ (C:\Users\ved\Desktop\urbanslens\UrbanLens_ULTRAFAST_db_faiss\UrbanLens-ultrafast\web\.next\server\webpack-runtime.js:33:42)
+    at eval (./components/layout/AppShell.tsx:13:68)
+    at (ssr)/./components/layout/AppShell.tsx (C:\Users\ved\Desktop\urbanslens\UrbanLens_ULTRAFAST_db_faiss\UrbanLens-ultrafast\web\.next\server\app\app\page.js:129:1)
+    at __webpack_require__ (C:\Users\ved\Desktop\urbanslens\UrbanLens_ULTRAFAST_db_faiss\UrbanLens-ultrafast\web\.next\server\webpack-runtime.js:33:42)
+    at eval (./app/app/page.tsx:9:85)
+    at (ssr)/./app/app/page.tsx (C:\Users\ved\Desktop\urbanslens\UrbanLens_ULTRAFAST_db_faiss\UrbanLens-ultrafast\web\.next\server\app\app\page.js:107:1)
+    at Object.__webpack_require__ [as require] (C:\Users\ved\Desktop\urbanslens\UrbanLens_ULTRAFAST_db_faiss\UrbanLens-ultrafast\web\.next\server\webpack-runtime.js:33:42)
+digest: "3783971903"
+[0m [90m 150 |[39m   [36mfor[39m ([36mconst[39m c [36mof[39m cells) {[0m
+[0m [90m 151 |[39m     [36mconst[39m { theta[33m,[39m rKm } [33m=[39m urbanPosition(c[33m.[39mcenter)[33m;[39m[0m
+[0m[31m[1m>[22m[39m[90m 152 |[39m     [36mconst[39m edge2026 [33m=[39m builtupRadiusKm(theta[33m,[39m [33mBASE_RADIUS_KM[39m[[35m2026[39m])[33m;[39m[0m
+[0m [90m     |[39m                      [31m[1m^[22m[39m[0m
+[0m [90m 153 |[39m     [36mconst[39m edge2030 [33m=[39m builtupRadiusKm(theta[33m,[39m [33mRADIUS_2030[39m)[33m;[39m[0m
+[0m [90m 154 |[39m     [36mlet[39m p[33m:[39m number[33m;[39m[0m
+[0m [90m 155 |[39m     [36mif[39m (rKm [33m<[39m edge2026) {[0m
+ ⨯ ./components/map/MapCanvas.tsx
+Error: 
+  [31mx[0m the name `YEARS` is defined multiple times
+    ,-[[36;1;4mC:\Users\ved\Desktop\urbanslens\UrbanLens_ULTRAFAST_db_faiss\UrbanLens-ultrafast\web\components\map\MapCanvas.tsx[0m:32:1]
+ [2m32[0m | import { refreshThermalStatus, useThermalStatus } from "@/data/thermal";
+ [2m33[0m | import type { Year } from "@/types";
+ [2m34[0m | import { m2 } from "@/lib/marks";
+ [2m35[0m | import { YEARS } from "@/types";
+    : [31;1m         ^^|^^[0m
+    :            [31;1m`-- [31;1mprevious definition of `YEARS` here[0m[0m
+ [2m36[0m | 
+ [2m37[0m | const YEARS: Year[] = [2018, 2022, 2026];
+    : [33;1m      ^^|^^[0m
+    :         [33;1m`-- [33;1m`YEARS` redefined here[0m[0m
+ [2m38[0m | 
+ [2m39[0m | const CARTO_ATTRIB =
+ [2m40[0m |   '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>';
+    `----
+
+Import trace for requested module:
+./components/map/MapCanvas.tsx
+./components/layout/AppShell.tsx
+./app/app/page.tsx

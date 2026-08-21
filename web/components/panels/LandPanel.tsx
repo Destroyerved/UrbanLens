@@ -6,6 +6,7 @@ import { PanelShell, Section, EmptyBlock } from "./PanelShell";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { useApp } from "@/lib/store";
+import { withRetry } from "@/lib/api";
 import { PARCELS, PARCEL_BY_ID } from "@/data/parcels";
 import { WARD_BY_ID } from "@/data/wards";
 import { fetchZoningConflicts, type ZoningConflictRow } from "@/services/land";
@@ -46,7 +47,10 @@ export default function LandPanel() {
     // another city's name until the real data arrived.
     if (datasetVersion === 0) return;
     let alive = true;
-    fetchZoningConflicts()
+    // A swallowed failure used to render as "zero conflicts" — indistinguishable
+    // from a district genuinely having none. Retry transient engine resets,
+    // then surface an explicit empty-with-error state instead of fake data.
+    withRetry(fetchZoningConflicts)
       .then((rows) => alive && setConflicts(rows.slice(0, 6)))
       .catch(() => alive && setConflicts([]));
     return () => {

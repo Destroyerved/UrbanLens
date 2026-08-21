@@ -1,0 +1,12 @@
+INFO:     127.0.0.1:57825 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57323 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56904 - "GET /api/health?city=ahmedabad&deep=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52164 - "GET /api/health?city=ahmedabad&deep=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52250 - "GET /api/health?city=ahmedabad&deep=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52141 - "GET /api/health?city=ahmedabad&deep=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50924 - "OPTIONS /api/overview?city=kutch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63158 - "OPTIONS /api/infrastructure/gaps?city=kutch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61759 - "OPTIONS /api/growth?city=kutch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56668 - "OPTIONS /api/parcels/GJ-KUT-116282?city=kutch HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58689 - "GET /api/health?city=ahmedabad&deep=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63158 - "GET /api/infrastructure/gaps?city=kutch HTTP/1.1" 200 OK

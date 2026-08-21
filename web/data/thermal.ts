@@ -13,12 +13,29 @@ export interface ThermalStatus {
   updated_at: string | null;
   bounds: [number, number, number, number] | null;
   reason?: string;
+  /** District the status was scoped to, when one was requested. */
+  city?: string | null;
+  /** "district" = crop over this district's wards; "state" = master scene. */
+  scope?: "district" | "state";
+  /** Why a requested district view degraded to the statewide scene. */
+  note?: string | null;
+  /** Fraction (0-1) of the district's extent with an actual satellite reading. */
+  coverage?: number | null;
+  /** The date whose crop is shown, when it is not today's pass (cloud fallback). */
+  master_date?: string | null;
 }
 
-const EMPTY: ThermalStatus = { ok: false, date: null, updated_at: null, bounds: null };
+const EMPTY: ThermalStatus = {
+  ok: false,
+  date: null,
+  updated_at: null,
+  bounds: null,
+  scope: "state",
+};
 
 let status: ThermalStatus = EMPTY;
 let lastFetchedAt = 0;
+let activeCity: string | null = null;
 const listeners = new Set<() => void>();
 
 // The LST scene changes at most once per satellite pass, so the poll only
@@ -36,18 +53,40 @@ function setStatus(next: ThermalStatus) {
 }
 
 async function fetchStatus() {
+  // Capture the request's city so a district switch mid-flight cannot let a
+  // stale response overwrite the newer scope.
+  const forCity = activeCity;
   try {
-    const s = await apiGet<ThermalStatus>("/api/thermal/status");
+    const q = forCity ? `?city=${encodeURIComponent(forCity)}` : "";
+    const s = await apiGet<ThermalStatus>(`/api/thermal/status${q}`);
+    if (forCity !== activeCity) return;
     setStatus({
       ok: !!s.ok,
       date: s.date ?? null,
       updated_at: s.updated_at ?? null,
       bounds: s.bounds ?? null,
       reason: s.reason,
+      city: s.city ?? forCity,
+      scope: s.scope === "district" ? "district" : "state",
+      note: s.note ?? null,
+      coverage: typeof s.coverage === "number" ? s.coverage : null,
+      master_date: s.master_date ?? null,
     });
   } catch {
     // Backend unreachable — keep whatever we last had (possibly EMPTY).
   }
+}
+
+/** Point the LST layer at a district (or null for the statewide scene).
+ *  Refetches whenever the district actually changes. */
+export function setThermalCity(city: string | null) {
+  if (city === activeCity) return;
+  activeCity = city;
+  void fetchStatus();
+}
+
+export function getThermalCity(): string | null {
+  return activeCity;
 }
 
 /** Kick off the initial fetch once (idempotent per session). */

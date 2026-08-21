@@ -1,0 +1,19 @@
+
+> urbanlens-frontend@0.1.0 dev
+> next dev
+
+  ▲ Next.js 14.2.15
+  - Local:        http://localhost:3000
+
+ ✓ Starting...
+ ✓ Ready in 35.8s
+ ○ Compiling /app ...
+ ✓ Compiled / in 26.5s (4741 modules)
+ GET / 200 in 37570ms
+ ○ Compiling /_not-found ...
+ ✓ Compiled /_not-found in 3.8s (4024 modules)
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 4640ms
+ GET /_next/static/chunks/app/ReorderContext.mjs.map 404 in 2655ms
+ ○ Compiling /app ...
+ ✓ Compiled /app in 1386ms (2366 modules)
+ GET /app 200 in 3175ms

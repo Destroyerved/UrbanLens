@@ -222,6 +222,7 @@ export const gapHeatFC = (): FeatureCollection => build_gapHeatFC(GRID);
 export const vegetationFC = (): FeatureCollection => VEGETATION;
 export const greenspaceFC = (): FeatureCollection => GREENSPACE;
 
+/** Metro extent the LST raster covers (matches backend BBOX). */
 /**
  * Fallback extent for the LST raster, used only until `/api/thermal/status`
  * reports the real one. The backend publishes ONE statewide scene covering
@@ -231,9 +232,16 @@ export const greenspaceFC = (): FeatureCollection => GREENSPACE;
  */
 export const THERMAL_BOUNDS: [number, number, number, number] = [68.1757, 20.1195, 74.4764, 24.7119];
 
-/** Raster URL for the committed LST layer; `updated_at` busts the browser cache. */
-export const thermalRasterURL = (updatedAt?: string): string =>
-  `${API_BASE}/static/thermal/latest.png${updatedAt ? `?v=${encodeURIComponent(updatedAt)}` : ""}`;
+/** Raster URL for the LST layer. With a district id, serves that district's
+ *  crop from the engine (generated on demand, disk-cached); without one — or
+ *  for the composite state view — serves the statewide master PNG.
+ *  `updated_at` busts the browser cache when the scene refreshes. */
+export const thermalRasterURL = (city: string | null, updatedAt?: string): string => {
+  const v = updatedAt ? `?v=${encodeURIComponent(updatedAt)}` : "";
+  return city
+    ? `${API_BASE}/api/thermal/raster?city=${encodeURIComponent(city)}${updatedAt ? `&v=${encodeURIComponent(updatedAt)}` : ""}`
+    : `${API_BASE}/static/thermal/latest.png${v}`;
+};
 
 export const LANDUSE_COLORS: Record<LandUse, string> = {
   agriculture: "#84cc16",

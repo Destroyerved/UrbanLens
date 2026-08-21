@@ -118,10 +118,14 @@ export default function Legend() {
         </div>
       )}
 
-      {showThermalHeat && (
-        thermal.date ? (
+      {showThermalHeat &&
+        (thermal.date ? (
           <HeatmapLegendBar
-            title={`Urban Heat Island — LST ${thermal.ok ? "" : `(stale since ${thermal.date})`}`}
+            title={`Urban Heat Island — LST ${thermal.ok ? "" : `(stale since ${thermal.date}) `}${
+              thermal.scope === "district" && typeof thermal.coverage === "number"
+                ? `· ${Math.round(thermal.coverage * 100)}% clear-sky `
+                : ""
+            }${thermal.note ? `· ${thermal.note}` : ""}`}
             minLabel="Relative low"
             maxLabel="Relative high"
             gradient="linear-gradient(90deg, #3b82f6, #eab308, #f97316, #b91c1c)"
@@ -133,8 +137,7 @@ export default function Legend() {
               Not yet available — raster not published
             </span>
           </div>
-        )
-      )}
+        ))}
 
       {showFloodRisk && (
         <div className="mb-2.5">
