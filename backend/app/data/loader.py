@@ -245,7 +245,11 @@ def _fingerprint(city: City, name: str) -> str:
     return "|".join(str(SOURCE.fingerprint(m, name)) for m in city.composite_of)
 
 
-@lru_cache(maxsize=512)
+# Layer docs are FAT in RAM: a 12 MB parcels JSON becomes ~60-100 MB of Python
+# dicts. Caching every district's every layer (34 x ~11) blew past Render free
+# tier's 512 MB and OOM-restarted the service. 16 entries keeps the ACTIVE
+# district's layers plus change; older districts reload from SQLite on demand.
+@lru_cache(maxsize=16)
 def _layer(name: str, city_id: str, fingerprint: str) -> dict[str, Any] | None:
     """Layer document, keyed by content fingerprint."""
     return _resolve_layer(get_city(city_id), name)
@@ -347,7 +351,10 @@ class Dataset:
         return int(round(self.grid.total))
 
 
-@lru_cache(maxsize=64)
+# Datasets hold references into the _layer cache, so their own footprint is
+# mostly the grid arrays + shells; 2 covers the active city and a mid-switch
+# transition without letting every visited district pile up in RAM.
+@lru_cache(maxsize=2)
 def _dataset_build(city_id: str, signature: str) -> Dataset:
     city = get_city(city_id)
 
