@@ -58,9 +58,26 @@ DOWNSAMPLE = 4
 # Water is highest because it means a structure, not just a harder alignment;
 # population is next because acquisition and rehousing dominate real corridor
 # budgets in Indian cities.
+# Ordering matters more than the absolute numbers: bridging a reservoir is
+# genuine engineering, routing around a settlement is land acquisition, and the
+# first is far dearer than the second.
+#
+# population was 6.0 and that was too near water's 12.0. Costs stack additively
+# on BASE_COST, so a line between two town centres averaged 6.33 per cell while
+# a road cell costs 0.70 -- a 9x ratio, which let Dijkstra accept a road route
+# nine times longer before length mattered again. Morbi routed 120.66 km
+# between ward centres 45.62 km apart (164.5% detour) while crossing water in
+# exactly 1 of 38 cells: it was fleeing people, not obstacles. At 2.5 the same
+# route is 6.5%, Ahmedabad 17.0% -> 3.1%, and Narmada holds at ~30% because
+# there the detour is real terrain.
+#
+# There is a tension worth naming: route() reports population_served as a
+# benefit while the surface charges population as a cost. That is right for
+# infrastructure -- serve people without displacing them -- but only while the
+# penalty stays small enough not to overwhelm the thing it is trading against.
 COST_WEIGHTS = {
     "water": 12.0,
-    "population": 6.0,
+    "population": 2.5,
     "green": 4.0,
     "flood": 3.0,
 }
@@ -69,12 +86,11 @@ COST_WEIGHTS = {
 # already public, already cleared and already disturbed. This is a multiplier on
 # the assembled cost, not a subtraction, so it can never drive a cell negative.
 #
-# The value also sets how far the router will go out of its way, which is the
-# reason it is not lower: a discount of d makes the longest worthwhile detour
-# about 1/d times the direct length. At 0.45 the search accepted routes 2.2x
-# the straight line to stay on existing roads — cheap per kilometre and absurd
-# as an alignment. At 0.7 reuse is still strongly preferred but caps out around
-# a 40% detour, which is the order real corridors actually accept.
+# The value also influences how far the router will go out of its way. Note the
+# bound is NOT 1/d as this comment once claimed: that holds only if the discount
+# is the sole variation in cost, and the weights above stack additively on top,
+# so the real ratio is (BASE + penalties) / (BASE * d). Getting detours under
+# control was a matter of the population weight, not of this number.
 ROAD_DISCOUNT = 0.7
 
 BASE_COST = 1.0
@@ -82,7 +98,7 @@ BASE_COST = 1.0
 # Bumped whenever weights, resolution or output shape change — the persisted
 # cache is keyed on the source-layer signature, which will not move for a code
 # edit on its own.
-ANALYTIC_VERSION = "v1"
+ANALYTIC_VERSION = "v2-cost-weights"
 
 _M_PER_DEG_LAT = 110_574.0
 
