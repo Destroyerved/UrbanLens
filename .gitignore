@@ -16,7 +16,15 @@ venv/
 backend/urbanlens.db
 backend/urbanlens.db.*
 backend/cache/
-datasets/
+# datasets/ is mostly prebuild INPUT (esri/ghsl rasters, re-downloadable from
+# their providers) consumed by offline scripts whose outputs ship as tracked
+# JSONs. Only what the engine reads per-request at runtime stays tracked:
+# the 90 m DEM tiles (flood analysis) and the tiny prediction-training set.
+datasets/*
+!datasets/dem/
+!datasets/dem/**
+!datasets/training/
+!datasets/training/**
 
 # Raw satellite master (64 MB) — re-fetched daily from GIBS; the rendered
 # latest.png + meta.json ARE the committed scene and stay tracked.
