@@ -52,7 +52,13 @@ function setStatus(next: ThermalStatus) {
   emit();
 }
 
-async function fetchStatus() {
+// A silently abandoned fetch would leave the PREVIOUS district's scene in
+// place indefinitely, so transient failures (engine restart mid-crop
+// generation, network blip) are retried a few times with backoff.
+const STATUS_RETRIES = 3;
+const STATUS_RETRY_MS = 1500;
+
+async function fetchStatus(attempt = 0) {
   // Capture the request's city so a district switch mid-flight cannot let a
   // stale response overwrite the newer scope.
   const forCity = activeCity;
@@ -73,7 +79,13 @@ async function fetchStatus() {
       master_date: s.master_date ?? null,
     });
   } catch {
-    // Backend unreachable — keep whatever we last had (possibly EMPTY).
+    if (forCity === activeCity && attempt < STATUS_RETRIES - 1) {
+      setTimeout(() => {
+        if (forCity === activeCity) void fetchStatus(attempt + 1);
+      }, STATUS_RETRY_MS * (attempt + 1));
+    }
+    // After the final attempt: keep whatever we last had. The slow poll and
+    // the next explicit refresh (toggle / selection) will try again anyway.
   }
 }
 

@@ -275,7 +275,8 @@ export const useApp = create<AppState>((set, get) => ({
   setCity: async (id) => {
     m2("store:start");
     const city = cityById(id);
-    if (get().city.id === city.id && get().datasetVersion > 0) return;
+    // No same-id short-circuit: re-selecting a district must also force every
+    // layer to refetch (datasetVersion bump below is the fan-out signal).
     setApiCity(city.id);
     // Anything derived from the previous area is now about the wrong place.
     set({

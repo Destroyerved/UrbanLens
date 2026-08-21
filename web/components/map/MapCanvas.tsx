@@ -117,6 +117,7 @@ export default function MapCanvas() {
   const simMarkerRef = useRef<Marker | null>(null);
   const rafRef = useRef<number>(0);
   const thermalUrlRef = useRef<string | null>(null);
+  const thermalWasOnRef = useRef(false);
   // Version each expensive GeoJSON source so invisible layers are not parsed by
   // MapLibre until somebody actually turns them on.
   const sourceVersionRef = useRef<Record<string, number>>({});
@@ -182,7 +183,13 @@ export default function MapCanvas() {
   // Refresh whenever the UHI layer is switched on, and re-point the raster at
   // the committed file (cache-busted by updated_at) once we know the date.
   useEffect(() => {
-    if (activeLayers["thermal-heat"]) refreshThermalStatus();
+    const on = !!activeLayers["thermal-heat"];
+    // Toggling the layer back on must deterministically re-pull the raster:
+    // a failed/aborted updateImage leaves a blank source behind, and an
+    // unchanged URL key would otherwise skip reloading it forever.
+    if (on && !thermalWasOnRef.current) thermalUrlRef.current = null;
+    thermalWasOnRef.current = on;
+    if (on) refreshThermalStatus();
     const map = mapRef.current;
     if (!map || !ready || !thermal.date) return;
     const src = map.getSource("thermal-raster") as maplibregl.ImageSource | undefined;
@@ -197,14 +204,20 @@ export default function MapCanvas() {
       try {
         const updatePromise = src.updateImage({ url, coordinates: thermalCorners(thermal.bounds) });
         if (updatePromise && typeof (updatePromise as any).catch === "function") {
-          (updatePromise as any).catch(() => {});
+          (updatePromise as any).catch(() => {
+            // Load failed (e.g. slow first-time crop generation or an abort
+            // during a district switch): forget the key so the next run of
+            // this effect retries instead of assuming the image is present.
+            if (thermalUrlRef.current === key) thermalUrlRef.current = null;
+          });
         }
       } catch {
-        // updateImage aborts any in-flight image load; ignore if it throws
-        // during mount/teardown (e.g. WebGL context already lost).
+        // updateImage throws synchronously during mount/teardown (e.g. WebGL
+        // context already lost); drop the key so a later run can retry.
+        if (thermalUrlRef.current === key) thermalUrlRef.current = null;
       }
     }
-  }, [activeLayers, ready, thermal, city]);
+  }, [activeLayers, ready, thermal, city, datasetVersion]);
 
   /* ------------------------------ init ------------------------------ */
   useEffect(() => {
@@ -284,6 +297,18 @@ export default function MapCanvas() {
     mapRef.current = map;
     setMapInstance(map);
 
+    // Map-level error sink. Without any "error" listener, maplibre's Evented
+    // console.errors everything itself — including the AbortErrors that tile
+    // and image sources produce constantly by design (requests cancelled
+    // mid-flight by zooms, basemap swaps, updateImage). AbortError is an
+    // intentional cancellation here, so it is dropped; anything else is
+    // surfaced as a warning so real breakage stays visible in dev.
+    map.on("error", (e) => {
+      const err = (e as { error?: DOMException }).error;
+      if (err?.name === "AbortError") return;
+      if (err) console.warn("[map]", err.message ?? err);
+    });
+
     map.on("load", () => {
       /* ---- sources ---- */
       // Sources start empty. The real CDN bootstrap is pushed exactly once by
@@ -309,16 +334,34 @@ export default function MapCanvas() {
       map.addSource("corridor", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
       map.addSource("thermal-raster", {
         type: "image",
-        url: thermalRasterURL(),
+        // MapLibre's image source decoder does not support GIFs. A tiny
+        // transparent PNG keeps the source valid until a real LST raster is
+        // requested, without an eager /static/thermal request — an eager load
+        // here also guarantees an AbortError later, when the first real
+        // updateImage() aborts it mid-flight (maplibre leaves that internal
+        // rejection unhandled).
+        url: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL5nAAAAABJRU5ErkJggg==",
         coordinates: thermalCorners(THERMAL_STATUS().bounds),
       });
-      thermalUrlRef.current = `${thermalRasterURL()}|${(THERMAL_STATUS().bounds ?? THERMAL_BOUNDS).join(",")}`;
+      thermalUrlRef.current = null;
       // Swallow maplibre's ErrorEvent logging: updateImage() aborts the
       // initial load() on mount, which fires an 'error' event with no
       // listeners and gets console.error'd by maplibre's Evented.
       (map.getSource("thermal-raster") as maplibregl.ImageSource | undefined)?.on(
         "error",
         () => {}
+      );
+      // Belt-and-braces: maplibre's ImageSource aborts stale image loads on
+      // every updateImage(); the aborted fetch rejects inside maplibre as an
+      // *unhandled* promise rejection ("signal is aborted without reason")
+      // even though our own updatePromise is caught. Those cancellations are
+      // intentional by design, so keep them out of the console.
+      const onUnhandledRejection = (e: PromiseRejectionEvent) => {
+        if ((e.reason as DOMException)?.name === "AbortError") e.preventDefault();
+      };
+      window.addEventListener("unhandledrejection", onUnhandledRejection);
+      map.once("remove", () =>
+        window.removeEventListener("unhandledrejection", onUnhandledRejection)
       );
       map.addSource("gap", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
       map.addSource("sim-coverage", {
@@ -1103,7 +1146,12 @@ export default function MapCanvas() {
     setV("growth-heat", !!L["growth-heat"]);
     setV("gap-heat", !!L["gap-heat"]);
     setV("ndvi-heat", !!L["ndvi-heat"]);
-    setV("thermal-heat", !!L["thermal-heat"] && !!thermal.date);
+    // A district-scoped scene whose district no longer matches the selection
+    // is a stale leftover (new crop still generating / status fetch retrying):
+    // hide it rather than paint the previous district over the new one.
+    const thermalSceneStale =
+      thermal.scope === "district" && !!city && !!thermal.city && thermal.city !== city.id;
+    setV("thermal-heat", !!L["thermal-heat"] && !!thermal.date && !thermalSceneStale);
     setV("greenspace", !!L["greenspace"]);
     setV("greenspace-line", !!L["greenspace"]);
     setV("gap", !!L["gap"]);
@@ -1139,7 +1187,7 @@ export default function MapCanvas() {
       map.setPaintProperty("greenspace", "fill-opacity", layerOpacity["greenspace"] ?? 0.45);
     if (map.getLayer("flood-risk"))
       map.setPaintProperty("flood-risk", "fill-opacity", layerOpacity["flood-risk"] ?? 0.5);
-  }, [activeLayers, ready, layerOpacity, thermal]);
+  }, [activeLayers, ready, layerOpacity, thermal, city]);
 
   /* --------------------- year crossfade (fluid builtup) -------------- */
   useEffect(() => {

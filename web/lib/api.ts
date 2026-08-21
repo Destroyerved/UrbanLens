@@ -44,10 +44,13 @@ function url(path: string, params?: Record<string, string | number | boolean | u
   const target = BASE + path;
   const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost:3000";
   const u = new URL(target, origin);
-  u.searchParams.set("city", currentCity);
   for (const [k, v] of Object.entries(params ?? {})) {
     if (v !== undefined) u.searchParams.set(k, String(v));
   }
+  // Default to the active study area unless the call pinned its own district
+  // (e.g. thermal status scopes requests explicitly). Setting unconditionally
+  // used to silently overwrite the caller's explicit `city`.
+  if (!u.searchParams.has("city")) u.searchParams.set("city", currentCity);
   return u.toString();
 }
 
