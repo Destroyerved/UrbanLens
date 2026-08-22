@@ -38,6 +38,18 @@ const IGNORED_REQUEST_HOSTS = [
   "fonts.gstatic.com",
   "fonts.googleapis.com",
 ];
+// Same-origin requests whose failure is the designed behaviour, not a fault.
+//
+// components/urbanlens-globe/lib/textures.ts probes high-res -> standard ->
+// legacy filenames for each Earth texture and falls back to a procedurally
+// synthesised globe if none resolve. Only the legacy .jpg set is committed, so
+// the .webp probes 404 on every load by design. Counting them failed the run
+// on correct behaviour and, worse, hid real same-origin 404s in the noise.
+//
+// Deliberately narrow: only the optional texture probe. Any other same-origin
+// 404 still fails, which is the point of this check.
+const IGNORED_REQUEST_PATHS = [/\/textures\/earth-[a-z]+-\d+k\.webp$/i];
+
 const IGNORED_CONSOLE = [
   /Download the React DevTools/i,
   /\[Fast Refresh\]/i,
@@ -93,6 +105,7 @@ page.on("pageerror", (e) => pageErrors.push(`${e.message}`.slice(0, 300)));
 page.on("requestfailed", (r) => {
   const url = r.url();
   if (IGNORED_REQUEST_HOSTS.some((h) => url.includes(h))) return;
+  if (IGNORED_REQUEST_PATHS.some((re) => re.test(url))) return;
   failedRequests.push(`${r.failure()?.errorText ?? "failed"} ${url.slice(0, 120)}`);
 });
 const thirdPartyErrors = [];
@@ -104,6 +117,7 @@ page.on("response", (r) => {
   // not this app's correctness and an outage upstream must not read as a
   // regression here. Everything served from our own origin counts.
   if (IGNORED_REQUEST_HOSTS.some((h) => url.includes(h))) thirdPartyErrors.push(line);
+  else if (IGNORED_REQUEST_PATHS.some((re) => re.test(url))) thirdPartyErrors.push(line);
   else failedRequests.push(line);
 });
 
