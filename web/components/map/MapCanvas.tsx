@@ -114,7 +114,6 @@ export default function MapCanvas() {
   const [ready, setReady] = useState(false);
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
   const markersRef = useRef<Marker[]>([]);
-  const simMarkerRef = useRef<Marker | null>(null);
   const rafRef = useRef<number>(0);
   const thermalUrlRef = useRef<string | null>(null);
   const thermalWasOnRef = useRef(false);
@@ -1322,10 +1321,6 @@ export default function MapCanvas() {
     const map = mapRef.current;
     if (!map || !ready) return;
 
-    if (simMarkerRef.current) {
-      simMarkerRef.current.remove();
-      simMarkerRef.current = null;
-    }
     const src = map.getSource("sim-coverage") as maplibregl.GeoJSONSource | undefined;
     if (!src) return;
 
@@ -1335,15 +1330,6 @@ export default function MapCanvas() {
     }
 
     const { center, radiusKm } = simResult;
-
-    // pin marker
-    const el = document.createElement("div");
-    el.className = "ul-sim-pin";
-    el.innerHTML =
-      '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M2 12h20"/></svg>';
-    simMarkerRef.current = new maplibregl.Marker({ element: el })
-      .setLngLat(center)
-      .addTo(map);
 
     // animated expanding ring
     let currentR = 0.2;
