@@ -257,16 +257,35 @@ export interface ZoningConflict {
   severity: "moderate" | "high";
 }
 
+export interface SearchedLocation {
+  id: string;
+  name: string;
+  coord: LngLat;
+  address?: string;
+  category_label?: string;
+  zoom?: number;
+  description?: string;
+}
+
 /** Actions the Copilot (and search palette) can trigger on the map/app. */
 export type MapAction =
-  | { type: "flyTo"; center: LngLat; zoom: number }
-  | { type: "selectParcel"; parcelId: string }
+  | { type: "flyTo"; center: LngLat; zoom?: number; pitch?: number; bearing?: number }
+  | { type: "selectParcel"; parcelId: string; fly?: boolean }
+  | { type: "pinpointLocation"; location: SearchedLocation }
+  | { type: "clearPinpoint" }
   | { type: "setMode"; mode: Mode }
   | { type: "enableLayer"; layerId: string }
+  | { type: "disableLayer"; layerId: string }
+  | { type: "toggleLayer"; layerId: string; on?: boolean }
+  | { type: "setBasemap"; basemap: "satellite" | "hybrid" | "streets" | "terrain" | "dark" | "light" }
+  | { type: "setCity"; cityId: string }
   | { type: "highlightWards"; wardIds: string[] }
   | { type: "setYear"; year: Year }
   | { type: "enablePrediction" }
-  | { type: "runSiteAnalysis" };
+  | { type: "runSiteAnalysis"; project?: ProjectType }
+  | { type: "runSimulation"; parcelId?: string; project?: ProjectType }
+  | { type: "resetView" }
+  | { type: "set3D"; pitch?: number };
 
 export interface CopilotMessage {
   id: string;

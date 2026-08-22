@@ -25,9 +25,11 @@ interface ApiCopilot {
   tool: string;
   answer: string;
   items?: { id?: string; label: string; sub?: string; score?: number; centroid?: [number, number] }[];
+  actions?: { label: string; action: MapAction }[];
+  autoActions?: MapAction[];
   map?: {
     highlight_parcel_ids?: string[];
-    focus?: { lng: number; lat: number; zoom?: number };
+    focus?: { lng: number; lat: number; zoom?: number; pitch?: number; bearing?: number };
     ward_metric?: string;
   };
   llm?: { used: boolean; model?: string; reason?: string };
@@ -42,6 +44,11 @@ const TOOL_MODE: Record<string, MapAction | undefined> = {
   infrastructure_gaps: { type: "setMode", mode: "infrastructure" },
   zoning_conflicts: { type: "setMode", mode: "land" },
   land_use_change: { type: "setMode", mode: "growth" },
+  switch_mode: undefined,
+  toggle_layer: undefined,
+  switch_basemap: undefined,
+  switch_city: undefined,
+  run_simulation: { type: "setMode", mode: "simulator" },
 };
 
 export async function copilotQuery(q: string): Promise<CopilotResponse> {
@@ -58,23 +65,24 @@ export async function copilotQuery(q: string): Promise<CopilotResponse> {
     };
   }
 
-  const autoActions: MapAction[] = [];
+  const autoActions: MapAction[] = [...(res.autoActions ?? [])];
   const mode = TOOL_MODE[res.tool];
-  if (mode) autoActions.push(mode);
+  if (mode && !autoActions.some((a) => a.type === "setMode")) autoActions.push(mode);
   if (res.map?.focus) {
     autoActions.push({
       type: "flyTo",
       center: [res.map.focus.lng, res.map.focus.lat],
       zoom: res.map.focus.zoom ?? 13,
+      pitch: res.map.focus.pitch,
+      bearing: res.map.focus.bearing,
     });
   }
   if (res.map?.ward_metric) {
     autoActions.push({ type: "highlightWards", wardIds: (res.items ?? []).map((i) => i.id ?? "") });
   }
 
-  // Offer the top few results as things to click, rather than firing every
-  // camera move at once.
-  const actions = (res.items ?? [])
+  // Offer backend custom actions + top few item actions
+  const itemActions: { label: string; action: MapAction }[] = (res.items ?? [])
     .slice(0, 4)
     .filter((i) => i.id)
     .map((i) => ({
@@ -84,5 +92,7 @@ export async function copilotQuery(q: string): Promise<CopilotResponse> {
         : ({ type: "selectParcel", parcelId: i.id! } as MapAction),
     }));
 
-  return { text: res.answer, actions, autoActions, llm: res.llm };
+  const allActions = [...(res.actions ?? []), ...itemActions];
+
+  return { text: res.answer, actions: allActions, autoActions, llm: res.llm };
 }

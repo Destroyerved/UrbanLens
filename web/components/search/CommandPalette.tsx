@@ -17,12 +17,16 @@ import {
   Leaf,
   Route,
   Scale,
+  GraduationCap,
+  Building2,
+  Navigation,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useApp } from "@/lib/store";
 import { PARCELS } from "@/data/parcels";
 import { WARDS } from "@/data/wards";
 import { FACILITIES } from "@/data/facilities";
+import { CURATED_LOCATIONS } from "@/lib/locations";
 import { MODE_META } from "@/config/layers";
 import type { Mode } from "@/types";
 
@@ -146,6 +150,45 @@ export default function CommandPalette() {
                   >
                     <Moon size={14} /> Toggle dark / light theme
                   </Command.Item>
+                </Command.Group>
+
+                <Command.Group
+                  heading="Institutions & Landmarks"
+                  className="[&_[cmdk-group-heading]]:label-caps [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:font-bold"
+                >
+                  {CURATED_LOCATIONS.map((l) => (
+                    <Command.Item
+                      key={l.id}
+                      value={`landmark location place ${l.name} ${l.aliases.join(" ")} ${l.address}`}
+                      onSelect={() =>
+                        run(() => {
+                          const curCity = useApp.getState().city.id;
+                          if (l.city_id && l.city_id !== curCity) {
+                            applyAction({ type: "setCity", cityId: l.city_id });
+                          }
+                          applyAction({ type: "pinpointLocation", location: l });
+                        })
+                      }
+                      className="flex cursor-pointer items-center gap-2.5 rounded-xl px-2.5 py-2 text-[12.5px] font-medium transition-colors aria-selected:bg-accent/15 aria-selected:text-accent"
+                    >
+                      {l.category === "university" || l.category === "research" ? (
+                        <GraduationCap size={14} className="text-emerald-400" />
+                      ) : l.category === "hospital" ? (
+                        <Hospital size={14} className="text-rose-400" />
+                      ) : l.category === "business" ? (
+                        <Building2 size={14} className="text-cyan-400" />
+                      ) : (
+                        <Navigation size={14} className="text-amber-400" />
+                      )}
+                      <div>
+                        <div className="font-semibold leading-tight">{l.name}</div>
+                        <div className="text-[10px] text-muted-foreground leading-tight">{l.address}</div>
+                      </div>
+                      <span className="ml-auto text-[10px] rounded-md bg-surface-3 px-1.5 py-0.5 text-muted-foreground">
+                        {l.city_name ?? l.category_label}
+                      </span>
+                    </Command.Item>
+                  ))}
                 </Command.Group>
 
                 <Command.Group

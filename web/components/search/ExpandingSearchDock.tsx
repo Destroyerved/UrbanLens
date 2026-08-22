@@ -14,10 +14,15 @@ import {
   FlaskConical,
   Sparkles,
   MapPin,
+  GraduationCap,
+  Building2,
+  Navigation,
 } from "lucide-react";
+import { toast } from "sonner";
 import { useApp } from "@/lib/store";
 import { PARCELS } from "@/data/parcels";
 import { WARD_BY_ID } from "@/data/wards";
+import { searchAllLocations } from "@/lib/locations";
 import { cn } from "@/lib/utils";
 
 function useDebounce<T>(value: T, delay: number = 180): T {
@@ -183,33 +188,65 @@ export function ExpandingSearchDock({
       (a.description && a.description.toLowerCase().includes(normalized))
     );
 
-    // Search live parcel data
-    const matchedParcels: Action[] = PARCELS.filter((p) => {
-      const wardName = WARD_BY_ID.get(p.wardId)?.name ?? "";
-      return (
-        p.id.toLowerCase().includes(normalized) ||
-        wardName.toLowerCase().includes(normalized) ||
-        p.landUse.toLowerCase().includes(normalized)
-      );
-    })
-      .slice(0, 4)
-      .map((p) => {
-        const wardName = WARD_BY_ID.get(p.wardId)?.name ?? "";
-        return {
-          id: `p-${p.id}`,
-          label: `Parcel ${p.id}`,
-          icon: <MapPin className="h-4 w-4 text-accent" />,
-          description: `${wardName} · ${p.areaHa} Ha · ${p.landUse}`,
-          short: `W${p.wardId}`,
-          end: "Parcel",
-          onSelect: () => {
-            selectParcel(p.id, true);
-            setMode("land");
-          },
-        };
-      });
+    // Search live locations, institutes, and landmarks
+    let active = true;
+    void searchAllLocations(normalized, useApp.getState().city.id).then((locs) => {
+      if (!active) return;
+      const locationActions: Action[] = locs.slice(0, 5).map((l) => ({
+        id: `loc-${l.id}`,
+        label: l.name,
+        icon: l.category === "university" || l.category === "research"
+          ? <GraduationCap className="h-4 w-4 text-emerald-400" />
+          : l.category === "hospital"
+          ? <Hospital className="h-4 w-4 text-rose-400" />
+          : l.category === "business"
+          ? <Building2 className="h-4 w-4 text-cyan-400" />
+          : <Navigation className="h-4 w-4 text-amber-400" />,
+        description: `${l.address} · ${l.category_label}`,
+        short: l.city_name ?? "Location",
+        end: "Place",
+        onSelect: () => {
+          const curCity = useApp.getState().city.id;
+          if (l.city_id && l.city_id !== curCity) {
+            void useApp.getState().setCity(l.city_id);
+          }
+          useApp.getState().applyAction({ type: "pinpointLocation", location: l });
+          toast.success(`Navigated to: ${l.name}`);
+        },
+      }));
 
-    setResult({ actions: [...matchedActions, ...matchedParcels] });
+      // Search live parcel data
+      const matchedParcels: Action[] = PARCELS.filter((p) => {
+        const wardName = WARD_BY_ID.get(p.wardId)?.name ?? "";
+        return (
+          p.id.toLowerCase().includes(normalized) ||
+          wardName.toLowerCase().includes(normalized) ||
+          p.landUse.toLowerCase().includes(normalized)
+        );
+      })
+        .slice(0, 4)
+        .map((p) => {
+          const wardName = WARD_BY_ID.get(p.wardId)?.name ?? "";
+          return {
+            id: `p-${p.id}`,
+            label: `Parcel ${p.id}`,
+            icon: <MapPin className="h-4 w-4 text-accent" />,
+            description: `${wardName} · ${p.areaHa} Ha · ${p.landUse}`,
+            short: `W${p.wardId}`,
+            end: "Parcel",
+            onSelect: () => {
+              selectParcel(p.id, true);
+              setMode("land");
+            },
+          };
+        });
+
+      setResult({ actions: [...locationActions, ...matchedActions, ...matchedParcels] });
+    });
+
+    return () => {
+      active = false;
+    };
   }, [debouncedQuery, isExpanded]);
 
   // Click outside listener

@@ -31,8 +31,37 @@ import urllib.request
 from dataclasses import dataclass
 
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434").rstrip("/")
-OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "llama3.2")
+PREFERRED_MODELS = [
+    "llama3.1:8b",
+    "llama3.1",
+    "qwen2.5:7b",
+    "qwen2.5:14b",
+    "mistral",
+    "llama3.2:latest",
+    "llama3.2",
+]
 TIMEOUT_S = float(os.environ.get("OLLAMA_TIMEOUT", "30"))
+
+
+def get_active_model() -> str:
+    """Return the configured or auto-detected best available model."""
+    if "OLLAMA_MODEL" in os.environ:
+        return os.environ["OLLAMA_MODEL"]
+    try:
+        with urllib.request.urlopen(f"{OLLAMA_URL}/api/tags", timeout=2) as resp:
+            payload = json.loads(resp.read().decode("utf-8"))
+        names = [m.get("name", "") for m in payload.get("models", [])]
+        for pref in PREFERRED_MODELS:
+            for name in names:
+                if name == pref or name.startswith(f"{pref}:") or (pref in name):
+                    return name
+    except Exception:
+        pass
+    return "llama3.1:8b"
+
+
+# Property for backward compatibility
+OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "llama3.1:8b")
 
 # How long a reachability verdict is trusted before being re-checked. "Up" is
 # re-checked often so a model going away is noticed; "down" is re-checked slowly
@@ -116,9 +145,10 @@ class LlmStatus:
 def status() -> LlmStatus:
     """Whether Ollama is reachable and whether the configured model is pulled."""
     reset_probe()
+    model = get_active_model()
     if not _reachable():
         return LlmStatus(
-            available=False, url=OLLAMA_URL, model=OLLAMA_MODEL, models_present=[],
+            available=False, url=OLLAMA_URL, model=model, models_present=[],
             detail=f"Nothing is listening at {OLLAMA_URL}. Start it with `ollama serve`, or "
                    "leave it off — the copilot falls back to deterministic routing.",
         )
@@ -126,21 +156,21 @@ def status() -> LlmStatus:
         with urllib.request.urlopen(f"{OLLAMA_URL}/api/tags", timeout=3) as resp:
             payload = json.loads(resp.read().decode("utf-8"))
         names = [m.get("name", "") for m in payload.get("models", [])]
-        has_model = any(n == OLLAMA_MODEL or n.startswith(f"{OLLAMA_MODEL}:") for n in names)
+        has_model = any(n == model or n.startswith(f"{model}:") or (model in n) for n in names)
         return LlmStatus(
             available=has_model,
             url=OLLAMA_URL,
-            model=OLLAMA_MODEL,
+            model=model,
             models_present=names,
             detail=(
-                f"Ollama is running with '{OLLAMA_MODEL}'."
+                f"Ollama is running with '{model}'."
                 if has_model
-                else f"Ollama is running but '{OLLAMA_MODEL}' is not pulled. Run: ollama pull {OLLAMA_MODEL}"
+                else f"Ollama is running but '{model}' is not pulled. Run: ollama pull {model}"
             ),
         )
     except Exception as exc:  # noqa: BLE001 — any failure means "not usable"
         return LlmStatus(
-            available=False, url=OLLAMA_URL, model=OLLAMA_MODEL, models_present=[],
+            available=False, url=OLLAMA_URL, model=model, models_present=[],
             detail=f"Ollama not reachable at {OLLAMA_URL} ({exc.__class__.__name__}). "
                    "Start it with `ollama serve`, or leave it off — the copilot falls back "
                    "to deterministic routing.",
@@ -148,8 +178,9 @@ def status() -> LlmStatus:
 
 
 def _generate(prompt: str, *, system: str, json_mode: bool = False) -> str:
+    model = get_active_model()
     body = {
-        "model": OLLAMA_MODEL,
+        "model": model,
         "prompt": prompt,
         "system": system,
         "stream": False,
@@ -173,12 +204,20 @@ def _generate(prompt: str, *, system: str, json_mode: bool = False) -> str:
 # --------------------------------------------------------------------------
 
 TOOLS = {
+    "locate_place": "Find, geocode, and fly to a specific place, university, institute, landmark, hospital, building, address, or location (e.g. Institute of Advanced Research, GIFT City, IIM, IIT, Science City, stadium, etc.).",
     "site_search": "Find and rank the best parcels for a new facility or development.",
     "explain_parcel": "Explain why a specific, named parcel scores as it does.",
-    "infrastructure_gaps": "Rank wards by how poorly served they are.",
+    "infrastructure_gaps": "Rank wards by how poorly served they are or identify service gaps.",
     "government_land": "List government-owned land, optionally vacant or above a size.",
     "zoning_conflicts": "Find where actual land use diverges from official zoning.",
-    "land_use_change": "Find parcels converting to built-up land.",
+    "land_use_change": "Find parcels converting to built-up land or historical urban growth.",
+    "switch_mode": "Switch UI panel or mode (overview, growth, infrastructure, land, sites, simulator, equity, corridor, conservation, encroachment).",
+    "toggle_layer": "Turn a map layer or heatmap on or off (thermal-heat/UHI, ndvi-heat/vegetation, flood, roads, facilities, parcels, wards, prediction, builtup, greenspace, gap-heat, growth-heat, population).",
+    "switch_basemap": "Change the map basemap style (satellite, hybrid, streets, terrain, dark, light).",
+    "switch_city": "Switch active study area or district (ahmedabad, gandhinagar, surat, vadodara, rajkot, aravalli).",
+    "run_simulation": "Run an intervention simulation for a proposed facility on a parcel or coordinates.",
+    "time_machine": "Show historical observation year (2018, 2022, 2024) or enable 2030 prediction.",
+    "reset_view": "Reset camera view or tilt to 3D perspective.",
     "help": "The question does not map to any tool.",
 }
 
@@ -188,14 +227,40 @@ PROJECTS_HINT = (
 )
 
 INTENT_SYSTEM = (
-    "You route urban-planning questions to analysis tools. "
-    "Reply with JSON only, no prose, no code fences.\n"
-    f"tools: {json.dumps(TOOLS)}\n"
-    f"project types: {PROJECTS_HINT}\n"
-    'Schema: {"tool": <tool name>, "project": <project type or null>, '
-    '"service": <healthcare|education|parks|transportation|road_connectivity|null>, '
-    '"parcel_id": <id like GJ-AHD-01070 or null>, "min_hectares": <number or null>, '
-    '"vacant_only": <true|false>}'
+    "You route urban-planning commands and questions to GIS spatial analysis and UI control tools.\n"
+    "Reply with JSON only, without markdown code fences or conversational preamble.\n"
+    f"Tools: {json.dumps(TOOLS)}\n"
+    f"Project types: {PROJECTS_HINT}\n"
+    'Schema: {\n'
+    '  "tool": "<tool name>",\n'
+    '  "location_query": "<name of place, landmark, institute, or address or null>",\n'
+    '  "project": "<project type or null>",\n'
+    '  "service": "<healthcare|education|parks|transportation|road_connectivity|null>",\n'
+    '  "parcel_id": "<parcel id like GJ-AHM-13791 or null>",\n'
+    '  "min_hectares": <number or null>,\n'
+    '  "vacant_only": <true|false>,\n'
+    '  "mode": "<overview|growth|infrastructure|land|sites|simulator|equity|corridor|conservation|encroachment|null>",\n'
+    '  "layer_id": "<thermal-heat|ndvi-heat|flood|roads|facilities|parcels|wards|prediction|builtup|greenspace|gap-heat|growth-heat|population|null>",\n'
+    '  "layer_state": <true|false|null>,\n'
+    '  "basemap": "<satellite|hybrid|streets|terrain|dark|light|null>",\n'
+    '  "city_id": "<ahmedabad|gandhinagar|surat|vadodara|rajkot|aravalli|null>",\n'
+    '  "year": <2018|2022|2024|2030|null>,\n'
+    '  "pitch": <number or null>\n'
+    '}\n'
+    "Examples:\n"
+    '- "Search for Institute of Advanced Research": {"tool": "locate_place", "location_query": "Institute of Advanced Research"}\n'
+    '- "Where is IAR Gandhinagar?": {"tool": "locate_place", "location_query": "Institute of Advanced Research"}\n'
+    '- "Take me to GIFT City": {"tool": "locate_place", "location_query": "GIFT City"}\n'
+    '- "Find Narendra Modi Stadium": {"tool": "locate_place", "location_query": "Narendra Modi Stadium"}\n'
+    '- "Where should we build a new hospital?": {"tool": "site_search", "project": "hospital", "service": "healthcare", "parcel_id": null, "min_hectares": null, "vacant_only": false}\n'
+    '- "Why is parcel GJ-AHM-13791 a good site for a hospital?": {"tool": "explain_parcel", "project": "hospital", "service": null, "parcel_id": "GJ-AHM-13791", "min_hectares": null, "vacant_only": false}\n'
+    '- "Turn on urban heat island layer": {"tool": "toggle_layer", "layer_id": "thermal-heat", "layer_state": true}\n'
+    '- "Switch to satellite basemap": {"tool": "switch_basemap", "basemap": "satellite"}\n'
+    '- "Switch city to Gandhinagar": {"tool": "switch_city", "city_id": "gandhinagar"}\n'
+    '- "Open equity panel": {"tool": "switch_mode", "mode": "equity"}\n'
+    '- "Simulate a hospital on GJ-AHM-13791": {"tool": "run_simulation", "project": "hospital", "parcel_id": "GJ-AHM-13791"}\n'
+    '- "Tilt map to 3D": {"tool": "reset_view", "pitch": 55}\n'
+    '- "Reset view": {"tool": "reset_view"}'
 )
 
 
@@ -205,7 +270,11 @@ def classify(question: str) -> dict | None:
         return None
     try:
         raw = _generate(question, system=INTENT_SYSTEM, json_mode=True)
-        parsed = json.loads(raw)
+        # Strip potential markdown fences if returned
+        clean = raw.strip()
+        if clean.startswith("```"):
+            clean = clean.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
+        parsed = json.loads(clean)
     except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, OSError):
         return None
     if not isinstance(parsed, dict) or parsed.get("tool") not in TOOLS:
@@ -218,22 +287,23 @@ def classify(question: str) -> dict | None:
 # --------------------------------------------------------------------------
 
 PHRASE_SYSTEM = (
-    "You are an urban-planning assistant. You will be given a planner's question "
-    "and the JSON result of a spatial analysis that has already run.\n"
-    "Write two or three sentences answering the question.\n"
-    "RULES:\n"
-    "- Use ONLY figures that appear in the JSON. Never estimate, round differently, "
-    "or introduce a number that is not there.\n"
-    "- If the JSON does not answer the question, say so plainly.\n"
-    "- Mention the parcel or ward identifiers exactly as written.\n"
-    "- No preamble, no bullet points, no markdown."
+    "You are an expert AI urban planning intelligence advisor for the UrbanLens platform.\n"
+    "You will receive a planner's question and the structured JSON output of spatial analysis computed by the GIS engine.\n"
+    "Write a concise, high-impact, professional synthesis answering the question directly.\n\n"
+    "ACCURACY & FORMATTING RULES:\n"
+    "- Grounding: Use ONLY figures and metrics present in the JSON. Never extrapolate, hallucinate, or round differently.\n"
+    "- Identifiers: Always write parcel IDs (e.g. GJ-AHM-13791) and ward names exactly as given.\n"
+    "- Bolding: Use **bold** for key parcel IDs, scores, and headline metrics (e.g. **GJ-AHM-13791**, **63/100**, **582,752 residents**, **0.2 km**).\n"
+    "- Structure:\n"
+    "  1. Direct Answer: Start immediately with the key conclusion or top recommendation.\n"
+    "  2. Supporting Evidence: Highlight core advantages (population catchment, arterial road proximity, government ownership, flood safety).\n"
+    "  3. Caveats/Risks: If tradeoffs or concerns are listed in the JSON, mention them clearly.\n"
+    "- Style: Executive, objective, and authoritative for urban planners. Keep paragraphs tight and informative."
 )
 
 
 def phrase(question: str, result: dict) -> str | None:
     """Restate a computed result in prose. Returns None if unusable."""
-    # Trim list payloads: the model needs the shape and the headline figures,
-    # not two hundred candidates.
     if not _reachable():
         return None
     trimmed = dict(result)

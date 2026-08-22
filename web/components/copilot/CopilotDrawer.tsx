@@ -9,10 +9,12 @@ import { cn } from "@/lib/utils";
 
 const SUGGESTIONS = [
   "Where should Ahmedabad build a new hospital?",
-  "Show underserved areas near government land",
-  "Which wards face infrastructure stress by 2030?",
-  "Show agricultural-to-residential conversion",
-  "Why did GJ-AHD-1028 rank first?",
+  "Turn on the urban heat island layer",
+  "Switch basemap to satellite view",
+  "Open equity & social infrastructure panel",
+  "Simulate a hospital on GJ-AHM-13791",
+  "Show 2018 satellite built-up extent",
+  "Tilt map to 3D perspective",
 ];
 
 /** Minimal rich-text: **bold**, bullet lines, line breaks. */

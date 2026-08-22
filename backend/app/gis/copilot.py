@@ -259,12 +259,131 @@ def route(city_id: str, query: str) -> dict:
             "map": {"highlight_parcel_ids": [p.parcel_id for p, _ in rows]},
         }
 
+    # 7 — landmarks & location geocoding
+    if re.search(r"where is|locate|search for|take me to|find|navigate|institute of advanced research|\biar\b|gift city|science city|stadium|ashram|kankaria|sachivalaya|high court|iit|iim|cept|nid|daiict|pdpu|nirma|gnlu|nfsu", q):
+        from app.gis.geocoding import search_locations
+        clean_loc = re.sub(
+            r"(?i)^(where is|search for|take me to|locate|find|navigate to|go to|fly to|show me)\s+",
+            "",
+            query,
+        ).strip()
+        locs = search_locations(clean_loc or query, city_id=city_id, limit=5)
+        if locs:
+            top_loc = locs[0]
+            coord = top_loc["coord"]
+            target_city = top_loc.get("city_id")
+            auto_actions = []
+            if target_city and target_city != city_id:
+                auto_actions.append({"type": "setCity", "cityId": target_city})
+            auto_actions.append({
+                "type": "pinpointLocation",
+                "location": top_loc,
+            })
+            return {
+                "tool": "locate_place",
+                "location": top_loc,
+                "answer": (
+                    f"**Location Found:** **{top_loc['name']}**\n\n"
+                    f"- **Address/Area:** {top_loc['address']}\n"
+                    f"- **Category:** {top_loc['category_label']}\n"
+                    f"- **Coordinates:** `[{coord[0]:.4f}°E, {coord[1]:.4f}°N]`\n"
+                    f"- **Details:** {top_loc['description']}"
+                ),
+                "items": [
+                    {"id": l["id"], "label": l["name"], "sub": l["address"], "centroid": l["coord"]}
+                    for l in locs
+                ],
+                "map": {
+                    "focus": {"lng": coord[0], "lat": coord[1], "zoom": top_loc.get("zoom", 15.0)},
+                },
+                "autoActions": auto_actions,
+                "actions": [
+                    {"label": f"Pinpoint {top_loc['name']}", "action": {"type": "pinpointLocation", "location": top_loc}}
+                ],
+            }
+
+    # 8 — basemap switching
+    if re.search(r"basemap|satellite|dark\s?mode|streets|terrain|hybrid|light\s?mode", q):
+        basemap = "satellite"
+        if "dark" in q:
+            basemap = "dark"
+        elif "light" in q:
+            basemap = "light"
+        elif "street" in q:
+            basemap = "streets"
+        elif "terrain" in q:
+            basemap = "terrain"
+        elif "hybrid" in q:
+            basemap = "hybrid"
+        return {
+            "tool": "switch_basemap",
+            "answer": f"**Basemap Changed:** Switched basemap style to **{basemap.title()}**.",
+            "autoActions": [{"type": "setBasemap", "basemap": basemap}],
+        }
+
+    # 8 — city / study area switching
+    for c_id in ("ahmedabad", "gandhinagar", "surat", "vadodara", "rajkot", "aravalli"):
+        if c_id in q:
+            return {
+                "tool": "switch_city",
+                "answer": f"**Study Area Changed:** Switched active study area and GIS dataset to **{c_id.title()}**.",
+                "autoActions": [{"type": "setCity", "cityId": c_id}],
+            }
+
+    # 9 — layer toggles
+    if re.search(r"thermal|heat\s?island|lst", q):
+        return {
+            "tool": "toggle_layer",
+            "answer": "**Layer Updated:** **Urban Heat Island (LST Thermal)** layer is now enabled.",
+            "autoActions": [{"type": "toggleLayer", "layerId": "thermal-heat", "on": True}],
+        }
+    if re.search(r"ndvi|vegetation|green\s?cover", q):
+        return {
+            "tool": "toggle_layer",
+            "answer": "**Layer Updated:** **Vegetation Index (NDVI)** layer is now enabled.",
+            "autoActions": [{"type": "toggleLayer", "layerId": "ndvi-heat", "on": True}],
+        }
+    if re.search(r"flood|flood\s?risk", q):
+        return {
+            "tool": "toggle_layer",
+            "answer": "**Layer Updated:** **Flood Risk Zones** layer is now enabled.",
+            "autoActions": [{"type": "toggleLayer", "layerId": "flood", "on": True}],
+        }
+
+    # 10 — mode switching
+    for m in ("overview", "growth", "infrastructure", "land", "sites", "simulator", "equity", "corridor", "conservation", "encroachment"):
+        if m in q:
+            return {
+                "tool": "switch_mode",
+                "answer": f"**Switched Mode:** Activated **{m.title()}** panel and analysis view.",
+                "autoActions": [{"type": "setMode", "mode": m}],
+            }
+
+    # 11 — 3D & camera
+    if re.search(r"3d|tilt|pitch|perspective", q):
+        return {
+            "tool": "reset_view",
+            "answer": "**3D View Mode:** Tilted map camera to **55° 3D perspective**.",
+            "autoActions": [{"type": "set3D", "pitch": 55}],
+        }
+    if re.search(r"reset|center", q) and re.search(r"map|view|camera", q):
+        return {
+            "tool": "reset_view",
+            "answer": "**Map View Reset:** Reset map camera orientation, pitch, and centered on city bounds.",
+            "autoActions": [{"type": "resetView"}],
+        }
+
     example = next((p.parcel_id for p in get_parcels(city_id)), "GJ-AHD-00001")
     return {
         "tool": "help",
         "answer": (
-            "I route your question to the spatial engine. Try: “Where should we build a new "
-            "hospital?”, “Which wards have poor access to parks?”, “Find government land larger "
-            f"than 5 hectares”, or “Why is parcel {example} a good site?”."
+            "I route your commands and questions to the spatial engine. Try:\n"
+            "- “Where should we build a new hospital?”\n"
+            "- “Turn on the urban heat island layer”\n"
+            "- “Switch basemap to satellite”\n"
+            "- “Switch city to Gandhinagar”\n"
+            "- “Open equity panel”\n"
+            f"- “Why is parcel {example} a good site?”\n"
+            "- “Tilt map to 3D”"
         ),
     }

@@ -9,6 +9,7 @@ import type {
   MapAction,
   Mode,
   ProjectType,
+  SearchedLocation,
   SimulationResult,
   SiteCandidate,
   SiteConstraints,
@@ -142,6 +143,10 @@ interface AppState {
   corridorPath: LngLat[] | null;
   setCorridorPath: (path: LngLat[] | null) => void;
   setMapClick: (p: LngLat | null) => void;
+
+  /** Searched pinpoint landmark or location. */
+  searchedLocation: SearchedLocation | null;
+  setSearchedLocation: (loc: SearchedLocation | null) => void;
 
   // Map
   flyTarget: FlyTarget | null;
@@ -443,6 +448,9 @@ export const useApp = create<AppState>((set, get) => ({
   corridorPath: null,
   setCorridorPath: (corridorPath) => set({ corridorPath }),
 
+  searchedLocation: null,
+  setSearchedLocation: (searchedLocation) => set({ searchedLocation }),
+
   flyTarget: null,
   flyTo: (center, zoom = 13.5) =>
     set({ flyTarget: { center, zoom, nonce: ++flyNonce } }),
@@ -451,16 +459,42 @@ export const useApp = create<AppState>((set, get) => ({
     const s = get();
     switch (a.type) {
       case "flyTo":
-        s.flyTo(a.center, a.zoom);
+        s.flyTo(a.center, a.zoom ?? 13.5);
+        if (a.pitch !== undefined || a.bearing !== undefined) {
+          getMapInstance()?.easeTo({
+            pitch: a.pitch ?? 0,
+            bearing: a.bearing ?? 0,
+            duration: 800,
+          });
+        }
+        break;
+      case "pinpointLocation":
+        s.setSearchedLocation(a.location);
+        s.flyTo(a.location.coord, a.location.zoom ?? 15.5);
+        break;
+      case "clearPinpoint":
+        s.setSearchedLocation(null);
         break;
       case "selectParcel":
-        s.selectParcel(a.parcelId, true);
+        s.selectParcel(a.parcelId, a.fly ?? true);
         break;
       case "setMode":
         s.setMode(a.mode);
         break;
       case "enableLayer":
         s.toggleLayer(a.layerId as LayerId, true);
+        break;
+      case "disableLayer":
+        s.toggleLayer(a.layerId as LayerId, false);
+        break;
+      case "toggleLayer":
+        s.toggleLayer(a.layerId as LayerId, a.on);
+        break;
+      case "setBasemap":
+        s.setBasemap(a.basemap);
+        break;
+      case "setCity":
+        void s.setCity(a.cityId);
         break;
       case "highlightWards":
         s.highlightWards(a.wardIds);
@@ -474,9 +508,34 @@ export const useApp = create<AppState>((set, get) => ({
         s.setPrediction(true);
         break;
       case "runSiteAnalysis":
+        if (a.project) s.setSiteProject(a.project);
         s.setMode("sites");
         void s.runAnalysis();
         break;
+      case "runSimulation":
+        if (a.project) s.setSimProject(a.project);
+        if (a.parcelId) s.setSimTarget(a.parcelId);
+        s.setMode("simulator");
+        if (a.parcelId) void s.runSim();
+        break;
+      case "resetView": {
+        const c = s.city;
+        getMapInstance()?.flyTo({
+          center: c.growthCenter ?? c.center,
+          zoom: 12.4,
+          bearing: 0,
+          pitch: 0,
+          duration: 900,
+        });
+        break;
+      }
+      case "set3D": {
+        getMapInstance()?.easeTo({
+          pitch: a.pitch ?? 55,
+          duration: 800,
+        });
+        break;
+      }
     }
   },
 }));

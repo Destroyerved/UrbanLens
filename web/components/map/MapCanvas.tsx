@@ -142,8 +142,11 @@ export default function MapCanvas() {
   const setHovered = useApp((s) => s.setHovered);
   const setMapClick = useApp((s) => s.setMapClick);
   const corridorPath = useApp((s) => s.corridorPath);
+  const searchedLocation = useApp((s) => s.searchedLocation);
+  const setSearchedLocation = useApp((s) => s.setSearchedLocation);
   const city = useApp((s) => s.city);
   const datasetVersion = useApp((s) => s.datasetVersion);
+  const searchMarkerRef = useRef<Marker | null>(null);
   const thermal = useThermalStatus();
 
   /* --------------------------- corridor ---------------------------- */
@@ -1053,8 +1056,13 @@ export default function MapCanvas() {
       if (typeof window !== "undefined" && (window as any).__M2) (window as any).__map = map;
     } catch {}
 
-    // Authoritative framing: the wards that were actually loaded.
-    frameStudyArea(map, city, 450);
+    // Authoritative framing: only frame study area if no active pinpoint search
+    if (!useApp.getState().searchedLocation) {
+      frameStudyArea(map, city, 450);
+    } else {
+      const loc = useApp.getState().searchedLocation!;
+      map.flyTo({ center: loc.coord, zoom: loc.zoom ?? 16.0, duration: 800, essential: true });
+    }
     appliedDatasetVersionRef.current = datasetVersion;
     m2("map:eff:done");
   }, [datasetVersion, ready, city]);
@@ -1376,8 +1384,106 @@ export default function MapCanvas() {
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return;
+    if (searchedLocation) return;
     frameStudyArea(map, city, 1500);
-  }, [city.id, ready]);
+  }, [city.id, ready, searchedLocation]);
+
+  /* ------------------- searched location pinpoint marker ------------- */
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+
+    if (searchMarkerRef.current) {
+      try {
+        searchMarkerRef.current.remove();
+      } catch {}
+      searchMarkerRef.current = null;
+    }
+
+    if (!searchedLocation) return;
+
+    const [lng, lat] = searchedLocation.coord;
+    if (typeof lng !== "number" || typeof lat !== "number" || isNaN(lng) || isNaN(lat)) return;
+
+    // Immediately fly map camera to the exact geocoded coordinate
+    map.flyTo({
+      center: [lng, lat],
+      zoom: searchedLocation.zoom ?? 16.0,
+      duration: 1000,
+      essential: true,
+    });
+
+    const container = document.createElement("div");
+    container.className = "ul-pinpoint-container";
+
+    // 1. Info Card
+    const card = document.createElement("div");
+    card.className = "ul-pinpoint-card";
+
+    const header = document.createElement("div");
+    header.className = "ul-pinpoint-header";
+
+    const title = document.createElement("div");
+    title.className = "ul-pinpoint-title";
+    title.innerHTML = `📍 ${searchedLocation.name}`;
+
+    const closeBtn = document.createElement("button");
+    closeBtn.className = "ul-pinpoint-close";
+    closeBtn.textContent = "✕";
+    closeBtn.title = "Dismiss pinpoint";
+    closeBtn.onclick = (e) => {
+      e.stopPropagation();
+      setSearchedLocation(null);
+    };
+
+    header.appendChild(title);
+    header.appendChild(closeBtn);
+    card.appendChild(header);
+
+    if (searchedLocation.address || searchedLocation.category_label) {
+      const sub = document.createElement("div");
+      sub.className = "ul-pinpoint-sub";
+      sub.textContent = searchedLocation.address || searchedLocation.category_label || "";
+      card.appendChild(sub);
+    }
+
+    const coords = document.createElement("div");
+    coords.className = "ul-pinpoint-coords";
+    coords.textContent = `${lat.toFixed(4)}°N, ${lng.toFixed(4)}°E`;
+    card.appendChild(coords);
+
+    // 2. Needle pointing to exact location
+    const needle = document.createElement("div");
+    needle.className = "ul-pinpoint-needle";
+
+    // 3. Ground beacon on the exact coordinate
+    const beacon = document.createElement("div");
+    beacon.className = "ul-pinpoint-beacon";
+
+    container.appendChild(card);
+    container.appendChild(needle);
+    container.appendChild(beacon);
+
+    container.onclick = () => {
+      map.flyTo({ center: [lng, lat], zoom: 16.5, duration: 700 });
+    };
+
+    try {
+      const marker = new maplibregl.Marker({ element: container, anchor: "bottom" })
+        .setLngLat([lng, lat])
+        .addTo(map);
+      searchMarkerRef.current = marker;
+    } catch {}
+
+    return () => {
+      if (searchMarkerRef.current) {
+        try {
+          searchMarkerRef.current.remove();
+        } catch {}
+        searchMarkerRef.current = null;
+      }
+    };
+  }, [searchedLocation, ready, setSearchedLocation]);
 
   return (
     <div className="relative h-full w-full">

@@ -536,6 +536,18 @@ def facilities(
     return {"type": "FeatureCollection", "features": feats}
 
 
+@router.get("/locations/search")
+def search_locations_endpoint(
+    q: str = Query(..., min_length=1),
+    city: str | None = Query(default=None),
+    limit: int = Query(default=8, ge=1, le=20),
+) -> dict:
+    from app.gis.geocoding import search_locations
+
+    results = search_locations(q, city_id=city, limit=limit)
+    return {"query": q, "results": results, "count": len(results)}
+
+
 @router.get("/population")
 def population(city: str | None = Query(default=None), step: int = Query(default=1, ge=1, le=8)) -> dict:
     """Population raster as points — the density heatmap layer (PRD §7, §68)."""

@@ -83,7 +83,16 @@ import { execSync } from "node:child_process";
 
 function resolvePython() {
   if (process.env.PYTHON) return process.env.PYTHON;
-  for (const cmd of ["python3", "python"]) {
+  const candidates = [
+    join(BACKEND, ".venv", "bin", "python"),
+    join(BACKEND, ".venv", "Scripts", "python.exe"),
+    join(ROOT, ".venv", "bin", "python"),
+    join(ROOT, ".venv", "Scripts", "python.exe"),
+    "python3",
+    "python",
+  ];
+  for (const cmd of candidates) {
+    if (existsSync(cmd)) return cmd;
     try {
       execSync(`${cmd} --version`, { stdio: "ignore" });
       return cmd;
