@@ -21,12 +21,14 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white">
-  <img src="https://img.shields.io/badge/Next.js_14-000000?style=flat-square&logo=nextdotjs&logoColor=white">
-  <img src="https://img.shields.io/badge/Python_3.11-3776AB?style=flat-square&logo=python&logoColor=white">
-  <img src="https://img.shields.io/badge/MapLibre_GL-395168?style=flat-square&logo=maplibre&logoColor=white">
-  <img src="https://img.shields.io/badge/XGBoost-EB4C42?style=flat-square">
-  <img src="https://img.shields.io/badge/FAISS-0467DF?style=flat-square&logo=meta&logoColor=white">
+  <img src="https://img.shields.io/badge/Python-3.11-3776AB?style=flat-square&logo=python&logoColor=white">
+  <img src="https://img.shields.io/badge/FastAPI-0.115-009688?style=flat-square&logo=fastapi&logoColor=white">
+  <img src="https://img.shields.io/badge/Next.js-14.2.15-000000?style=flat-square&logo=nextdotjs&logoColor=white">
+  <img src="https://img.shields.io/badge/React-18.3-61DAFB?style=flat-square&logo=react&logoColor=black">
+  <img src="https://img.shields.io/badge/MapLibre_GL-4.7-395168?style=flat-square&logo=maplibre&logoColor=white">
+  <img src="https://img.shields.io/badge/Three.js-0.169-000000?style=flat-square&logo=threedotjs&logoColor=white">
+  <img src="https://img.shields.io/badge/XGBoost-2.0-EB4C42?style=flat-square">
+  <img src="https://img.shields.io/badge/FAISS-1.8-0467DF?style=flat-square&logo=meta&logoColor=white">
 </p>
 
 <p align="center">
@@ -48,6 +50,7 @@
 | 🏗️ | [Architecture](#-architecture) |
 | 🔌 | [API Reference](#-api-reference) |
 | 🗂️ | [Data and Provenance](#-data-and-provenance) |
+| 🧰 | [Tech Stack](#-tech-stack) |
 | 📊 | [Coverage](#-coverage) |
 | ✅ | [Verification](#-verification) |
 | ☁️ | [Deployment](#-deployment) |
@@ -374,6 +377,74 @@ gets reported.**
 
 ---
 
+# 🧰 Tech Stack
+
+### 🐍 Engine
+
+<p>
+  <img src="https://img.shields.io/badge/Python-3.11-3776AB?style=for-the-badge&logo=python&logoColor=white">
+  <img src="https://img.shields.io/badge/FastAPI-0.115-009688?style=for-the-badge&logo=fastapi&logoColor=white">
+  <img src="https://img.shields.io/badge/Uvicorn-0.27-499848?style=for-the-badge&logo=gunicorn&logoColor=white">
+  <img src="https://img.shields.io/badge/Pydantic-2.7-E92063?style=for-the-badge&logo=pydantic&logoColor=white">
+</p>
+
+### 🌍 Geospatial
+
+<p>
+  <img src="https://img.shields.io/badge/Shapely-2.0-4B8BBE?style=for-the-badge">
+  <img src="https://img.shields.io/badge/pyproj-3.6-2C5F8A?style=for-the-badge">
+  <img src="https://img.shields.io/badge/rasterio-1.3-8B4513?style=for-the-badge">
+  <img src="https://img.shields.io/badge/GeoJSON-spec-2E8B57?style=for-the-badge">
+</p>
+
+### 🧠 Machine Learning & Search
+
+<p>
+  <img src="https://img.shields.io/badge/XGBoost-2.0-EB4C42?style=for-the-badge">
+  <img src="https://img.shields.io/badge/scikit--learn-1.4-F7931E?style=for-the-badge&logo=scikitlearn&logoColor=white">
+  <img src="https://img.shields.io/badge/FAISS-1.8-0467DF?style=for-the-badge&logo=meta&logoColor=white">
+  <img src="https://img.shields.io/badge/NumPy-1.26-013243?style=for-the-badge&logo=numpy&logoColor=white">
+  <img src="https://img.shields.io/badge/SciPy-1.11-8CAAE6?style=for-the-badge&logo=scipy&logoColor=white">
+  <img src="https://img.shields.io/badge/pandas-2.2-150458?style=for-the-badge&logo=pandas&logoColor=white">
+</p>
+
+### ⚛️ Application
+
+<p>
+  <img src="https://img.shields.io/badge/Next.js-14.2.15-000000?style=for-the-badge&logo=nextdotjs&logoColor=white">
+  <img src="https://img.shields.io/badge/React-18.3-61DAFB?style=for-the-badge&logo=react&logoColor=black">
+  <img src="https://img.shields.io/badge/TypeScript-5.x-3178C6?style=for-the-badge&logo=typescript&logoColor=white">
+  <img src="https://img.shields.io/badge/Tailwind_CSS-3.4-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white">
+  <img src="https://img.shields.io/badge/Zustand-4.5-443E38?style=for-the-badge">
+  <img src="https://img.shields.io/badge/Framer_Motion-11.11-0055FF?style=for-the-badge&logo=framer&logoColor=white">
+</p>
+
+### 🗺️ Mapping & 3D
+
+<p>
+  <img src="https://img.shields.io/badge/MapLibre_GL-4.7-395168?style=for-the-badge&logo=maplibre&logoColor=white">
+  <img src="https://img.shields.io/badge/Three.js-0.169-000000?style=for-the-badge&logo=threedotjs&logoColor=white">
+  <img src="https://img.shields.io/badge/React_Three_Fiber-8.x-000000?style=for-the-badge&logo=react&logoColor=61DAFB">
+</p>
+
+### 🛰️ Data Sources
+
+<p>
+  <img src="https://img.shields.io/badge/Sentinel--2_L2A-Copernicus-0B3D91?style=for-the-badge&logo=esa&logoColor=white">
+  <img src="https://img.shields.io/badge/MODIS_Terra-NASA_GIBS-E03C31?style=for-the-badge&logo=nasa&logoColor=white">
+  <img src="https://img.shields.io/badge/Copernicus_DEM-30m-0B3D91?style=for-the-badge">
+  <img src="https://img.shields.io/badge/OpenStreetMap-Overpass-7EBC6F?style=for-the-badge&logo=openstreetmap&logoColor=white">
+  <img src="https://img.shields.io/badge/Esri_Land_Cover-10m-005E95?style=for-the-badge&logo=esri&logoColor=white">
+  <img src="https://img.shields.io/badge/Census_of_India-2011-FF9933?style=for-the-badge">
+</p>
+
+> 🔧 **No PostGIS, no GDAL.** Layers are GeoJSON and the spatial work is
+> shapely + pyproj + numpy, which keeps the install working on any machine
+> without a system geospatial stack. Every `ST_*` operation the brief lists has
+> a direct equivalent in what is used.
+
+---
+
 # 📊 Coverage
 
 <p align="center">
@@ -482,16 +553,80 @@ worse than one that has none.*
 <p align="center">
   <img src="https://img.shields.io/badge/Team-Billota-purple?style=for-the-badge">
   <img src="https://img.shields.io/badge/SIH-2026-blue?style=for-the-badge">
+  <img src="https://img.shields.io/badge/members-6-teal?style=for-the-badge">
 </p>
 
-| | Member | Role | Contribution |
+<table align="center">
+  <tr>
+    <td align="center" width="220">
+      <a href="https://github.com/Destroyerved">
+        <img src="https://avatars.githubusercontent.com/u/90809361?v=4" width="110" alt="Ved Sharma"><br>
+        <b>Ved Sharma</b>
+      </a><br>
+      <sub>👑 <b>Team Lead</b></sub><br>
+      <sub>Spatial Engine &amp; Analytics</sub><br>
+      <a href="https://github.com/Destroyerved"><img src="https://img.shields.io/badge/@Destroyerved-181717?style=flat-square&logo=github&logoColor=white"></a>
+    </td>
+    <td align="center" width="220">
+      <a href="https://github.com/harshil7patel">
+        <img src="https://avatars.githubusercontent.com/u/194687633?v=4" width="110" alt="Harshil Patel"><br>
+        <b>Harshil Patel</b>
+      </a><br>
+      <sub>🎨 <b>Frontend Lead</b></sub><br>
+      <sub>3D Globe &amp; Map Interface</sub><br>
+      <a href="https://github.com/harshil7patel"><img src="https://img.shields.io/badge/@harshil7patel-181717?style=flat-square&logo=github&logoColor=white"></a>
+    </td>
+    <td align="center" width="220">
+      <a href="https://github.com/rudra129r-lgtm">
+        <img src="https://avatars.githubusercontent.com/u/244762191?v=4" width="110" alt="Rudra Darji"><br>
+        <b>Rudra Darji</b>
+      </a><br>
+      <sub>🗄️ <b>Data Engineer</b></sub><br>
+      <sub>Pipeline &amp; Backend Layers</sub><br>
+      <a href="https://github.com/rudra129r-lgtm"><img src="https://img.shields.io/badge/@rudra129r-lgtm-181717?style=flat-square&logo=github&logoColor=white"></a>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="220">
+      <a href="https://github.com/anushkayerpude">
+        <img src="https://avatars.githubusercontent.com/u/133585866?v=4" width="110" alt="Anushka Yerpude"><br>
+        <b>Anushka Yerpude</b>
+      </a><br>
+      <sub>⚛️ <b>Frontend Developer</b></sub><br>
+      <sub>Panels &amp; Dataset Assets</sub><br>
+      <a href="https://github.com/anushkayerpude"><img src="https://img.shields.io/badge/@anushkayerpude-181717?style=flat-square&logo=github&logoColor=white"></a>
+    </td>
+    <td align="center" width="220">
+      <a href="https://github.com/Krrish2928">
+        <img src="https://avatars.githubusercontent.com/u/261419542?v=4" width="110" alt="Krish Sharma"><br>
+        <b>Krish Sharma</b>
+      </a><br>
+      <sub>🌐 <b>Frontend Developer</b></sub><br>
+      <sub>Landing Experience &amp; Theming</sub><br>
+      <a href="https://github.com/Krrish2928"><img src="https://img.shields.io/badge/@Krrish2928-181717?style=flat-square&logo=github&logoColor=white"></a>
+    </td>
+    <td align="center" width="220">
+      <a href="https://github.com/dhruvya0112">
+        <img src="https://avatars.githubusercontent.com/u/230530999?v=4" width="110" alt="Dhruvya Makadia"><br>
+        <b>Dhruvya Makadia</b>
+      </a><br>
+      <sub>📚 <b>Documentation</b></sub><br>
+      <sub>Docs &amp; Presentation</sub><br>
+      <a href="https://github.com/dhruvya0112"><img src="https://img.shields.io/badge/@dhruvya0112-181717?style=flat-square&logo=github&logoColor=white"></a>
+    </td>
+  </tr>
+</table>
+
+### 📋 Contributions
+
+| | Member | Role | What they built |
 |---|---|---|---|
-| 👑 | **Ved Sharma** | **Team Lead** · Spatial Engine & Analytics | Architected the two-process system. Built the FastAPI engine, the equity / conservation / encroachment / corridor analytics, the ML pressure model, FAISS parcel search, provenance layer, deployment pipeline, and the verification harnesses. |
-| 🗄️ | **Rudra Darji** | Data Pipeline & Backend Layers | Built the ingestion pipeline — AMC GIS scraping, Census 2011 processing, Overpass/OSM fetching — and the engine's data layers. The largest contributor to `backend/app` and the 547 MB of source layers in `web/data/engine`. |
-| 🌍 | **Harshil Patel** | 3D Globe Engine & Map Interface | Built the Three.js landing globe — geometry, shaders, texture pipeline and fallback Earth — plus the MapLibre map components, shared UI primitives, and the screenshot harness output. |
-| ⚛️ | **Anushka Yerpude** | Frontend Panels & Dataset Assets | Mode panels in the dashboard, frontend data assets, processed population grids, and map data wiring. |
-| 🎨 | **Krish Sharma** | Landing Experience & Theming | The landing sequence and orbital hero section, the globe camera rig, app-shell integration and the global theme styling across light, dim and dark. |
-| 📚 | **Dhruvya Makadia** | Documentation | Project documentation and repository presentation. |
+| 👑 | **[Ved Sharma](https://github.com/Destroyerved)** | **Team Lead** · Spatial Engine &amp; Analytics | Architected the two-process system. Built the FastAPI engine, the equity / conservation / encroachment / corridor analytics, the ML pressure model, FAISS parcel search, the provenance layer, deployment pipeline and the verification harnesses. |
+| 🎨 | **[Harshil Patel](https://github.com/harshil7patel)** | **Frontend Lead** · 3D Globe &amp; Map Interface | Led the frontend. Built the Three.js landing globe — geometry, shaders, texture pipeline and the procedural fallback Earth — plus the MapLibre map components, shared UI primitives and the screenshot harness output. |
+| 🗄️ | **[Rudra Darji](https://github.com/rudra129r-lgtm)** | Data Engineer · Pipeline &amp; Backend Layers | Built the ingestion pipeline — AMC GIS scraping, Census 2011 processing, Overpass/OSM fetching — and the engine's data layers. Largest contributor to `backend/app` and to the 547 MB of source layers in `web/data/engine`. |
+| ⚛️ | **[Anushka Yerpude](https://github.com/anushkayerpude)** | Frontend Developer · Panels &amp; Data | Mode panels in the dashboard, frontend data assets, processed population grids and map-data wiring. |
+| 🌐 | **[Krish Sharma](https://github.com/Krrish2928)** | Frontend Developer · Landing &amp; Theming | The landing sequence and orbital hero section, the globe camera rig, app-shell integration and global theme styling across light, dim and dark. |
+| 📚 | **[Dhruvya Makadia](https://github.com/dhruvya0112)** | Documentation | Project documentation and repository presentation. |
 
 ---
 
