@@ -107,6 +107,10 @@ PROJECTS: dict[str, ProjectSpec] = {
         "park", "Public Park", 0.5, True,
         ("recreational", "residential", "public_semi_public"), 1.2, "park", "park",
     ),
+    "transit": ProjectSpec(
+        "transit", "Transit Stop", 0.05, True,
+        ("public_semi_public", "commercial", "mixed_use"), 1.5, "bus_stop", "bus_stop",
+    ),
     "fire_station": ProjectSpec(
         "fire_station", "Fire Station", 0.4, True,
         ("public_semi_public", "commercial", "mixed_use"), 5.0, "fire_station", "fire_station",

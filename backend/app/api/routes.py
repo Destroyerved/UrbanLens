@@ -92,9 +92,10 @@ def _dataset(city: str | None):
 
 
 def _project_or_400(name: str):
-    if name not in PROJECTS:
+    key = PROJECT_ALIASES.get(name, name)
+    if key not in PROJECTS:
         raise HTTPException(status_code=400, detail=f"Unknown project type '{name}'")
-    return PROJECTS[name]
+    return key
 
 
 # Frontend ProjectType aliases → engine project keys (report route only).
@@ -998,9 +999,9 @@ def accessibility_analyze(body: AnalyzeBody, city: str | None = Query(default=No
 @router.post("/suitability/search")
 def suitability_search(body: SiteSearchBody, city: str | None = Query(default=None)) -> dict:
     ds = _dataset(city)
-    _project_or_400(body.project_type)
+    project = _project_or_400(body.project_type)
     return analysis.search_sites(
-        ds.city.id, body.project_type,
+        ds.city.id, project,
         minimum_area_hectares=body.minimum_area_hectares,
         government_land=body.government_land,
         low_flood_risk=body.low_flood_risk,
@@ -1013,18 +1014,18 @@ def suitability_search(body: SiteSearchBody, city: str | None = Query(default=No
 @router.post("/suitability/calculate")
 def suitability_calculate(body: CalculateBody, city: str | None = Query(default=None)) -> dict:
     ds = _dataset(city)
-    _project_or_400(body.project_type)
+    project = _project_or_400(body.project_type)
     p = _find_parcel(ds.city.id, body.parcel_id)
     weights = {**DEFAULT_WEIGHTS, **(body.weights or {})}
-    return {"project": PROJECTS[body.project_type].label, "weights": weights,
-            **analysis.suitability(ds, p, body.project_type, weights)}
+    return {"project": PROJECTS[project].label, "weights": weights,
+            **analysis.suitability(ds, p, project, weights)}
 
 
 @router.post("/scenarios/simulate")
 def simulate(body: SimulateBody, city: str | None = Query(default=None)) -> dict:
     ds = _dataset(city)
-    _project_or_400(body.project_type)
-    return analysis.simulate(ds.city.id, body.project_type, body.lng, body.lat)
+    project = _project_or_400(body.project_type)
+    return analysis.simulate(ds.city.id, project, body.lng, body.lat)
 
 
 @router.post("/copilot/query")
