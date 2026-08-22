@@ -184,10 +184,11 @@ export const useApp = create<AppState>((set, get) => ({
     if (mode === "growth" && prev.predictionOn) layers["prediction"] = true;
     if (prev.candidates && (mode === "sites" || mode === "simulator"))
       layers["candidates"] = true;
-    
-    // If clicking current active mode, toggle panel open/closed; if switching mode, ensure panel is open
-    const panelOpen = prev.mode === mode ? !prev.panelOpen : true;
-    set({ mode, activeLayers: layers, panelOpen });
+
+    // If copilot was open, close copilot and ensure panel is open.
+    // If clicking current active mode without copilot, toggle panel open/closed; if switching mode, ensure panel is open.
+    const panelOpen = prev.copilotOpen ? true : (prev.mode === mode ? !prev.panelOpen : true);
+    set({ mode, activeLayers: layers, panelOpen, copilotOpen: false });
   },
 
   basemap: getInitialBasemap(),

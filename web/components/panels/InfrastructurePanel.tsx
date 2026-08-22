@@ -92,10 +92,10 @@ export default function InfrastructurePanel() {
           <button
             type="button"
             onClick={() => void downloadInfrastructureExport(cityId)}
-            className="glass flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10.5px] font-semibold text-muted-foreground hover:text-foreground transition-all hover:scale-[1.02] active:scale-95 cursor-pointer"
+            className="glass hover:bg-accent/15 border-white/20 dark:border-white/10 text-muted-foreground hover:text-foreground px-2.5 py-1 text-[11px] font-bold leading-none rounded-full border transition-all flex items-center gap-1.5 shadow-sm hover:scale-[1.02] active:scale-95 cursor-pointer whitespace-nowrap shrink-0"
             title="Download ward gap scores as CSV"
           >
-            <FileSpreadsheet size={11} className="text-good" />
+            <FileSpreadsheet size={12.5} className="text-good shrink-0" />
             <span>Export CSV</span>
           </button>
         }

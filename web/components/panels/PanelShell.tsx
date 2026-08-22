@@ -79,9 +79,9 @@ export function Section({
 }) {
   return (
     <div className={cn("mb-4", className)}>
-      <div className="mb-2 flex items-center justify-between">
-        <span className="label-caps font-bold text-foreground/80">{label}</span>
-        {right}
+      <div className="mb-2 flex items-center justify-between gap-2 min-w-0">
+        <span className="label-caps font-bold text-foreground/80 truncate shrink">{label}</span>
+        {right && <div className="shrink-0 flex items-center">{right}</div>}
       </div>
       {children}
     </div>

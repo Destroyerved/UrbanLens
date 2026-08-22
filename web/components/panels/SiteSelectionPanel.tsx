@@ -209,10 +209,10 @@ export default function SiteSelectionPanel() {
         />
       ) : candidates ? (
         <Section
-          label={`Best Sites · ${candidates.length} candidates`}
+          label={`Best Sites · ${candidates.length}`}
           className="mt-4"
           right={
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 shrink-0">
               <button
                 type="button"
                 onClick={() =>
@@ -222,10 +222,10 @@ export default function SiteSelectionPanel() {
                     weights,
                   })
                 }
-                className="glass hover:bg-surface-3 border-white/20 dark:border-white/10 text-muted-foreground hover:text-foreground px-2 py-1 text-[10.5px] font-semibold rounded-full border transition-all flex items-center gap-1 shadow-sm cursor-pointer"
+                className="glass hover:bg-accent/15 border-white/20 dark:border-white/10 text-muted-foreground hover:text-foreground px-2.5 py-1 text-[11px] font-bold leading-none rounded-full border transition-all flex items-center gap-1.5 shadow-sm hover:scale-[1.02] active:scale-95 cursor-pointer whitespace-nowrap shrink-0"
                 title="Download candidate evaluation results as CSV"
               >
-                <FileSpreadsheet size={11} className="text-good" />
+                <FileSpreadsheet size={12.5} className="text-good shrink-0" />
                 <span>Export CSV</span>
               </button>
               {candidates.length >= 2 && (
@@ -233,13 +233,13 @@ export default function SiteSelectionPanel() {
                   type="button"
                   onClick={() => setCompareOpen(!compareOpen)}
                   className={cn(
-                    "px-2.5 py-1 text-[11px] font-bold rounded-full border transition-all flex items-center gap-1.5 shadow-sm cursor-pointer",
+                    "px-2.5 py-1 text-[11px] font-bold leading-none rounded-full border transition-all flex items-center gap-1.5 shadow-sm hover:scale-[1.02] active:scale-95 cursor-pointer whitespace-nowrap shrink-0",
                     compareOpen
                       ? "bg-accent text-accent-foreground border-accent shadow-[0_0_12px_rgba(56,189,248,0.4)]"
                       : "glass hover:bg-accent/15 border-white/20 dark:border-white/10 text-muted-foreground hover:text-foreground"
                   )}
                 >
-                  <Scale size={13} />
+                  <Scale size={12.5} className="shrink-0" />
                   <span>Compare</span>
                 </button>
               )}
