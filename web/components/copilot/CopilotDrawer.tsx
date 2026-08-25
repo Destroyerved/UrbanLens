@@ -6,9 +6,11 @@ import { CornerDownLeft, Sparkles, X } from "lucide-react";
 import { toast } from "sonner";
 import { useApp } from "@/lib/store";
 import { cn } from "@/lib/utils";
+import { fetchCopilotStatus, type CopilotStatus } from "@/services/copilot";
 
 const SUGGESTIONS = [
   "Where should Ahmedabad build a new hospital?",
+  "Potential lands to open a warehouse",
   "Turn on the urban heat island layer",
   "Switch basemap to satellite view",
   "Open equity & social infrastructure panel",
@@ -45,18 +47,10 @@ function Rich({ text }: { text: string }) {
 
 function ThinkingDots() {
   return (
-    <div className="flex items-center gap-1 py-1">
-      {[0, 1, 2].map((i) => (
-        <motion.span
-          key={i}
-          className="h-1.5 w-1.5 rounded-full bg-accent"
-          animate={{ opacity: [0.25, 1, 0.25] }}
-          transition={{ duration: 1.1, repeat: Infinity, delay: i * 0.18 }}
-        />
-      ))}
-      <span className="ml-1.5 text-[10.5px] font-medium text-muted-foreground">
-        Running spatial analysis…
-      </span>
+    <div className="flex items-center gap-1.5 py-1 px-1">
+      <span className="h-1.5 w-1.5 rounded-full bg-accent animate-bounce [animation-delay:-0.3s]" />
+      <span className="h-1.5 w-1.5 rounded-full bg-accent animate-bounce [animation-delay:-0.15s]" />
+      <span className="h-1.5 w-1.5 rounded-full bg-accent animate-bounce" />
     </div>
   );
 }
@@ -68,7 +62,12 @@ export default function CopilotDrawer() {
   const sendCopilot = useApp((s) => s.sendCopilot);
   const applyAction = useApp((s) => s.applyAction);
   const [input, setInput] = useState("");
+  const [status, setStatus] = useState<CopilotStatus | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    void fetchCopilotStatus().then(setStatus);
+  }, []);
 
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
@@ -99,9 +98,17 @@ export default function CopilotDrawer() {
             <Sparkles size={14} className="text-accent" />
           </div>
           <div>
-            <div className="text-[13.5px] font-bold text-foreground leading-tight">AI Copilot</div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[13.5px] font-bold text-foreground leading-tight">AI Copilot</span>
+              {status?.available && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-400 border border-emerald-500/25 shadow-[0_0_8px_rgba(16,185,129,0.2)]">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  {status.model || "Ollama"}
+                </span>
+              )}
+            </div>
             <div className="text-[10px] text-muted-foreground leading-tight">
-              Natural-language GIS assistant
+              {status?.available ? "Ollama Neural Engine Active" : "Natural-language GIS assistant"}
             </div>
           </div>
         </div>

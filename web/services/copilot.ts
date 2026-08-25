@@ -1,5 +1,27 @@
 import type { MapAction } from "@/types";
-import { apiPost } from "@/lib/api";
+import { apiGet, apiPost } from "@/lib/api";
+
+export interface CopilotStatus {
+  available: boolean;
+  url: string;
+  model: string;
+  models_present: string[];
+  detail: string;
+}
+
+export async function fetchCopilotStatus(): Promise<CopilotStatus> {
+  try {
+    return await apiGet<CopilotStatus>("/api/copilot/status");
+  } catch {
+    return {
+      available: false,
+      url: "http://localhost:11434",
+      model: "offline",
+      models_present: [],
+      detail: "Spatial intelligence fallback active.",
+    };
+  }
+}
 
 /**
  * Planning copilot — answered by the Python engine (PRD §28–29).
@@ -86,10 +108,8 @@ export async function copilotQuery(q: string): Promise<CopilotResponse> {
     .slice(0, 4)
     .filter((i) => i.id)
     .map((i) => ({
-      label: i.score !== undefined ? `${i.label} · ${i.score}` : i.label,
-      action: i.centroid
-        ? ({ type: "flyTo", center: i.centroid, zoom: 14 } as MapAction)
-        : ({ type: "selectParcel", parcelId: i.id! } as MapAction),
+      label: i.score !== undefined ? `📍 ${i.label} (${i.score}/100)` : `📍 ${i.label}`,
+      action: ({ type: "selectParcel", parcelId: i.id!, fly: true } as MapAction),
     }));
 
   const allActions = [...(res.actions ?? []), ...itemActions];

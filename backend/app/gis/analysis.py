@@ -149,8 +149,17 @@ def suitability(ds, p: Parcel, project: str, weights: dict[str, float] | None = 
         weakest = min(breakdown, key=lambda k: breakdown[k])
         cons.append(f"Weakest factor is {labels[weakest]} at {breakdown[weakest]}/100")
 
+    ward_name = p.ward
+    for w in ds.wards:
+        if w["properties"].get("ward_code") == p.ward:
+            ward_name = w["properties"].get("name", p.ward)
+            break
+
     return {
         "parcel_id": p.parcel_id,
+        "ward_name": ward_name,
+        "ward_code": p.ward,
+        "coordinates_str": f"{p.centroid[1]:.4f}°N, {p.centroid[0]:.4f}°E",
         "breakdown": breakdown,
         "final": total,
         "pop": pop,

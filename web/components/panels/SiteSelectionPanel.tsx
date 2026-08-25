@@ -19,6 +19,7 @@ import {
   Store,
   Trees,
   FileSpreadsheet,
+  Warehouse,
 } from "lucide-react";
 import { PanelShell, Section, EmptyBlock } from "./PanelShell";
 import { Slider } from "@/components/ui/slider";
@@ -37,12 +38,13 @@ const PROJECTS: { id: ProjectType; label: string; icon: React.ReactNode }[] = [
   { id: "hospital", label: "Hospital", icon: <Hospital size={14} /> },
   { id: "school", label: "School", icon: <School size={14} /> },
   { id: "park", label: "Park", icon: <Trees size={14} /> },
-  { id: "fire", label: "Fire Station", icon: <AlertTriangle size={14} /> },
-  { id: "govt", label: "Govt Office", icon: <Landmark size={14} /> },
+  { id: "warehouse", label: "Warehouse", icon: <Warehouse size={14} /> },
+  { id: "industrial", label: "Industrial", icon: <Factory size={14} /> },
+  { id: "commercial", label: "Commercial", icon: <Store size={14} /> },
   { id: "residential", label: "Residential", icon: <Home size={14} /> },
   { id: "affordable", label: "Affordable Housing", icon: <Building size={14} /> },
-  { id: "commercial", label: "Commercial", icon: <Store size={14} /> },
-  { id: "industrial", label: "Industrial", icon: <Factory size={14} /> },
+  { id: "fire", label: "Fire Station", icon: <AlertTriangle size={14} /> },
+  { id: "govt", label: "Govt Office", icon: <Landmark size={14} /> },
 ];
 
 const WEIGHT_LABELS: { key: keyof SuitabilityWeights; label: string }[] = [

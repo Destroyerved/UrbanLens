@@ -222,8 +222,8 @@ TOOLS = {
 }
 
 PROJECTS_HINT = (
-    "hospital, school, park, fire_station, government_office, residential, "
-    "affordable_housing, commercial, industrial, mixed_use"
+    "warehouse, logistics, industrial, factory, commercial, residential, "
+    "affordable_housing, hospital, school, park, fire_station, government_office, mixed_use"
 )
 
 INTENT_SYSTEM = (
@@ -234,7 +234,7 @@ INTENT_SYSTEM = (
     'Schema: {\n'
     '  "tool": "<tool name>",\n'
     '  "location_query": "<name of place, landmark, institute, or address or null>",\n'
-    '  "project": "<project type or null>",\n'
+    '  "project": "<warehouse|logistics|industrial|commercial|residential|affordable_housing|hospital|school|park|fire_station|government_office|mixed_use|null>",\n'
     '  "service": "<healthcare|education|parks|transportation|road_connectivity|null>",\n'
     '  "parcel_id": "<parcel id like GJ-AHM-13791 or null>",\n'
     '  "min_hectares": <number or null>,\n'
@@ -248,11 +248,13 @@ INTENT_SYSTEM = (
     '  "pitch": <number or null>\n'
     '}\n'
     "Examples:\n"
+    '- "Potential lands to open a warehouse": {"tool": "site_search", "project": "warehouse", "service": null, "parcel_id": null, "min_hectares": null, "vacant_only": false}\n'
+    '- "Find suitable sites for a logistics hub": {"tool": "site_search", "project": "logistics", "service": null, "parcel_id": null, "min_hectares": null, "vacant_only": false}\n'
+    '- "Where should we build a new hospital?": {"tool": "site_search", "project": "hospital", "service": "healthcare", "parcel_id": null, "min_hectares": null, "vacant_only": false}\n'
     '- "Search for Institute of Advanced Research": {"tool": "locate_place", "location_query": "Institute of Advanced Research"}\n'
     '- "Where is IAR Gandhinagar?": {"tool": "locate_place", "location_query": "Institute of Advanced Research"}\n'
     '- "Take me to GIFT City": {"tool": "locate_place", "location_query": "GIFT City"}\n'
     '- "Find Narendra Modi Stadium": {"tool": "locate_place", "location_query": "Narendra Modi Stadium"}\n'
-    '- "Where should we build a new hospital?": {"tool": "site_search", "project": "hospital", "service": "healthcare", "parcel_id": null, "min_hectares": null, "vacant_only": false}\n'
     '- "Why is parcel GJ-AHM-13791 a good site for a hospital?": {"tool": "explain_parcel", "project": "hospital", "service": null, "parcel_id": "GJ-AHM-13791", "min_hectares": null, "vacant_only": false}\n'
     '- "Turn on urban heat island layer": {"tool": "toggle_layer", "layer_id": "thermal-heat", "layer_state": true}\n'
     '- "Switch to satellite basemap": {"tool": "switch_basemap", "basemap": "satellite"}\n'
@@ -292,11 +294,12 @@ PHRASE_SYSTEM = (
     "Write a concise, high-impact, professional synthesis answering the question directly.\n\n"
     "ACCURACY & FORMATTING RULES:\n"
     "- Grounding: Use ONLY figures and metrics present in the JSON. Never extrapolate, hallucinate, or round differently.\n"
-    "- Identifiers: Always write parcel IDs (e.g. GJ-AHM-13791) and ward names exactly as given.\n"
-    "- Bolding: Use **bold** for key parcel IDs, scores, and headline metrics (e.g. **GJ-AHM-13791**, **63/100**, **582,752 residents**, **0.2 km**).\n"
+    "- Identifiers: Always write parcel IDs (e.g. **GJ-AHM-13791**) and ward names exactly as given.\n"
+    "- Bolding: Use **bold** for key parcel IDs, scores, locations, and headline metrics (e.g. **GJ-AHM-13791**, **63/100**, **Thaltej Ward**, **582,752 residents**, **0.2 km**).\n"
+    "- Pinpoint Geographic Location: When recommending or explaining a site/parcel, ALWAYS include its exact geographic pinpoint details (e.g. '📍 **Pinpoint Location:** Located in **Thaltej Ward**, **0.2 km** from the nearest arterial road, at coordinates `[23.0767°N, 72.5035°E]`, spanning **34.91 acres** of government-owned land.'). Never provide an isolated parcel ID code without stating its real-world location, ward, road access, and pinpoint coordinates.\n"
     "- Structure:\n"
-    "  1. Direct Answer: Start immediately with the key conclusion or top recommendation.\n"
-    "  2. Supporting Evidence: Highlight core advantages (population catchment, arterial road proximity, government ownership, flood safety).\n"
+    "  1. Direct Answer: Start immediately with the key conclusion or top recommendation including its pinpoint geographic location.\n"
+    "  2. Supporting Evidence: Highlight core advantages (accessibility, road proximity, population catchment, ownership, flood safety).\n"
     "  3. Caveats/Risks: If tradeoffs or concerns are listed in the JSON, mention them clearly.\n"
     "- Style: Executive, objective, and authoritative for urban planners. Keep paragraphs tight and informative."
 )

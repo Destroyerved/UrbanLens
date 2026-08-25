@@ -854,18 +854,32 @@ export default function MapCanvas() {
         paint: { "line-color": "#22d3ee", "line-width": 2 },
       });
       map.addLayer({
+        id: "selected-fill",
+        type: "fill",
+        source: "parcels",
+        filter: ["==", ["get", "id"], ""] as never,
+        paint: { "fill-color": "#00f0ff", "fill-opacity": 0.28 },
+      });
+      map.addLayer({
+        id: "selected-glow-wide",
+        type: "line",
+        source: "parcels",
+        filter: ["==", ["get", "id"], ""] as never,
+        paint: { "line-color": "#00f0ff", "line-width": 24, "line-opacity": 0.55, "line-blur": 8 },
+      });
+      map.addLayer({
         id: "selected-glow",
         type: "line",
         source: "parcels",
         filter: ["==", ["get", "id"], ""] as never,
-        paint: { "line-color": "#22d3ee", "line-width": 10, "line-opacity": 0.25, "line-blur": 4 },
+        paint: { "line-color": "#38bdf8", "line-width": 8, "line-opacity": 0.9, "line-blur": 2 },
       });
       map.addLayer({
         id: "selected-line",
         type: "line",
         source: "parcels",
         filter: ["==", ["get", "id"], ""] as never,
-        paint: { "line-color": "#22d3ee", "line-width": 2.6 },
+        paint: { "line-color": "#ffffff", "line-width": 3.2 },
       });
 
       /* ---- roads ---- */
@@ -1230,6 +1244,10 @@ export default function MapCanvas() {
     const map = mapRef.current;
     if (!map || !ready) return;
     const id = selectedParcelId ?? "";
+    if (map.getLayer("selected-fill"))
+      map.setFilter("selected-fill", ["==", ["get", "id"], id] as never);
+    if (map.getLayer("selected-glow-wide"))
+      map.setFilter("selected-glow-wide", ["==", ["get", "id"], id] as never);
     if (map.getLayer("selected-glow"))
       map.setFilter("selected-glow", ["==", ["get", "id"], id] as never);
     if (map.getLayer("selected-line"))
@@ -1447,18 +1465,32 @@ export default function MapCanvas() {
       card.appendChild(sub);
     }
 
+    if (searchedLocation.description) {
+      const desc = document.createElement("div");
+      desc.className = "ul-pinpoint-desc";
+      desc.textContent = searchedLocation.description;
+      card.appendChild(desc);
+    }
+
     const coords = document.createElement("div");
     coords.className = "ul-pinpoint-coords";
-    coords.textContent = `${lat.toFixed(4)}°N, ${lng.toFixed(4)}°E`;
+    coords.textContent = `📍 ${lat.toFixed(4)}°N, ${lng.toFixed(4)}°E`;
     card.appendChild(coords);
 
     // 2. Needle pointing to exact location
     const needle = document.createElement("div");
     needle.className = "ul-pinpoint-needle";
 
-    // 3. Ground beacon on the exact coordinate
+    // 3. Ground beacon on the exact coordinate with radar ripples
     const beacon = document.createElement("div");
     beacon.className = "ul-pinpoint-beacon";
+
+    const ripple1 = document.createElement("div");
+    ripple1.className = "ul-pinpoint-ripple ul-ripple-1";
+    const ripple2 = document.createElement("div");
+    ripple2.className = "ul-pinpoint-ripple ul-ripple-2";
+    beacon.appendChild(ripple1);
+    beacon.appendChild(ripple2);
 
     container.appendChild(card);
     container.appendChild(needle);

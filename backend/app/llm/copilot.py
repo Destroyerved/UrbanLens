@@ -82,27 +82,59 @@ def _run_tool(city_id: str, intent: dict, question: str) -> dict | None:
         }
 
     if tool == "site_search":
-        spec = PROJECTS[project or "hospital"]
+        proj_key = project if (project and project in PROJECTS) else (
+            "warehouse" if re.search(r"warehouse|storage|godown|logistics", question, re.I) else "hospital"
+        )
+        spec = PROJECTS.get(proj_key, PROJECTS["hospital"])
         res = search_sites(
-            city_id, project or "hospital",
+            city_id, proj_key,
             government_land=spec.prefers_government, low_flood_risk=True, limit=5,
         )
         if not res["results"]:
             return {"tool": "site_search", "answer": f"No suitable parcels for a {spec.label.lower()}.",
                     "items": []}
         top = res["results"][0]
+        ward_title = top.get("ward_name", "Study Area")
+        acres = top.get("metrics", {}).get("area_acres", "")
+        ownership = top.get("metrics", {}).get("ownership", "").title()
+        road_dist = top.get("metrics", {}).get("road_km", 0.0)
+        c_lat, c_lng = top["centroid"][1], top["centroid"][0]
+
+        top_location = {
+            "id": top["parcel_id"],
+            "name": f"Recommended Site: {top['parcel_id']}",
+            "coord": top["centroid"],
+            "address": f"{ward_title} · {acres} acres · {ownership} Land",
+            "category_label": f"Top Potential Site ({top['final']}/100)",
+            "zoom": 15.5,
+            "description": f"Suitability: {top['final']}/100 | Road Distance: {road_dist:.1f} km | {top['explanation']['pros'][0]}",
+        }
+
+        auto_actions = [
+            {"type": "setMode", "mode": "sites"},
+            {"type": "selectParcel", "parcelId": top["parcel_id"], "fly": True},
+            {"type": "pinpointLocation", "location": top_location},
+        ]
+
+        actions = [
+            {"label": f"📍 Pinpoint #{top['parcel_id']} ({top['final']}/100)", "action": {"type": "pinpointLocation", "location": top_location}},
+            {"label": f"⚡ Simulate on {top['parcel_id']}", "action": {"type": "runSimulation", "parcelId": top["parcel_id"], "project": proj_key}},
+        ]
+
         return {
             "tool": "site_search",
-            "project": project or "hospital",
+            "project": proj_key,
             "evaluated": res["evaluated"],
             "eligible": res["eligible"],
             "top_recommendation": {
                 "parcel_id": top["parcel_id"],
+                "ward_name": ward_title,
+                "coordinates": f"{c_lat:.4f}°N, {c_lng:.4f}°E",
                 "suitability_score": top["final"],
-                "area_acres": top.get("metrics", {}).get("area_acres"),
+                "area_acres": acres,
                 "ownership": top.get("metrics", {}).get("ownership"),
                 "flood_risk": top.get("metrics", {}).get("flood_risk"),
-                "road_distance_km": top.get("metrics", {}).get("road_km"),
+                "road_distance_km": road_dist,
                 "catchment_population": top.get("pop"),
                 "unserved_population": top.get("unserved"),
                 "key_strengths": top["explanation"]["pros"][:4],
@@ -110,6 +142,8 @@ def _run_tool(city_id: str, intent: dict, question: str) -> dict | None:
             },
             "top": {
                 "parcel_id": top["parcel_id"],
+                "ward_name": ward_title,
+                "coordinates": f"{c_lat:.4f}°N, {c_lng:.4f}°E",
                 "score": top["final"],
                 "serves": top["pop"],
                 "unserved": top["unserved"],
@@ -118,11 +152,13 @@ def _run_tool(city_id: str, intent: dict, question: str) -> dict | None:
             },
             "items": [
                 {"id": r["parcel_id"], "label": f"#{i + 1} {r['parcel_id']}",
-                 "score": r["final"], "sub": f"serves ~{r['pop']:,}", "centroid": r["centroid"]}
+                 "score": r["final"], "sub": f"{r.get('ward_name', '')} · {r['metrics']['area_acres']} ac", "centroid": r["centroid"]}
                 for i, r in enumerate(res["results"])
             ],
             "map": {"highlight_parcel_ids": [r["parcel_id"] for r in res["results"]],
-                    "focus": {"lng": top["centroid"][0], "lat": top["centroid"][1], "zoom": 12.5}},
+                    "focus": {"lng": top["centroid"][0], "lat": top["centroid"][1], "zoom": 15.0}},
+            "autoActions": auto_actions,
+            "actions": actions,
         }
 
     if tool == "explain_parcel" and intent.get("parcel_id"):
@@ -133,15 +169,37 @@ def _run_tool(city_id: str, intent: dict, question: str) -> dict | None:
         parcel = next((p for p in get_parcels(city_id) if p.parcel_id.upper() == target), None)
         if parcel is None:
             return None
-        s = suitability(ds, parcel, project or "hospital")
+        proj_key = project if (project and project in PROJECTS) else (
+            "warehouse" if re.search(r"warehouse|storage|godown|logistics", question, re.I) else "hospital"
+        )
+        spec = PROJECTS.get(proj_key, PROJECTS["hospital"])
+        s = suitability(ds, parcel, proj_key)
+        ward_title = s.get("ward_name", "Study Area")
+        acres = s.get("metrics", {}).get("area_acres", "")
+        ownership = s.get("metrics", {}).get("ownership", "").title()
+        road_dist = s.get("metrics", {}).get("road_km", 0.0)
+        c_lat, c_lng = s["centroid"][1], s["centroid"][0]
+
+        top_location = {
+            "id": s["parcel_id"],
+            "name": f"Parcel {s['parcel_id']}",
+            "coord": s["centroid"],
+            "address": f"{ward_title} · {acres} acres · {ownership} Land",
+            "category_label": f"Suitability Score ({s['final']}/100)",
+            "zoom": 15.5,
+            "description": f"{spec.label} Suitability: {s['final']}/100 | Road Distance: {road_dist:.1f} km",
+        }
+
         return {
             "tool": "explain_parcel",
             "parcel_id": s["parcel_id"],
+            "ward_name": ward_title,
+            "coordinates": f"{c_lat:.4f}°N, {c_lng:.4f}°E",
             "score": s["final"],
-            "area_acres": s.get("metrics", {}).get("area_acres"),
+            "area_acres": acres,
             "ownership": s.get("metrics", {}).get("ownership"),
             "flood_risk": s.get("metrics", {}).get("flood_risk"),
-            "road_distance_km": s.get("metrics", {}).get("road_km"),
+            "road_distance_km": road_dist,
             "population_served": s.get("pop"),
             "unserved_population": s.get("unserved"),
             "breakdown": s["breakdown"],
@@ -150,7 +208,15 @@ def _run_tool(city_id: str, intent: dict, question: str) -> dict | None:
             "items": [{"label": p} for p in s["explanation"]["pros"]]
                      + [{"label": "⚠ " + c} for c in s["explanation"]["cons"]],
             "map": {"highlight_parcel_ids": [s["parcel_id"]],
-                    "focus": {"lng": s["centroid"][0], "lat": s["centroid"][1], "zoom": 14}},
+                    "focus": {"lng": s["centroid"][0], "lat": s["centroid"][1], "zoom": 15.0}},
+            "autoActions": [
+                {"type": "selectParcel", "parcelId": s["parcel_id"], "fly": True},
+                {"type": "pinpointLocation", "location": top_location},
+            ],
+            "actions": [
+                {"label": f"📍 Pinpoint {s['parcel_id']}", "action": {"type": "pinpointLocation", "location": top_location}},
+                {"label": f"⚡ Simulate on {s['parcel_id']}", "action": {"type": "runSimulation", "parcelId": s["parcel_id"], "project": proj_key}},
+            ],
         }
 
     if tool == "infrastructure_gaps":

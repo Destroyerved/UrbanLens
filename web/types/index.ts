@@ -130,6 +130,8 @@ export type ProjectType =
   | "affordable"
   | "commercial"
   | "industrial"
+  | "warehouse"
+  | "logistics"
   | "mixed";
 
 export interface SuitabilityWeights {

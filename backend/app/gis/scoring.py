@@ -135,6 +135,14 @@ PROJECTS: dict[str, ProjectSpec] = {
         "industrial", "Industrial Zone", 2.0, False,
         ("industrial",), 3.0,
     ),
+    "warehouse": ProjectSpec(
+        "warehouse", "Warehouse / Logistics Hub", 1.5, False,
+        ("industrial", "commercial", "mixed_use", "agricultural", "vacant"), 3.5,
+    ),
+    "logistics": ProjectSpec(
+        "logistics", "Logistics Hub", 2.0, False,
+        ("industrial", "commercial", "mixed_use", "agricultural", "vacant"), 4.0,
+    ),
     "mixed_use": ProjectSpec(
         "mixed_use", "Mixed-Use Development", 0.8, False,
         ("mixed_use", "commercial", "residential"), 2.0,

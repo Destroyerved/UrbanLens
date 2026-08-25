@@ -22,7 +22,7 @@ import { runSiteSearch, reRankSites } from "@/services/suitability";
 import { runSimulation } from "@/services/simulation";
 import { copilotQuery } from "@/services/copilot";
 import { PARCEL_BY_ID, setParcels } from "@/data/parcels";
-import { setWards } from "@/data/wards";
+import { setWards, WARD_BY_ID } from "@/data/wards";
 import { setRoads } from "@/data/roads";
 import { setFacilities } from "@/data/facilities";
 import { setGrid } from "@/data/grid";
@@ -264,9 +264,28 @@ export const useApp = create<AppState>((set, get) => ({
   selectedParcelId: null,
   selectParcel: (id, fly = true) => {
     set({ selectedParcelId: id });
-    if (id && fly) {
+    if (id) {
       const p = PARCEL_BY_ID.get(id);
-      if (p) get().flyTo(p.centroid, 13.8);
+      if (p) {
+        const ward = WARD_BY_ID.get(p.wardId);
+        const wardName = ward?.name || "Study Area";
+        const acres = (p.areaHa * 2.47105).toFixed(1);
+        const own = p.ownership === "government" ? "Government" : "Private";
+        const use = p.landUse ? p.landUse.charAt(0).toUpperCase() + p.landUse.slice(1) : "Land";
+
+        set({
+          searchedLocation: {
+            id: p.id,
+            name: `Parcel ${p.id}`,
+            coord: p.centroid,
+            address: `${wardName} · ${acres} acres · ${own} ${use}`,
+            category_label: `Survey No. ${p.surveyNumber || p.id}`,
+            zoom: 15.5,
+            description: `Built-up: ${p.builtUpPct}% | Flood Risk: ${p.floodRisk.toUpperCase()} | Road Distance: ${p.roadDistKm.toFixed(1)} km`,
+          },
+        });
+        if (fly) get().flyTo(p.centroid, 15.2);
+      }
     }
   },
   hoveredParcelId: null,
